@@ -59,8 +59,11 @@ async function login(email) {
   await type('비밀번호', 'Test1234!');
   await tap('로그인', 'button');
 }
+async function back() {
+  await tap('뒤로', 'button').catch(() => tap('Back', 'button'));
+}
 async function logout() {
-  await tap('Show menu', 'button').catch(async () => tap('메뉴 표시', 'button'));
+  await tap('메뉴 표시', 'button').catch(() => tap('Show menu', 'button'));
   await tap('로그아웃');
   await see('WINREF ACADEMY');
 }
@@ -75,7 +78,7 @@ try {
     await type('이메일', 'ref@test.kr');
     await type('비밀번호', 'Test1234!');
     await type('휴대폰', '01012345678');
-    await tap('개인정보 수집');
+    await tap('개인정보 수집', 'checkbox');
     await shot('signup');
     await tap('가입하기', 'button');
     await see('대회 모집');
@@ -91,8 +94,7 @@ try {
     await see('지원완료');
     if (sql(`select count(*) from applications`) !== '1') throw new Error('지원 저장 안 됨');
     await shot('applied');
-    await page.goBack().catch(() => {});
-    await tap('Back', 'button').catch(() => {});
+    await back();
   });
 
   await check('교육 신청', async () => {
@@ -107,7 +109,7 @@ try {
   await check('공지·알림 화면', async () => {
     await tap('알림', 'button');
     await see('알림이 없습니다');
-    await tap('Back', 'button');
+    await back();
   });
 
   await logout();
@@ -134,7 +136,7 @@ try {
   });
 
   await check('대회관계자 화면에서 뒤로가기·로그아웃', async () => {
-    await tap('Back', 'button');
+    await back();
     await logout();
   });
 
@@ -145,7 +147,7 @@ try {
     await tap('2026 서울 유소년 축구대회');
     await see('경기 일정 안내');
     await shot('briefing');
-    await tap('Back', 'button');
+    await back();
     await tap('활동 이력', 'tab');
     await see('주심');
     await shot('history');
