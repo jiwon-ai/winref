@@ -82,7 +82,8 @@ try {
     await shot('signup');
     await tap('가입하기', 'button');
     await see('대회 모집');
-    if (sql(`select p.role from profiles p join auth.users u on u.id=p.id where u.email='ref@test.kr'`) !== 'referee') throw new Error('profile role 불일치');
+    const role = sql(`select p.role from profiles p join auth.users u on u.id=p.id where u.email='ref@test.kr'`);
+    if (role !== 'referee') throw new Error(`profile role 불일치: '${role}' / users: ${sql(`select string_agg(email||':'||coalesce(raw_user_meta_data::text,''), ' ; ') from auth.users`)}`);
     await shot('referee-home');
   });
 
