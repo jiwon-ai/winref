@@ -1,0 +1,73 @@
+name: E2E (local Supabase + browser)
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Start local Supabase
+        run: |
+          mkdir -p /tmp/sb && cd /tmp/sb
+          supabase init
+          supabase start
+          supabase status -o env | sed 's/^/export /' > /tmp/sb/env.sh
+          cat /tmp/sb/env.sh | grep -E "API_URL|DB_URL"
+
+      - name: Apply migrations, users, seed
+        run: |
+          source /tmp/sb/env.sh
+          for f in supabase/migrations/*.sql; do echo "== $f"; psql "$DB_URL" -v ON_ERROR_STOP=1 -q -f "$f"; done
+          mk() {
+            curl -sf -X POST "$API_URL/auth/v1/admin/users" \
+              -H "apikey: $SERVICE_ROLE_KEY" -H "Authorization: Bearer $SERVICE_ROLE_KEY" -H "Content-Type: application/json" \
+              -d "{\"email\":\"$1\",\"password\":\"Test1234!\",\"email_confirm\":true,\"user_metadata\":$2}" > /dev/null
+          }
+          mk admin@test.kr '{"name":"관리자"}'
+          mk org@test.kr '{"name":"박관계","role":"organizer","organization":"서울시축구협회"}'
+          mk ref2@test.kr '{"name":"이심판"}'
+          psql "$DB_URL" -v ON_ERROR_STOP=1 -q -f e2e/seed.sql
+          psql "$DB_URL" -c "select role, name, org_status from profiles"
+
+      - name: Build web (E2E)
+        working-directory: app
+        run: |
+          source /tmp/sb/env.sh
+          flutter pub get
+          flutter build web --release --dart-define=E2E=true \
+            --dart-define=SUPABASE_URL=$API_URL --dart-define=SUPABASE_ANON_KEY=$ANON_KEY
+
+      - name: Run browser scenarios
+        run: |
+          source /tmp/sb/env.sh
+          (cd app/build/web && python3 -m http.server 8080 > /dev/null 2>&1 &)
+          cd e2e
+          npm init -y > /dev/null
+          npm i playwright@1 > /dev/null
+          npx playwright install --with-deps chromium > /dev/null
+          APP_URL=http://127.0.0.1:8080 DB_URL="$DB_URL" node run.mjs
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: e2e-screenshots
+          path: e2e/shots

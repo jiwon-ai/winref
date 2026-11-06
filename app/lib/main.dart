@@ -15,8 +15,15 @@ import 'theme.dart';
 const supabaseUrl = String.fromEnvironment('SUPABASE_URL');
 const supabaseAnonKey = String.fromEnvironment('SUPABASE_ANON_KEY');
 
+const _e2e = bool.fromEnvironment('E2E'); // 자동 테스트 빌드: 접근성 트리를 켜서 브라우저가 화면 요소를 찾게 함
+
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  if (supabaseUrl.isEmpty || supabaseAnonKey.isEmpty) {
+    runApp(const MaterialApp(home: Scaffold(body: Center(child: Text('서버 설정(SUPABASE_URL/KEY)이 빌드에 없습니다.')))));
+    return;
+  }
+  if (_e2e) SemanticsBinding.instance.ensureSemantics();
   await Supabase.initialize(url: supabaseUrl, publishableKey: supabaseAnonKey);
   if (!kIsWeb) await Push.init();
   runApp(const WinrefApp());
