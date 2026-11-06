@@ -38,6 +38,7 @@ class WinrefApp extends StatelessWidget {
     return MaterialApp(
       title: 'WINREF',
       debugShowCheckedModeBanner: false,
+      scaffoldMessengerKey: messengerKey,
       theme: buildTheme(),
       locale: const Locale('ko'),
       supportedLocales: const [Locale('ko')],
@@ -67,7 +68,7 @@ class AuthGate extends StatelessWidget {
                 body: Center(
                   child: Column(mainAxisSize: MainAxisSize.min, children: [
                     Text('프로필을 불러오지 못했습니다.\n${snap.error}', textAlign: TextAlign.center),
-                    TextButton(onPressed: () => db.auth.signOut(), child: const Text('로그아웃')),
+                    TextButton(onPressed: signOut, child: const Text('로그아웃')),
                   ]),
                 ),
               );

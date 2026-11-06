@@ -5,6 +5,13 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 final db = Supabase.instance.client;
+final messengerKey = GlobalKey<ScaffoldMessengerState>();
+
+/// 로그아웃: 이전 사용자 화면의 안내 메시지를 지우고 세션 종료
+Future<void> signOut() async {
+  messengerKey.currentState?.clearSnackBars();
+  await db.auth.signOut();
+}
 String get uid => db.auth.currentUser!.id;
 
 String fmtDate(dynamic v) {
@@ -332,7 +339,7 @@ Future<void> deleteAccount(BuildContext context) async {
   );
   if (ok != true || !context.mounted) return;
   final done = await run(context, () => db.rpc('delete_my_account'));
-  if (done) await db.auth.signOut();
+  if (done) await signOut();
 }
 
 /// 앱바 공통 메뉴: 알림·공지·내정보·로그아웃
@@ -350,7 +357,7 @@ List<Widget> commonActions(BuildContext context, Map<String, dynamic> profile) =
             case 'me':
               editProfile(context, profile);
             case 'logout':
-              db.auth.signOut();
+              signOut();
             case 'delete':
               deleteAccount(context);
           }
