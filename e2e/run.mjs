@@ -110,6 +110,23 @@ try {
     await back();
   });
 
+  await check('검색·필터·캘린더', async () => {
+    await type('대회명', '부산');
+    await see('조건에 맞는 모집 대회가 없습니다');
+    await page.keyboard.press('Control+A');
+    await page.keyboard.type('잠실', { delay: 20 });
+    await see('2026 서울 유소년 축구대회');
+    await tap('7일 이내', 'checkbox').catch(() => tap('7일 이내'));
+    await see('2026 서울 유소년 축구대회');
+    await tap('캘린더 보기', 'button');
+    await see('날짜를 선택하면');
+    await shot('calendar');
+    const d = new Date(Date.now() + 864e5);
+    await tap(`${d.getMonth() + 1}월 ${d.getDate()}일 일정 1건`, 'button');
+    await see('대회 1건');
+    await tap('목록 보기', 'button');
+  });
+
   await check('교육 신청', async () => {
     await goTab('교육');
     await tap('3급 심판 양성과정');
@@ -207,5 +224,5 @@ try {
   await browser.close();
   const fail = results.filter((r) => r[0] === 'FAIL').length;
   console.log(`\n결과: ${results.length - fail} 통과 / ${fail} 실패 (총 시나리오 ${results.length})`);
-  process.exit(fail || results.length < 11 ? 1 : 0);
+  process.exit(fail || results.length < 12 ? 1 : 0);
 }

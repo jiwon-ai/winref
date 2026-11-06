@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../common.dart';
 import '../theme.dart';
+import 'browse.dart';
 
 /// 심판·교육신청자 홈: 홈 / 대회 / 교육 / 내 활동 / 자격
 class RefereeHome extends StatefulWidget {
@@ -306,29 +307,151 @@ class _CardTile extends StatelessWidget {
 
 // ---------- 대회 조회·지원 ----------
 
-class _RecruitmentsTab extends StatelessWidget {
+class _RecruitmentsTab extends StatefulWidget {
   const _RecruitmentsTab();
   @override
+  State<_RecruitmentsTab> createState() => _RecruitmentsTabState();
+}
+
+class _RecruitmentsTabState extends State<_RecruitmentsTab> {
+  late Future<List<Map<String, dynamic>>> _f = _load();
+  String _q = '';
+  String? _position; // null = 전체
+  String _period = 'all'; // all / week / month
+  bool _calendar = false;
+  DateTime? _day;
+
+  Future<List<Map<String, dynamic>>> _load() => db
+      .from('recruitments')
+      .select('*, competitions(*)')
+      .eq('is_open', true)
+      .order('deadline', ascending: true, nullsFirst: false);
+
+  void _reload() => setState(() => _f = _load());
+
+  DateTime? _start(Map<String, dynamic> r) => DateTime.tryParse(r['competitions']['starts_on'] ?? '');
+
+  /// 검색·포지션·기간 필터 (캘린더에서 날짜 선택 시 그 날짜만)
+  List<Map<String, dynamic>> _apply(List<Map<String, dynamic>> rows, {bool byDay = true}) {
+    final q = _q.trim().toLowerCase();
+    final today = dateOnly(DateTime.now());
+    final until = switch (_period) {
+      'week' => today.add(const Duration(days: 7)),
+      'month' => DateTime(today.year, today.month + 1, today.day),
+      _ => null,
+    };
+    return rows.where((r) {
+      final c = r['competitions'] as Map<String, dynamic>;
+      if (q.isNotEmpty &&
+          !'${c['name']} ${c['venue'] ?? ''} ${c['host_org'] ?? ''} ${r['position']}'.toLowerCase().contains(q)) {
+        return false;
+      }
+      if (_position != null && r['position'] != _position) return false;
+      final d = _start(r);
+      if (until != null && (d == null || d.isBefore(today) || d.isAfter(until))) return false;
+      if (byDay && _calendar && _day != null && (d == null || dateOnly(d) != _day)) return false;
+      return true;
+    }).toList();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return AsyncList(
-      load: () => db
-          .from('recruitments')
-          .select('*, competitions(*)')
-          .eq('is_open', true)
-          .order('deadline', ascending: true, nullsFirst: false),
-      empty: '모집 중인 대회가 없습니다.',
-      item: (c, r, reload) {
-        final comp = r['competitions'] as Map<String, dynamic>;
-        return ListTile(
-          title: Text(comp['name'], style: const TextStyle(fontWeight: FontWeight.w600)),
-          subtitle: Text('${fmtDate(comp['starts_on'])} · ${comp['venue'] ?? '-'}\n'
-              '${r['position']} ${r['headcount']}명 · 마감 ${fmtDateTime(r['deadline'])}'),
-          isThreeLine: true,
-          trailing: const Icon(Icons.chevron_right),
-          onTap: () => Navigator.push(c, MaterialPageRoute(builder: (_) => RecruitmentDetail(recruitment: r)))
-              .then((_) => reload()),
-        );
+    return FutureBuilder<List<Map<String, dynamic>>>(
+      future: _f,
+      builder: (context, snap) {
+        if (snap.hasError) {
+          return Center(child: TextButton(onPressed: _reload, child: const Text('불러오기 실패 (다시 시도)')));
+        }
+        if (!snap.hasData) return const Center(child: CircularProgressIndicator());
+        final all = snap.data!;
+        final positions = {for (final r in all) r['position'] as String}.toList()..sort();
+        final rows = _apply(all);
+        final counts = <DateTime, int>{};
+        for (final r in _apply(all, byDay: false)) {
+          final d = _start(r);
+          if (d != null) counts[dateOnly(d)] = (counts[dateOnly(d)] ?? 0) + 1;
+        }
+        return Column(children: [
+          SearchFilterBar(
+            hint: '대회명·장소·주최 검색',
+            onQuery: (v) => setState(() => _q = v),
+            trailing: IconButton.filledTonal(
+              tooltip: _calendar ? '목록 보기' : '캘린더 보기',
+              onPressed: () => setState(() { _calendar = !_calendar; _day = null; }),
+              icon: Icon(_calendar ? Icons.view_list : Icons.calendar_month),
+            ),
+            chips: [
+              for (final p in const [('all', '전체 기간'), ('week', '7일 이내'), ('month', '한 달 이내')])
+                FilterPill(p.$2, selected: _period == p.$1, onTap: () => setState(() => _period = p.$1)),
+              const SizedBox(width: 8),
+              FilterPill('모든 포지션', selected: _position == null, onTap: () => setState(() => _position = null)),
+              for (final p in positions)
+                FilterPill(p, selected: _position == p, onTap: () => setState(() => _position = _position == p ? null : p)),
+            ],
+          ),
+          const Divider(),
+          Expanded(
+            child: RefreshIndicator(
+              onRefresh: () async => _reload(),
+              child: ListView(children: [
+                if (_calendar) ...[
+                  MonthCalendar(counts: counts, selected: _day, onSelect: (d) => setState(() => _day = _day == d ? null : d)),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 12, 20, 4),
+                    child: Text(_day == null ? '날짜를 선택하면 그날 대회만 보입니다' : '${_day!.month}월 ${_day!.day}일 대회 ${rows.length}건',
+                        style: const TextStyle(color: Brand.muted, fontSize: 13)),
+                  ),
+                ],
+                if (rows.isEmpty)
+                  const Padding(
+                    padding: EdgeInsets.all(40),
+                    child: Center(child: Text('조건에 맞는 모집 대회가 없습니다.', style: TextStyle(color: Brand.muted))),
+                  ),
+                for (final r in rows) _recruitmentCard(context, r),
+                const SizedBox(height: 16),
+              ]),
+            ),
+          ),
+        ]);
       },
+    );
+  }
+
+  Widget _recruitmentCard(BuildContext context, Map<String, dynamic> r) {
+    final comp = r['competitions'] as Map<String, dynamic>;
+    final badge = deadlineBadge(r['deadline']);
+    final urgent = badge != null && (badge == '오늘 마감' || badge == '마감 D-1' || badge == '마감 D-2');
+    return Card(
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => RecruitmentDetail(recruitment: r)))
+            .then((_) => _reload()),
+        child: Padding(
+          padding: const EdgeInsets.all(14),
+          child: Row(children: [
+            Container(
+              width: 52,
+              padding: const EdgeInsets.symmetric(vertical: 6),
+              decoration: BoxDecoration(color: Brand.ivory, borderRadius: BorderRadius.circular(4)),
+              child: Column(children: [
+                Text('${_start(r)?.month ?? '-'}월', style: const TextStyle(color: Brand.muted, fontSize: 11)),
+                Text('${_start(r)?.day ?? '-'}',
+                    style: const TextStyle(color: Brand.navy, fontSize: 20, fontWeight: FontWeight.w700)),
+              ]),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text(comp['name'], style: const TextStyle(fontWeight: FontWeight.w600)),
+                const SizedBox(height: 3),
+                Text('${comp['venue'] ?? '-'} · ${r['position']} ${r['headcount']}명',
+                    style: const TextStyle(color: Brand.muted, fontSize: 13)),
+              ]),
+            ),
+            if (badge != null) StatusChip(badge, urgent ? 'selected' : 'pending'),
+          ]),
+        ),
+      ),
     );
   }
 }
@@ -436,7 +559,26 @@ class _CoursesTabState extends State<_CoursesTab> {
     final courses = await db.from('courses').select().order('starts_at', ascending: false);
     final mine = await db.from('course_applications').select().eq('user_id', uid);
     final byCourse = {for (final a in mine) a['course_id']: a};
-    return [for (final c in courses) {...c, '_mine': byCourse[c['id']]}];
+    final q = _q.trim().toLowerCase();
+    final now = DateTime.now();
+    return [
+      for (final c in courses)
+        if (q.isEmpty || '${c['title']} ${c['location'] ?? ''} ${c['description'] ?? ''}'.toLowerCase().contains(q))
+          if (switch (_filter) {
+            'open' => DateTime.tryParse(c['apply_deadline'] ?? '')?.isAfter(now) ?? true,
+            'refresher' => c['is_refresher'] == true,
+            'mine' => ['applied', 'confirmed'].contains(byCourse[c['id']]?['status']),
+            _ => true,
+          })
+            {...c, '_mine': byCourse[c['id']]},
+    ];
+  }
+
+  String _q = '';
+  String _filter = 'all';
+  void _set(void Function() f) {
+    setState(f);
+    _key.currentState?.reload();
   }
 
   Future<void> _apply(Map<String, dynamic> c) async {
@@ -459,10 +601,25 @@ class _CoursesTabState extends State<_CoursesTab> {
 
   @override
   Widget build(BuildContext context) {
+    return Column(children: [
+      SearchFilterBar(
+        hint: '교육과정·장소 검색',
+        onQuery: (v) => _set(() => _q = v),
+        chips: [
+          for (final f in const [('all', '전체'), ('open', '신청 가능'), ('refresher', '보수교육'), ('mine', '내 신청')])
+            FilterPill(f.$2, selected: _filter == f.$1, onTap: () => _set(() => _filter = f.$1)),
+        ],
+      ),
+      const Divider(),
+      Expanded(child: _list()),
+    ]);
+  }
+
+  Widget _list() {
     return AsyncList(
       key: _key,
       load: _load,
-      empty: '등록된 교육과정이 없습니다.',
+      empty: '조건에 맞는 교육과정이 없습니다.',
       item: (ctx, c, _) {
         final mine = c['_mine'] as Map<String, dynamic>?;
         final status = mine?['status'] as String?;
