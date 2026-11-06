@@ -36,7 +36,8 @@ async function tap(name, role) {
   const l = el(name, role);
   try { await l.waitFor({ state: 'visible', timeout: 15000 }); }
   catch (e) { await dumpLabels(); throw new Error(`"${name}" 요소를 찾지 못함`); }
-  await l.click();
+  console.log('  tap', name);
+  await l.click({ timeout: 10000 });
   await page.waitForTimeout(500);
 }
 async function type(label, text) {
@@ -53,7 +54,7 @@ async function see(text) {
 }
 async function check(name, fn) {
   try { await fn(); results.push(['PASS', name]); console.log('PASS', name); }
-  catch (e) { results.push(['FAIL', name, e.message]); console.log('FAIL', name, '-', e.message); await shot('FAIL-' + name.replace(/\s/g, '_')); throw e; }
+  catch (e) { results.push(['FAIL', name, e.message]); console.log('FAIL', name, '-', e.message); await shot('FAIL-' + name.replace(/[^\p{L}\p{N}]+/gu, '_')); throw e; }
 }
 async function login(email) {
   await type('이메일', email);
