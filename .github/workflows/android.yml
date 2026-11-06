@@ -62,8 +62,8 @@ jobs:
       - name: Build
         env:
           DEFINES: >-
-            --dart-define=SUPABASE_URL=${{ secrets.SUPABASE_URL }}
-            --dart-define=SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }}
+            --dart-define=SUPABASE_URL=${{ secrets.SUPABASE_URL || 'https://oxdavtdvpwhcllnivizb.supabase.co' }}
+            --dart-define=SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY || 'sb_publishable_n_LETmj8ZhCjOIZ5NfD5BA_afhksSoS' }}
             --dart-define=FIREBASE_API_KEY=${{ secrets.FIREBASE_API_KEY }}
             --dart-define=FIREBASE_APP_ID=${{ secrets.FIREBASE_APP_ID }}
             --dart-define=FIREBASE_SENDER_ID=${{ secrets.FIREBASE_SENDER_ID }}
