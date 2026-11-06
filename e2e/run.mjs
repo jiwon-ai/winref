@@ -65,7 +65,7 @@ async function back() {
 }
 async function logout() {
   await tap('메뉴 표시', 'button').catch(() => tap('Show menu', 'button'));
-  await tap('로그아웃');
+  await tap('로그아웃', 'menuitem');
   await see('WINREF ACADEMY');
 }
 
