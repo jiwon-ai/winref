@@ -102,7 +102,7 @@ try {
   });
 
   await check('교육 신청', async () => {
-    await tap('교육', 'tab').catch(() => tap('교육'));
+    await tap('교육', 'tab').catch(() => tap('교육', 'button'));
     await tap('3급 심판 양성과정');
     await tap('교육 신청', 'button');
     await see('신청 취소');
@@ -146,7 +146,7 @@ try {
 
   await check('심판: 선발결과·브리핑·활동이력', async () => {
     await login('ref@test.kr');
-    await tap('내 활동');
+    await tap('내 활동', 'tab').catch(() => tap('내 활동', 'button'));
     await see('선발');
     await tap('2026 서울 유소년 축구대회');
     await see('경기 일정 안내');
