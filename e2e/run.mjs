@@ -24,7 +24,7 @@ async function shot(name) {
 
 // Flutter 접근성 트리에서 라벨로 요소 찾기
 function el(name, role) {
-  if (role === 'exact') return page.getByText(name, { exact: true }).first();
+  if (role?.endsWith('!')) return page.getByRole(role.slice(0, -1), { name, exact: true }).first();
   return role ? page.getByRole(role, { name, exact: false }).first() : page.getByText(name, { exact: false }).first();
 }
 async function dumpLabels() {
@@ -126,10 +126,10 @@ try {
     await tap('지원자', 'tab');
     await tap('김심판');
     await shot('applicant-sheet');
-    await tap('선발', 'exact');
+    await tap('선발', 'checkbox!');
     await page.waitForTimeout(800);
     await tap('김심판');
-    await tap('참석', 'exact');
+    await tap('참석', 'checkbox!');
     await page.waitForTimeout(800);
     await tap('김심판');
     await tap('활동완료 처리', 'button');
