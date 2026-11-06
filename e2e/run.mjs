@@ -13,7 +13,8 @@ const sql = (q) => execSync(`psql "${DB}" -tAc "${q.replace(/"/g, '\\"')}"`).toS
 let step = 0;
 const results = [];
 const browser = await chromium.launch();
-const page = await browser.newPage({ viewport: { width: 412, height: 915 }, locale: 'ko-KR' });
+// 405x720 @2x = 810x1440 (9:16) → Play 스토어 휴대전화 스크린샷 규격에 맞춤
+const page = await browser.newPage({ viewport: { width: 405, height: 720 }, deviceScaleFactor: 2, locale: 'ko-KR' });
 page.on('console', (m) => { if (m.type() === 'error') console.log('[console]', m.text()); });
 
 async function shot(name) {
@@ -158,6 +159,16 @@ try {
     await logout();
   });
 
+  await check('회원 탈퇴', async () => {
+    await login('ref2@test.kr');
+    await see('대회 모집');
+    await tap('메뉴 표시', 'button');
+    await tap('회원 탈퇴', 'menuitem');
+    await tap('탈퇴', 'button!');
+    await see('WINREF ACADEMY');
+    if (sql(`select count(*) from auth.users where email='ref2@test.kr'`) !== '0') throw new Error('계정이 삭제되지 않음');
+  });
+
   await check('관리자: 대시보드·통계', async () => {
     await page.setViewportSize({ width: 1280, height: 800 });
     await login('admin@test.kr');
@@ -183,5 +194,5 @@ try {
   await browser.close();
   const fail = results.filter((r) => r[0] === 'FAIL').length;
   console.log(`\n결과: ${results.length - fail} 통과 / ${fail} 실패 (총 시나리오 ${results.length})`);
-  process.exit(fail || results.length < 10 ? 1 : 0);
+  process.exit(fail || results.length < 11 ? 1 : 0);
 }

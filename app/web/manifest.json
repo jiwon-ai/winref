@@ -1,11 +1,11 @@
 {
-    "name": "winref",
-    "short_name": "winref",
+    "name": "WINREF 인재은행",
+    "short_name": "WINREF",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "background_color": "#F7F3EA",
+    "theme_color": "#14213D",
+    "description": "WINREF ACADEMY 스포츠 인재은행 관리자",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

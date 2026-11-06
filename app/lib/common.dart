@@ -316,6 +316,24 @@ Future<void> editProfile(BuildContext context, Map<String, dynamic> p) async {
   await run(context, () => db.from('profiles').update(v).eq('id', uid), done: '저장했습니다.');
 }
 
+/// 회원 탈퇴: 계정과 개인 데이터 삭제 (되돌릴 수 없음)
+Future<void> deleteAccount(BuildContext context) async {
+  final ok = await showDialog<bool>(
+    context: context,
+    builder: (d) => AlertDialog(
+      title: const Text('회원 탈퇴'),
+      content: const Text('계정과 자격정보·지원내역·활동이력이 모두 삭제되며 되돌릴 수 없습니다. 탈퇴하시겠습니까?'),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('취소')),
+        TextButton(onPressed: () => Navigator.pop(d, true), child: const Text('탈퇴')),
+      ],
+    ),
+  );
+  if (ok != true || !context.mounted) return;
+  final done = await run(context, () => db.rpc('delete_my_account'));
+  if (done) await db.auth.signOut();
+}
+
 /// 앱바 공통 메뉴: 알림·공지·내정보·로그아웃
 List<Widget> commonActions(BuildContext context, Map<String, dynamic> profile) => [
       IconButton(
@@ -332,12 +350,15 @@ List<Widget> commonActions(BuildContext context, Map<String, dynamic> profile) =
               editProfile(context, profile);
             case 'logout':
               db.auth.signOut();
+            case 'delete':
+              deleteAccount(context);
           }
         },
-        itemBuilder: (_) => const [
-          PopupMenuItem(value: 'notice', child: Text('공지사항')),
-          PopupMenuItem(value: 'me', child: Text('내 정보')),
-          PopupMenuItem(value: 'logout', child: Text('로그아웃')),
+        itemBuilder: (_) => [
+          const PopupMenuItem(value: 'notice', child: Text('공지사항')),
+          const PopupMenuItem(value: 'me', child: Text('내 정보')),
+          const PopupMenuItem(value: 'logout', child: Text('로그아웃')),
+          if (profile['role'] != 'admin') const PopupMenuItem(value: 'delete', child: Text('회원 탈퇴')),
         ],
       ),
     ];

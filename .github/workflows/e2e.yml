@@ -5,7 +5,23 @@ on:
     branches: [main]
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
+  db-policies:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: RLS·권한 단위 테스트 (PGlite)
+        run: |
+          cat supabase/migrations/*.sql > /tmp/all.sql
+          cd supabase/tests && npm init -y > /dev/null && npm i @electric-sql/pglite > /dev/null
+          node policies.test.mjs /tmp/all.sql
+
   e2e:
     runs-on: ubuntu-latest
     timeout-minutes: 30
@@ -67,6 +83,17 @@ jobs:
           npm i playwright@1 > /dev/null
           npx playwright install --with-deps chromium > /dev/null
           APP_URL=http://127.0.0.1:8080 DB_URL="$DB_URL" node run.mjs
+
+      - name: Publish screenshots to e2e-shots branch
+        if: success()
+        run: |
+          mkdir -p /tmp/shots && cp e2e/shots/*.png /tmp/shots/
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout --orphan e2e-shots
+          git rm -rq --cached . && git clean -fdq -e e2e/node_modules
+          cp /tmp/shots/*.png . && git add *.png
+          git commit -qm "E2E screenshots ${GITHUB_SHA::7}" && git push -fq origin e2e-shots
 
       - uses: actions/upload-artifact@v4
         if: always()
