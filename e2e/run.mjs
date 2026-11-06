@@ -51,7 +51,9 @@ async function type(label, text) {
   await page.keyboard.type(text, { delay: 20 });
 }
 async function see(text) {
-  try { await el(text).waitFor({ state: 'visible', timeout: 15000 }); }
+  // Flutter 는 정적 텍스트를 textContent 또는 aria-label 로 노출하므로 둘 다 찾는다
+  const l = page.getByText(text, { exact: false }).or(page.locator(`[aria-label*="${text}"]`)).first();
+  try { await l.waitFor({ state: 'visible', timeout: 15000 }); }
   catch (e) { await dumpLabels(); throw new Error(`"${text}" 가 화면에 없음`); }
 }
 async function check(name, fn) {
