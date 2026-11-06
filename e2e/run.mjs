@@ -185,7 +185,7 @@ try {
     await tap('전체 회원');
     await page.waitForTimeout(1000);
     const n = sql(`select count(*) from notifications where title='테스트 알림'`);
-    if (n !== '4') throw new Error('발송 건수 ' + n);
+    if (n !== '3') throw new Error('발송 건수 ' + n); // 관리자·관계자·김심판 (이심판은 탈퇴)
     await shot('admin-broadcast');
   });
 } catch (e) {
