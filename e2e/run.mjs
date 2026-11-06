@@ -44,7 +44,8 @@ async function type(label, text) {
   try { await l.waitFor({ state: 'visible', timeout: 15000 }); }
   catch (e) { await dumpLabels(); throw new Error(`입력칸 "${label}" 을 찾지 못함`); }
   await l.click();
-  await page.keyboard.type(text, { delay: 10 });
+  await page.waitForTimeout(400); // Flutter 입력창 포커스 대기 (첫 글자 유실 방지)
+  await page.keyboard.type(text, { delay: 20 });
 }
 async function see(text) {
   try { await el(text).waitFor({ state: 'visible', timeout: 15000 }); }
