@@ -89,9 +89,9 @@ jobs:
           APP_URL=http://127.0.0.1:8080 DB_URL="$DB_URL" node run.mjs
 
       - name: Publish screenshots to e2e-shots branch
-        if: success()
+        if: always()
         run: |
-          mkdir -p /tmp/shots && cp e2e/shots/*.png /tmp/shots/
+          mkdir -p /tmp/shots && cp e2e/shots/*.png /tmp/shots/ || exit 0
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git checkout --orphan e2e-shots
