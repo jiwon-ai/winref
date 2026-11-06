@@ -43,23 +43,16 @@ Future<bool> run(BuildContext context, Future<void> Function() action, {String? 
 
 /// 파일을 골라 storage 'files' 버킷에 올리고 경로를 돌려준다. 취소 시 null.
 Future<String?> pickAndUpload(BuildContext context, String folder) async {
-  final res = await FilePicker.platform.pickFiles(
-    type: FileType.custom,
-    allowedExtensions: ['pdf', 'jpg', 'jpeg', 'png'],
-    withData: true,
-  );
-  final f = res?.files.single;
-  if (f == null || f.bytes == null) return null;
+  final f = await FilePicker.pickFile(type: FileType.custom, allowedExtensions: ['pdf', 'jpg', 'jpeg', 'png']);
+  if (f == null || !context.mounted) return null;
   final ext = (f.extension ?? 'bin').toLowerCase();
+  final mime = switch (ext) { 'pdf' => 'application/pdf', 'png' => 'image/png', _ => 'image/jpeg' };
   final path = '$folder/${DateTime.now().millisecondsSinceEpoch}.$ext';
   String? out;
-  if (!context.mounted) return null;
   await run(context, () async {
-    await db.storage.from('files').uploadBinary(
-          path,
-          f.bytes!,
-          fileOptions: FileOptions(contentType: ext == 'pdf' ? 'application/pdf' : 'image/$ext'),
-        );
+    final bytes = await f.xFile.readAsBytes();
+    if (bytes.length > 20 * 1024 * 1024) throw '20MB 이하 파일만 올릴 수 있습니다.';
+    await db.storage.from('files').uploadBinary(path, bytes, fileOptions: FileOptions(contentType: mime));
     out = path;
   });
   return out;
