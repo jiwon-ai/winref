@@ -29,7 +29,9 @@ jobs:
         run: |
           mkdir -p /tmp/sb && cd /tmp/sb
           supabase init
-          supabase start
+          sed -i -E 's/= 543([0-9]{2})/= 553\1/' supabase/config.toml   # 러너 기본 포트 충돌 회피
+          grep -nE "^port = 553" supabase/config.toml | head
+          supabase start -x studio,imgproxy,logflare,vector,supavisor
           supabase status -o env | sed 's/^/export /' > /tmp/sb/env.sh
           cat /tmp/sb/env.sh | grep -E "API_URL|DB_URL"
 
