@@ -85,25 +85,31 @@ try {
     await tap('개인정보 수집', 'checkbox');
     await shot('signup');
     await tap('가입하기', 'button');
-    await see('대회 모집');
+    await see('다가오는 일정');
     const role = sql(`select p.role from profiles p join auth.users u on u.id=p.id where u.email='ref@test.kr'`);
     if (role !== 'referee') throw new Error(`profile role 불일치: '${role}' / users: ${sql(`select string_agg(email||':'||coalesce(raw_user_meta_data::text,''), ' ; ') from auth.users`)}`);
     await shot('referee-home');
   });
 
+  async function goTab(name) {
+    await tap(name, 'tab!').catch(() => tap(name, 'button!'));
+  }
+
   await check('대회 조회·심판 지원', async () => {
+    await goTab('대회');
+    await see('대회 모집');
     await tap('2026 서울 유소년 축구대회');
     await see('잠실 보조경기장');
     await shot('competition-detail');
     await tap('심판 지원하기', 'button');
     await see('지원완료');
-    if (sql(`select count(*) from applications`) !== '1') throw new Error('지원 저장 안 됨');
+    if (sql(`select count(*) from applications a join profiles p on p.id=a.user_id where p.name='김심판'`) !== '1') throw new Error('지원 저장 안 됨');
     await shot('applied');
     await back();
   });
 
   await check('교육 신청', async () => {
-    await tap('교육', 'tab').catch(() => tap('교육', 'button'));
+    await goTab('교육');
     await tap('3급 심판 양성과정');
     await tap('교육 신청', 'button');
     await see('신청 취소');
@@ -135,7 +141,7 @@ try {
     await tap('김심판');
     await tap('활동완료 처리', 'button');
     await page.waitForTimeout(800);
-    const r = sql(`select status||','||attendance||','||(completed_at is not null) from applications`);
+    const r = sql(`select status||','||attendance||','||(completed_at is not null) from applications a join profiles p on p.id=a.user_id where p.name='김심판'`);
     if (r !== 'selected,attending,true') throw new Error('DB 상태: ' + r);
     await shot('completed');
   });
@@ -147,7 +153,10 @@ try {
 
   await check('심판: 선발결과·브리핑·활동이력', async () => {
     await login('ref@test.kr');
-    await tap('내 활동', 'tab').catch(() => tap('내 활동', 'button'));
+    await see('다가오는 일정');
+    await see('활동 완료');
+    await shot('referee-dashboard');
+    await goTab('내 활동');
     await see('선발');
     await tap('2026 서울 유소년 축구대회');
     await see('경기 일정 안내');
@@ -161,7 +170,9 @@ try {
 
   await check('회원 탈퇴', async () => {
     await login('ref2@test.kr');
-    await see('대회 모집');
+    await see('D-1');             // 선발된 내일 대회
+    await see('마감 임박 모집');  // 3일 내 마감, 미지원 공고
+    await shot('dashboard-closing');
     await tap('메뉴 표시', 'button');
     await tap('회원 탈퇴', 'menuitem');
     await tap('탈퇴', 'button!');

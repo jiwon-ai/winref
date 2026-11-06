@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import '../common.dart';
 import '../theme.dart';
 
-/// 심판·교육신청자 홈: 대회 / 교육 / 내 활동 / 자격
+/// 심판·교육신청자 홈: 홈 / 대회 / 교육 / 내 활동 / 자격
 class RefereeHome extends StatefulWidget {
   final Map<String, dynamic> profile;
   const RefereeHome({super.key, required this.profile});
@@ -13,27 +13,292 @@ class RefereeHome extends StatefulWidget {
 
 class _RefereeHomeState extends State<RefereeHome> {
   int _tab = 0;
-  static const _titles = ['대회 모집', '교육', '내 활동', '자격정보'];
+  static const _titles = ['WINREF', '대회 모집', '교육', '내 활동', '자격정보'];
+
+  void _go(int i) => setState(() => _tab = i);
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: Text(_titles[_tab]), actions: commonActions(context, widget.profile)),
-      body: IndexedStack(index: _tab, children: const [
-        _RecruitmentsTab(),
-        _CoursesTab(),
-        _MyActivityTab(),
-        _QualificationsTab(),
+      body: IndexedStack(index: _tab, children: [
+        _DashboardTab(profile: widget.profile, goTab: _go, active: _tab == 0),
+        const _RecruitmentsTab(),
+        const _CoursesTab(),
+        const _MyActivityTab(),
+        const _QualificationsTab(),
       ]),
       bottomNavigationBar: NavigationBar(
         selectedIndex: _tab,
-        onDestinationSelected: (i) => setState(() => _tab = i),
+        onDestinationSelected: _go,
         destinations: const [
+          NavigationDestination(icon: Icon(Icons.home_outlined), selectedIcon: Icon(Icons.home), label: '홈'),
           NavigationDestination(icon: Icon(Icons.sports_outlined), label: '대회'),
           NavigationDestination(icon: Icon(Icons.school_outlined), label: '교육'),
           NavigationDestination(icon: Icon(Icons.assignment_outlined), label: '내 활동'),
           NavigationDestination(icon: Icon(Icons.badge_outlined), label: '자격'),
         ],
+      ),
+    );
+  }
+}
+
+// ---------- 홈 대시보드 ----------
+
+/// 오늘 기준 D-day 문자열 (D-DAY, D-3, D+1)
+String dday(String? date) {
+  final d = DateTime.tryParse(date ?? '');
+  if (d == null) return '';
+  final now = DateTime.now();
+  final diff = DateTime(d.year, d.month, d.day).difference(DateTime(now.year, now.month, now.day)).inDays;
+  if (diff == 0) return 'D-DAY';
+  return diff > 0 ? 'D-$diff' : 'D+${-diff}';
+}
+
+class _DashboardTab extends StatefulWidget {
+  final Map<String, dynamic> profile;
+  final void Function(int) goTab;
+  final bool active;
+  const _DashboardTab({required this.profile, required this.goTab, required this.active});
+  @override
+  State<_DashboardTab> createState() => _DashboardTabState();
+}
+
+class _DashboardTabState extends State<_DashboardTab> {
+  late Future<Map<String, dynamic>> _f = _load();
+
+  @override
+  void didUpdateWidget(_DashboardTab old) {
+    super.didUpdateWidget(old);
+    if (widget.active && !old.active) setState(() => _f = _load()); // 홈으로 돌아올 때 새로고침
+  }
+
+  Future<Map<String, dynamic>> _load() async {
+    final today = DateTime.now().toIso8601String().substring(0, 10);
+    final soon = DateTime.now().add(const Duration(days: 3)).toUtc().toIso8601String();
+    final r = await Future.wait<List<Map<String, dynamic>>>([
+      db
+          .from('applications')
+          .select('id, status, attendance, completed_at, recruitments(position, competitions(id, name, starts_on, venue))')
+          .eq('user_id', uid)
+          .neq('status', 'cancelled'),
+      db.from('qualifications').select().eq('user_id', uid).eq('status', 'approved'),
+      db
+          .from('recruitments')
+          .select('*, competitions(*)')
+          .eq('is_open', true)
+          .gte('deadline', DateTime.now().toUtc().toIso8601String())
+          .lte('deadline', soon)
+          .order('deadline'),
+      db.from('notices').select('id, title, body, file_path, created_at').order('created_at', ascending: false).limit(3),
+    ]);
+    final apps = r[0];
+    final upcoming = apps
+        .where((a) =>
+            a['status'] == 'selected' &&
+            a['completed_at'] == null &&
+            ((a['recruitments']['competitions']['starts_on'] as String?) ?? '').compareTo(today) >= 0)
+        .toList()
+      ..sort((a, b) => (a['recruitments']['competitions']['starts_on'] as String)
+          .compareTo(b['recruitments']['competitions']['starts_on'] as String));
+    final appliedIds = {for (final a in apps) a['recruitments']['competitions']['id']};
+    final expiring = r[1].where((q) {
+      final e = DateTime.tryParse(q['expires_on'] ?? '');
+      return e != null && e.difference(DateTime.now()).inDays <= 90;
+    }).toList();
+    return {
+      'pending': apps.where((a) => a['status'] == 'applied').length,
+      'selected': upcoming.length,
+      'done': apps.where((a) => a['completed_at'] != null).length,
+      'upcoming': upcoming,
+      'expiring': expiring,
+      'closing': r[2].where((x) => !appliedIds.contains(x['competitions']['id'])).toList(),
+      'notices': r[3],
+    };
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<Map<String, dynamic>>(
+      future: _f,
+      builder: (context, snap) {
+        if (snap.hasError) {
+          return Center(
+            child: TextButton(onPressed: () => setState(() => _f = _load()), child: const Text('불러오기 실패 (다시 시도)')),
+          );
+        }
+        if (!snap.hasData) return const Center(child: CircularProgressIndicator());
+        final d = snap.data!;
+        final upcoming = d['upcoming'] as List;
+        final expiring = d['expiring'] as List;
+        final closing = d['closing'] as List;
+        final notices = d['notices'] as List;
+        return RefreshIndicator(
+          onRefresh: () async => setState(() => _f = _load()),
+          child: ListView(padding: EdgeInsets.zero, children: [
+            _header(d),
+            if (expiring.isNotEmpty)
+              _Section('자격 알림', [
+                for (final q in expiring)
+                  _CardTile(
+                    accent: Brand.gold,
+                    icon: Icons.warning_amber_rounded,
+                    title: '${q['name']} 만료 ${dday(q['expires_on'])}',
+                    subtitle: '유효기간 ${fmtDate(q['expires_on'])} · 보수교육 ${q['refresher_done'] == true ? '이수' : '필요'}',
+                    onTap: () => widget.goTab(4),
+                  ),
+              ]),
+            _Section('다가오는 일정', [
+              if (upcoming.isEmpty)
+                _CardTile(
+                  icon: Icons.event_available_outlined,
+                  title: '예정된 대회 일정이 없습니다',
+                  subtitle: '모집 중인 대회를 확인해 보세요',
+                  onTap: () => widget.goTab(1),
+                )
+              else
+                for (final a in upcoming)
+                  _CardTile(
+                    badge: dday(a['recruitments']['competitions']['starts_on']),
+                    title: a['recruitments']['competitions']['name'],
+                    subtitle: '${fmtDate(a['recruitments']['competitions']['starts_on'])} · '
+                        '${a['recruitments']['competitions']['venue'] ?? '-'} · ${a['recruitments']['position']}',
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => BriefingScreen(competition: a['recruitments']['competitions'])),
+                    ),
+                  ),
+            ]),
+            if (closing.isNotEmpty)
+              _Section('마감 임박 모집', [
+                for (final x in closing)
+                  _CardTile(
+                    icon: Icons.schedule,
+                    title: x['competitions']['name'],
+                    subtitle: '${x['position']} ${x['headcount']}명 · 마감 ${fmtDateTime(x['deadline'])}',
+                    onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => RecruitmentDetail(recruitment: x)))
+                        .then((_) => setState(() => _f = _load())),
+                  ),
+              ]),
+            _Section('공지사항', [
+              if (notices.isEmpty)
+                const _CardTile(icon: Icons.campaign_outlined, title: '새 공지가 없습니다')
+              else
+                for (final n in notices)
+                  _CardTile(
+                    icon: Icons.campaign_outlined,
+                    title: n['title'],
+                    subtitle: fmtDate(n['created_at']),
+                    onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const NoticesScreen())),
+                  ),
+            ]),
+            const SizedBox(height: 24),
+          ]),
+        );
+      },
+    );
+  }
+
+  Widget _header(Map<String, dynamic> d) {
+    Widget stat(String label, int n, int tab) => Expanded(
+          child: InkWell(
+            onTap: () => widget.goTab(tab),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              child: Column(children: [
+                Text('$n', style: const TextStyle(color: Brand.ivory, fontSize: 24, fontWeight: FontWeight.w700)),
+                const SizedBox(height: 2),
+                Text(label, style: const TextStyle(color: Color(0xFFB9C0D0), fontSize: 12)),
+              ]),
+            ),
+          ),
+        );
+    return Container(
+      color: Brand.navy,
+      padding: const EdgeInsets.fromLTRB(20, 8, 20, 20),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Text('${widget.profile['name']} 님', style: const TextStyle(color: Brand.ivory, fontSize: 20, fontWeight: FontWeight.w700)),
+        const SizedBox(height: 4),
+        Container(width: 24, height: 2, color: Brand.gold),
+        const SizedBox(height: 16),
+        Container(
+          decoration: BoxDecoration(
+            color: Brand.navyLight,
+            borderRadius: BorderRadius.circular(6),
+          ),
+          child: Row(children: [
+            stat('지원 중', d['pending'] as int, 3),
+            stat('선발 일정', d['selected'] as int, 3),
+            stat('활동 완료', d['done'] as int, 3),
+          ]),
+        ),
+      ]),
+    );
+  }
+}
+
+class _Section extends StatelessWidget {
+  final String title;
+  final List<Widget> children;
+  const _Section(this.title, this.children);
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 20),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
+          child: Text(title,
+              style: const TextStyle(color: Brand.navy, fontSize: 15, fontWeight: FontWeight.w700, letterSpacing: 0.5)),
+        ),
+        ...children,
+      ]),
+    );
+  }
+}
+
+class _CardTile extends StatelessWidget {
+  final String title;
+  final String? subtitle;
+  final String? badge;
+  final IconData? icon;
+  final Color accent;
+  final VoidCallback? onTap;
+  const _CardTile({required this.title, this.subtitle, this.badge, this.icon, this.accent = Brand.navy, this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        child: Container(
+          decoration: BoxDecoration(border: Border(left: BorderSide(color: accent, width: 3))),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          child: Row(children: [
+            if (badge != null)
+              Container(
+                width: 58,
+                padding: const EdgeInsets.symmetric(vertical: 6),
+                margin: const EdgeInsets.only(right: 12),
+                decoration: BoxDecoration(color: Brand.navy, borderRadius: BorderRadius.circular(4)),
+                alignment: Alignment.center,
+                child: Text(badge!, style: const TextStyle(color: Brand.gold, fontWeight: FontWeight.w700)),
+              )
+            else if (icon != null)
+              Padding(padding: const EdgeInsets.only(right: 12), child: Icon(icon, color: accent)),
+            Expanded(
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
+                if (subtitle != null) ...[
+                  const SizedBox(height: 2),
+                  Text(subtitle!, style: const TextStyle(color: Brand.muted, fontSize: 13)),
+                ],
+              ]),
+            ),
+            if (onTap != null) const Icon(Icons.chevron_right, color: Brand.muted),
+          ]),
+        ),
       ),
     );
   }
