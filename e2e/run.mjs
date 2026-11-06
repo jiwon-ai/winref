@@ -103,7 +103,7 @@ try {
     await tap('교육', 'tab').catch(() => tap('교육'));
     await tap('3급 심판 양성과정');
     await tap('교육 신청', 'button');
-    await see('지원완료');
+    await see('신청 취소');
     if (sql(`select count(*) from course_applications where status='applied'`) !== '1') throw new Error('교육 신청 저장 안 됨');
     await shot('course-applied');
   });

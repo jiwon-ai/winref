@@ -219,7 +219,7 @@ class _CoursesTabState extends State<_CoursesTab> {
             const SizedBox(height: 12),
             if (status == 'applied' || status == 'confirmed')
               Row(children: [
-                StatusChip(label(status), status!),
+                StatusChip(status == 'applied' ? '신청완료' : label(status), status!),
                 const Spacer(),
                 if (!closed) TextButton(onPressed: () => _cancel(c), child: const Text('신청 취소')),
               ])
