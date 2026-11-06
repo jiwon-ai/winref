@@ -270,6 +270,7 @@ class NoticesScreen extends StatelessWidget {
           title: Text(n['title']),
           subtitle: Text(fmtDate(n['created_at'])),
           expandedCrossAxisAlignment: CrossAxisAlignment.start,
+          expandedAlignment: Alignment.centerLeft,
           childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
           children: [Text(n['body'] ?? ''), fileButton(c, n['file_path'])],
         ),

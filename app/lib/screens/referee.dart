@@ -210,6 +210,7 @@ class _CoursesTabState extends State<_CoursesTab> {
           ]),
           subtitle: Text('${fmtDateTime(c['starts_at'])} · ${c['location'] ?? '-'}'),
           expandedCrossAxisAlignment: CrossAxisAlignment.start,
+          expandedAlignment: Alignment.centerLeft,
           childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
           children: [
             Text(c['description'] ?? ''),
@@ -303,6 +304,7 @@ class BriefingScreen extends StatelessWidget {
           title: Text(b['title']),
           subtitle: Text(fmtDateTime(b['created_at'])),
           expandedCrossAxisAlignment: CrossAxisAlignment.start,
+          expandedAlignment: Alignment.centerLeft,
           childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
           children: [Text(b['body'] ?? ''), fileButton(c, b['file_path'])],
         ),
