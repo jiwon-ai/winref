@@ -82,7 +82,7 @@ try {
     await shot('signup');
     await tap('가입하기', 'button');
     await see('대회 모집');
-    if (sql(`select role from profiles p join auth.users u on u.id=p.id where u.email='ref@test.kr'`) !== 'referee') throw new Error('profile role 불일치');
+    if (sql(`select p.role from profiles p join auth.users u on u.id=p.id where u.email='ref@test.kr'`) !== 'referee') throw new Error('profile role 불일치');
     await shot('referee-home');
   });
 
