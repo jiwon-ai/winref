@@ -75,6 +75,18 @@ jobs:
           flutter build appbundle --release $DEFINES
           flutter build web --release --base-href /winref/ $DEFINES
 
+      # 휴대폰에서 바로 받을 수 있는 고정 링크:
+      # https://github.com/jiwon-ai/winref/releases/download/latest/winref.apk
+      - name: Publish APK to "latest" release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cp build/app/outputs/flutter-apk/app-release.apk /tmp/winref.apk
+          gh release delete latest --yes --cleanup-tag || true
+          gh release create latest /tmp/winref.apk --target "$GITHUB_SHA" \
+            --title "WINREF 최신 안드로이드 앱" \
+            --notes "main ${GITHUB_SHA::7} 자동 빌드. 휴대폰에서 winref.apk 를 눌러 설치하세요."
+
       - uses: actions/upload-artifact@v4
         with:
           name: winref-android
