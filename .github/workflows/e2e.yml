@@ -45,11 +45,14 @@ jobs:
         run: |
           mkdir -p /tmp/sb && cd /tmp/sb
           supabase init
-          sed -i -E 's/= 543([0-9]{2})/= 553\1/' supabase/config.toml   # 러너 기본 포트 충돌 회피
-          grep -nE "^port = 553" supabase/config.toml | head
-          for i in 1 2 3; do   # 러너 포트 충돌이 간헐적으로 나서 재시도
+          cp supabase/config.toml /tmp/sb/config.orig
+          # 레지스트리 속도 제한·포트 점유가 간헐적으로 나므로, 실패 시 컨테이너를 지우고 다른 포트로 재시도
+          for base in 55 56 57; do
+            sed -E "s/= 543([0-9]{2})/= ${base}3\1/" /tmp/sb/config.orig > supabase/config.toml
             supabase start -x studio,imgproxy,logflare,vector,supavisor && break
-            supabase stop --no-backup || true; sleep 10
+            supabase stop --no-backup || true
+            docker ps -aq --filter name=supabase | xargs -r docker rm -f
+            sleep 20
           done
           supabase status > /dev/null
           supabase status -o env | sed 's/^/export /' > /tmp/sb/env.sh
