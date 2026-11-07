@@ -28,8 +28,8 @@ function el(name, role) {
   if (role === 'any!') // 접근성 이름이 정확히 일치하는 요소 (탭·버튼·라벨·텍스트 어느 것이든)
     return page.getByRole('tab', { name, exact: true })
       .or(page.getByRole('button', { name, exact: true }))
-      .or(page.locator(`[aria-label="${name}"]`))
-      .or(page.getByText(name, { exact: true })).first();
+      .or(page.locator(`[aria-label="${name}"], [aria-label^="${name}\n"], [aria-label^="${name} "]`))
+      .or(page.getByText(new RegExp(`^${name}(\\s|$)`))).first();
   if (role?.endsWith('!')) return page.getByRole(role.slice(0, -1), { name, exact: true }).first();
   return role ? page.getByRole(role, { name, exact: false }).first() : page.getByText(name, { exact: false }).first();
 }
