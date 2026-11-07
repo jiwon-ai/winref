@@ -31,3 +31,7 @@ where r.position = '부심' and u.email = 'ref2@test.kr';
 insert into applications (recruitment_id, user_id)
 select r.id, u.id from recruitments r join competitions c on c.id = r.competition_id, auth.users u
 where c.name = '2026 서울 유소년 축구대회' and r.position = '주심' and u.email = 'ref3@test.kr';
+
+-- 소셜(구글·카카오) 첫 가입 상태 재현: 가입 정보 미입력
+update profiles set onboarded = false, agreed_at = null, name = '최소셜'
+where id = (select id from auth.users where email = 'social@test.kr');

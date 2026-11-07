@@ -263,6 +263,26 @@ try {
     if (sql(`select count(*) from auth.users where email='ref2@test.kr'`) !== '0') throw new Error('계정이 삭제되지 않음');
   });
 
+  await check('소셜 로그인 버튼 표시', async () => {
+    await see('카카오로 계속하기');
+    await see('Google로 계속하기');
+  });
+
+  await check('소셜 첫 가입: 가입 정보 입력', async () => {
+    await login('social@test.kr');
+    await see('가입 정보 입력');
+    await shot('onboarding');
+    await tap('대회관계자');
+    await type('휴대폰', '01099998888');
+    await type('소속 기관', '부산시축구협회');
+    await tap('개인정보 수집', 'checkbox');
+    await tap('가입 완료', 'button');
+    await see('기관 승인 대기');
+    const r = sql(`select role||','||org_status||','||onboarded||','||(agreed_at is not null) from profiles where name='최소셜'`);
+    if (r !== 'organizer,pending,true,true') throw new Error('DB 상태: ' + r);
+    await logout();
+  });
+
   await check('관리자: 대시보드·통계', async () => {
     await page.setViewportSize({ width: 1280, height: 800 });
     await login('admin@test.kr');
@@ -292,7 +312,7 @@ try {
     await tap('전체 회원');
     await page.waitForTimeout(1000);
     const n = sql(`select count(*) from notifications where title='테스트 알림'`);
-    if (n !== '4') throw new Error('발송 건수 ' + n); // 관리자·관계자·김심판·박심판 (이심판은 탈퇴)
+    if (n !== '5') throw new Error('발송 건수 ' + n); // 관리자·관계자·김심판·박심판·최소셜 (이심판은 탈퇴)
     await shot('admin-broadcast');
   });
 } catch (e) {
@@ -301,5 +321,5 @@ try {
   await browser.close();
   const fail = results.filter((r) => r[0] === 'FAIL').length;
   console.log(`\n결과: ${results.length - fail} 통과 / ${fail} 실패 (총 시나리오 ${results.length})`);
-  process.exit(fail || results.length < 15 ? 1 : 0);
+  process.exit(fail || results.length < 17 ? 1 : 0);
 }

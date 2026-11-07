@@ -17,6 +17,9 @@ final db = Supabase.instance.client;
 /// Supabase > Authentication > URL Configuration 의 Redirect URLs 에 등록돼 있어야 한다.
 const appUrl = String.fromEnvironment('APP_URL', defaultValue: 'https://jiwon.fr/winref/');
 
+/// 안드로이드 앱으로 돌아오는 소셜 로그인 콜백 (AndroidManifest intent-filter 와 같아야 함)
+const mobileAuthCallback = 'kr.co.winref.app://login-callback';
+
 /// Supabase 인증 오류를 사용자용 한국어로
 String authMessage(AuthException e) {
   final m = e.message.toLowerCase();

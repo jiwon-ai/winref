@@ -5,7 +5,7 @@ const db = new PGlite();
 // Supabase 환경 최소 스텁
 await db.exec(`
 create schema auth; create schema storage;
-create table auth.users (id uuid primary key, raw_user_meta_data jsonb);
+create table auth.users (id uuid primary key, raw_user_meta_data jsonb, raw_app_meta_data jsonb, email text);
 create function auth.uid() returns uuid language sql stable as $$ select nullif(current_setting('test.uid', true), '')::uuid $$;
 create table storage.buckets (id text primary key, name text, public boolean);
 create table storage.objects (id serial primary key, bucket_id text, name text);
@@ -108,6 +108,19 @@ ok(!(await as(REF, `insert into storage.objects (bucket_id,name) values ('files'
 ok((await as(REF, `insert into storage.objects (bucket_id,name) values ('files','avatars/${REF2}/x.png')`)).err, '타인 폴더 업로드 차단');
 ok((await as(REF, `insert into storage.objects (bucket_id,name) values ('files','notices/x2.pdf')`)).err, '심판의 일반 파일 업로드 차단');
 ok(!(await as(REF, `update profiles set region='서울', sport='축구', bio='K리그 3년' where id=$1`, [REF])).err, '프로필 확장 필드 수정');
+
+// --- 0005: 소셜 가입 ---
+const SOC = '00000000-0000-0000-0000-0000000000e1';
+await db.exec(`insert into auth.users values ('${SOC}', '{"full_name":"구글 사용자","role":"organizer"}', '{"provider":"google"}', 'g@test.kr')`);
+let sp = (await db.query(`select role, onboarded, name, org_status from profiles where id='${SOC}'`)).rows[0];
+ok(sp.onboarded === false && sp.role === 'referee' && sp.org_status === null, '소셜 가입: 가입정보 미입력·메타데이터 role 무시');
+ok(sp.name === '구글 사용자', '소셜 가입: 제공자 이름 사용');
+ok((await as(SOC, `update profiles set role='admin', onboarded=true where id=$1`, [SOC])).err, '소셜 가입자 관리자 자가지정 차단');
+ok((await as(SOC, `update profiles set role='organizer', org_status='approved', onboarded=true where id=$1`, [SOC])).err, '소셜 가입자 기관 자가승인 차단');
+ok(!(await as(SOC, `update profiles set role='organizer', org_status='pending', onboarded=true, phone='01011112222', agreed_at=now() where id=$1`, [SOC])).err, '소셜 가입 정보 확정(대회관계자·승인대기)');
+ok((await as(SOC, `update profiles set role='referee', org_status=null where id=$1`, [SOC])).err, '확정 후 유형 재변경 차단');
+ok((await as(REF2, `update profiles set onboarded=false where id=$1`, [REF2])).err, '이메일 가입자 onboarded 조작 차단');
+ok((await db.query(`select onboarded from profiles where id='${REF2}'`)).rows[0].onboarded === true, '이메일 가입은 가입정보 완료 상태');
 
 ok((await as(ADMIN, `select delete_my_account()`)).err, '관리자 탈퇴 차단');
 ok(!(await as(REF, `select delete_my_account()`)).err, '심판 탈퇴');

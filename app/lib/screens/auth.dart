@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -37,6 +38,17 @@ class _LoginScreenState extends State<LoginScreen> {
       if (mounted) toast(context, '서버에 연결할 수 없습니다. 인터넷 연결을 확인해 주세요.');
     }
     if (mounted) setState(() => _busy = false);
+  }
+
+  /// 구글·카카오 로그인 (처음이면 자동 가입 → 가입 정보 입력 화면)
+  Future<void> _social(OAuthProvider provider) async {
+    await run(context, () async {
+      await db.auth.signInWithOAuth(
+        provider,
+        redirectTo: kIsWeb ? appUrl : mobileAuthCallback,
+        authScreenLaunchMode: kIsWeb ? LaunchMode.platformDefault : LaunchMode.externalApplication,
+      );
+    });
   }
 
   /// 이메일 미인증 계정: 인증 메일 재발송
@@ -105,6 +117,33 @@ class _LoginScreenState extends State<LoginScreen> {
                       child: const Text('회원가입'),
                     ),
                   ]),
+                  const SizedBox(height: 20),
+                  const Row(children: [
+                    Expanded(child: Divider()),
+                    Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 12),
+                      child: Text('또는', style: TextStyle(color: Brand.muted, fontSize: 13)),
+                    ),
+                    Expanded(child: Divider()),
+                  ]),
+                  const SizedBox(height: 20),
+                  _SocialButton(
+                    label: '카카오로 계속하기',
+                    background: const Color(0xFFFEE500),
+                    foreground: const Color(0xD9000000),
+                    icon: const Icon(Icons.chat_bubble, size: 18, color: Color(0xD9000000)),
+                    onPressed: () => _social(OAuthProvider.kakao),
+                  ),
+                  const SizedBox(height: 10),
+                  _SocialButton(
+                    label: 'Google로 계속하기',
+                    background: Colors.white,
+                    foreground: const Color(0xFF1F1F1F),
+                    border: const Color(0xFF747775),
+                    icon: const Text('G',
+                        style: TextStyle(color: Color(0xFF4285F4), fontWeight: FontWeight.w800, fontSize: 18)),
+                    onPressed: () => _social(OAuthProvider.google),
+                  ),
                 ],
               ),
             ),
@@ -316,6 +355,157 @@ class _NewPasswordScreenState extends State<NewPasswordScreen> {
             ]),
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _SocialButton extends StatelessWidget {
+  final String label;
+  final Color background, foreground;
+  final Color? border;
+  final Widget icon;
+  final VoidCallback onPressed;
+  const _SocialButton({
+    required this.label,
+    required this.background,
+    required this.foreground,
+    required this.icon,
+    required this.onPressed,
+    this.border,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return OutlinedButton(
+      onPressed: onPressed,
+      style: OutlinedButton.styleFrom(
+        backgroundColor: background,
+        foregroundColor: foreground,
+        minimumSize: const Size.fromHeight(50),
+        side: BorderSide(color: border ?? background),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+      ),
+      child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+        icon,
+        const SizedBox(width: 10),
+        Text(label, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15)),
+      ]),
+    );
+  }
+}
+
+/// 구글·카카오로 처음 들어온 회원: 회원 유형·연락처·동의를 받아 가입을 마친다
+class OnboardingScreen extends StatefulWidget {
+  final Map<String, dynamic> profile;
+  final VoidCallback onDone;
+  const OnboardingScreen({super.key, required this.profile, required this.onDone});
+  @override
+  State<OnboardingScreen> createState() => _OnboardingScreenState();
+}
+
+class _OnboardingScreenState extends State<OnboardingScreen> {
+  final _form = GlobalKey<FormState>();
+  late final _name = TextEditingController(text: widget.profile['name'] ?? '');
+  final _phone = TextEditingController();
+  final _org = TextEditingController();
+  String _role = 'referee';
+  bool _agree = false;
+  bool _busy = false;
+
+  @override
+  void dispose() {
+    _name.dispose();
+    _phone.dispose();
+    _org.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submit() async {
+    if (!_form.currentState!.validate()) return;
+    if (!_agree) {
+      toast(context, '개인정보 수집·이용에 동의해주세요.');
+      return;
+    }
+    setState(() => _busy = true);
+    final organizer = _role == 'organizer';
+    final ok = await run(
+      context,
+      () => db.from('profiles').update({
+        'role': _role,
+        'name': _name.text.trim(),
+        'phone': _phone.text.trim(),
+        'organization': organizer ? _org.text.trim() : null,
+        'org_status': organizer ? 'pending' : null,
+        'onboarded': true,
+        'agreed_at': DateTime.now().toUtc().toIso8601String(),
+      }).eq('id', uid),
+      done: '가입이 완료되었습니다.',
+    );
+    if (!mounted) return;
+    setState(() => _busy = false);
+    if (ok) widget.onDone();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('가입 정보 입력'), actions: [
+        TextButton(onPressed: signOut, child: const Text('취소', style: TextStyle(color: Brand.ivory))),
+      ]),
+      body: Form(
+        key: _form,
+        child: ListView(padding: const EdgeInsets.all(20), children: [
+          const Text('처음 오셨네요. 몇 가지만 입력하면 가입이 끝납니다.', style: TextStyle(color: Brand.muted)),
+          const SizedBox(height: 20),
+          Text('회원 유형', style: Theme.of(context).textTheme.titleMedium),
+          const SizedBox(height: 8),
+          SegmentedButton<String>(
+            segments: const [
+              ButtonSegment(value: 'referee', label: Text('심판·교육신청자')),
+              ButtonSegment(value: 'organizer', label: Text('대회관계자')),
+            ],
+            selected: {_role},
+            onSelectionChanged: (v) => setState(() => _role = v.first),
+          ),
+          if (_role == 'organizer')
+            const Padding(
+              padding: EdgeInsets.only(top: 8),
+              child: Text('대회관계자는 관리자 승인 후 대회 등록이 가능합니다.', style: TextStyle(color: Brand.muted, fontSize: 13)),
+            ),
+          const SizedBox(height: 20),
+          TextFormField(
+            controller: _name,
+            decoration: const InputDecoration(labelText: '이름'),
+            validator: (v) => (v ?? '').trim().isEmpty ? '필수 입력' : null,
+          ),
+          const SizedBox(height: 12),
+          TextFormField(
+            controller: _phone,
+            keyboardType: TextInputType.phone,
+            decoration: const InputDecoration(labelText: '휴대폰 번호'),
+            validator: (v) => (v ?? '').trim().isEmpty ? '필수 입력' : null,
+          ),
+          if (_role == 'organizer') ...[
+            const SizedBox(height: 12),
+            TextFormField(
+              controller: _org,
+              decoration: const InputDecoration(labelText: '소속 기관'),
+              validator: (v) => (v ?? '').trim().isEmpty ? '필수 입력' : null,
+            ),
+          ],
+          CheckboxListTile(
+            value: _agree,
+            onChanged: (v) => setState(() => _agree = v ?? false),
+            contentPadding: EdgeInsets.zero,
+            tileColor: Colors.transparent,
+            controlAffinity: ListTileControlAffinity.leading,
+            title: const Text('개인정보 수집·이용 동의 (필수)'),
+            subtitle: const Text('이름·연락처·자격정보를 교육·대회 운영 목적으로만 이용합니다.'),
+          ),
+          const SizedBox(height: 12),
+          FilledButton(onPressed: _busy ? null : _submit, child: const Text('가입 완료')),
+        ]),
       ),
     );
   }

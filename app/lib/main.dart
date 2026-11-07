@@ -57,6 +57,7 @@ class AuthGate extends StatefulWidget {
 
 class _AuthGateState extends State<AuthGate> {
   bool _recovery = false; // 비밀번호 재설정 링크로 진입
+  int _profileVersion = 0; // 가입 정보 입력 후 프로필 다시 읽기
 
   @override
   Widget build(BuildContext context) {
@@ -68,7 +69,7 @@ class _AuthGateState extends State<AuthGate> {
         if (user == null) return const LoginScreen();
         if (_recovery) return NewPasswordScreen(onDone: () => setState(() => _recovery = false));
         return FutureBuilder<Map<String, dynamic>>(
-          key: ValueKey(user.id),
+          key: ValueKey('${user.id}-$_profileVersion'),
           future: db.from('profiles').select().eq('id', user.id).single(),
           builder: (context, snap) {
             if (snap.hasError) {
@@ -83,6 +84,9 @@ class _AuthGateState extends State<AuthGate> {
             }
             if (!snap.hasData) return const Scaffold(body: Center(child: CircularProgressIndicator()));
             final profile = snap.data!;
+            if (profile['onboarded'] == false) {
+              return OnboardingScreen(profile: profile, onDone: () => setState(() => _profileVersion++));
+            }
             if (!kIsWeb) Push.registerToken();
             switch (profile['role']) {
               case 'admin':
