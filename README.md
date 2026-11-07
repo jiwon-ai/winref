@@ -41,9 +41,10 @@ Flutter 안드로이드 앱 + 관리자 웹(같은 코드, Flutter Web) + Supaba
 3. 스토어 등록정보, 개인정보처리방침 URL, 데이터 보안 설문, 콘텐츠 등급 작성.
 4. 프로덕션 출시 검토 제출.
 
-## 5. 관리자 웹
+## 5. 웹 (고객 시연·관리자)
 
-Actions 결과의 `winref-admin-web` 을 정적 호스팅(Vercel, Netlify, Firebase Hosting 등)에 올리면 됩니다.
+main 에 push 하면 GitHub Pages 로 자동 배포된다: https://jiwon.fr/winref/
+Supabase > Authentication > URL Configuration > Site URL 을 이 주소로 설정해야 인증 메일 링크가 올바로 열린다.
 
 ## 범위 (과업지시서 기준)
 
