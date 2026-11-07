@@ -179,18 +179,17 @@ class SupportProgramMark extends StatelessWidget {
   const SupportProgramMark({super.key});
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(24, 8, 24, 28),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-        decoration: BoxDecoration(
-          border: Border.all(color: const Color(0xFFC3D0E0)),
-          borderRadius: BorderRadius.circular(4),
-          color: Colors.white,
-        ),
-        child: const Text('[사회적기업 창업지원사업]',
-            style: TextStyle(color: Brand.ink, fontSize: 13, fontWeight: FontWeight.w600, letterSpacing: 0.5)),
-      ),
+    const gray = Color(0xFF9AA5B4);
+    return const Padding(
+      padding: EdgeInsets.fromLTRB(24, 20, 24, 32),
+      child: Row(mainAxisSize: MainAxisSize.min, children: [
+        SizedBox(width: 20, child: Divider(color: Color(0xFFD5DCE6), thickness: 1)),
+        SizedBox(width: 10),
+        Text('[사회적기업 창업지원사업]',
+            style: TextStyle(color: gray, fontSize: 11.5, fontWeight: FontWeight.w500, letterSpacing: 1.2)),
+        SizedBox(width: 10),
+        SizedBox(width: 20, child: Divider(color: Color(0xFFD5DCE6), thickness: 1)),
+      ]),
     );
   }
 }
