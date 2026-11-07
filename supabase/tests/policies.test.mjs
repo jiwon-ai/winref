@@ -87,11 +87,28 @@ ok(s.rows?.[0]?.s?.completed_activities === 1, '관리자 통계');
 ok((await as(REF, `select admin_broadcast('t','b',null)`)).err, '비관리자 알림발송 차단');
 ok((await as(ADMIN, `select admin_broadcast('t','b','referee') n`)).rows?.[0]?.n === 2, '관리자 심판 대상 발송 2명');
 await db.exec(`insert into storage.objects (bucket_id,name) values ('files','briefings/${c.rows[0].id}/a.pdf'),('files','notices/x.pdf')`);
-await db.exec(`grant all on storage.objects to authenticated; grant usage on schema storage to authenticated;`);
+await db.exec(`grant all on storage.objects to authenticated; grant usage on schema storage to authenticated; grant usage on all sequences in schema storage to authenticated;`);
 ok((await as(REF, `select * from storage.objects`)).rows.length === 2, '선발 심판: 브리핑+공지 파일 열람');
 ok((await as(REF2, `select * from storage.objects`)).rows.length === 1, '미선발 심판: 공지 파일만');
 
 await db.exec(`create role anon`).catch(()=>{});
+// --- 0004: 경력 요약·알림 트리거·프로필 사진 ---
+const notiCount = async (u, kind) => (await db.query(`select count(*)::int n from notifications where user_id='${u}' and kind='${kind}'`)).rows[0].n;
+ok(await notiCount(REF, 'selection') === 1, '선발 시 심판에게 선발 알림');
+ok(await notiCount(REF2, 'selection') === 1, '미선발 시 결과 알림');
+ok(await notiCount(REF, 'briefing') === 1 && await notiCount(REF2, 'briefing') === 0, '브리핑 등록 알림은 선발자만');
+const sum = await as(REF, `select referee_summary($1) s`, [REF]);
+ok(sum.rows?.[0]?.s?.completed === 1 && sum.rows[0].s.by_position['주심'] === 1, '본인 경력 요약 (활동 1회·주심)');
+ok(!(await as(ORG, `select referee_summary($1)`, [REF])).err, '관계자: 자기 공고 지원자 경력 조회');
+ok((await as(REF2, `select referee_summary($1)`, [REF])).err, '다른 심판 경력 조회 차단');
+const qid = (await as(REF, `insert into qualifications (user_id,name,grade) values ($1,'축구심판','3급') returning id`, [REF])).rows[0].id;
+await as(ADMIN, `update qualifications set status='approved' where id=${qid}`);
+ok(await notiCount(REF, 'qualification') === 1, '자격 승인 알림');
+ok(!(await as(REF, `insert into storage.objects (bucket_id,name) values ('files','avatars/${REF}/me.png')`)).err, '본인 프로필 사진 업로드');
+ok((await as(REF, `insert into storage.objects (bucket_id,name) values ('files','avatars/${REF2}/x.png')`)).err, '타인 폴더 업로드 차단');
+ok((await as(REF, `insert into storage.objects (bucket_id,name) values ('files','notices/x2.pdf')`)).err, '심판의 일반 파일 업로드 차단');
+ok(!(await as(REF, `update profiles set region='서울', sport='축구', bio='K리그 3년' where id=$1`, [REF])).err, '프로필 확장 필드 수정');
+
 ok((await as(ADMIN, `select delete_my_account()`)).err, '관리자 탈퇴 차단');
 ok(!(await as(REF, `select delete_my_account()`)).err, '심판 탈퇴');
 ok((await db.query(`select count(*)::int n from applications where user_id='${REF}'`)).rows[0].n === 0, '탈퇴 시 지원·이력 삭제');

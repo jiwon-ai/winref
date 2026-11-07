@@ -1,8 +1,15 @@
+import 'dart:convert';
+
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
+
+import 'download_stub.dart' if (dart.library.js_interop) 'download_web.dart';
+import 'screens/profile.dart';
+import 'theme.dart';
 
 final db = Supabase.instance.client;
 final messengerKey = GlobalKey<ScaffoldMessengerState>();
@@ -49,8 +56,9 @@ Future<bool> run(BuildContext context, Future<void> Function() action, {String? 
 // ---------- 파일 (포스터·브리핑·공지 첨부) ----------
 
 /// 파일을 골라 storage 'files' 버킷에 올리고 경로를 돌려준다. 취소 시 null.
-Future<String?> pickAndUpload(BuildContext context, String folder) async {
-  final f = await FilePicker.pickFile(type: FileType.custom, allowedExtensions: ['pdf', 'jpg', 'jpeg', 'png']);
+Future<String?> pickAndUpload(BuildContext context, String folder, {bool imagesOnly = false}) async {
+  final f = await FilePicker.pickFile(
+      type: FileType.custom, allowedExtensions: imagesOnly ? ['jpg', 'jpeg', 'png'] : ['pdf', 'jpg', 'jpeg', 'png']);
   if (f == null || !context.mounted) return null;
   final ext = (f.extension ?? 'bin').toLowerCase();
   final mime = switch (ext) { 'pdf' => 'application/pdf', 'png' => 'image/png', _ => 'image/jpeg' };
@@ -313,15 +321,92 @@ class NotificationsScreen extends StatelessWidget {
 }
 
 /// 개인정보·프로필 관리
-Future<void> editProfile(BuildContext context, Map<String, dynamic> p) async {
-  final v = await showForm(context, '내 정보', [
+Future<bool> editProfile(BuildContext context, Map<String, dynamic> p) async {
+  final referee = p['role'] == 'referee';
+  final v = await showForm(context, '내 정보 수정', [
     Field('name', '이름', required: true, initial: p['name']),
     Field('phone', '휴대폰', initial: p['phone']),
     Field('birth_date', '생년월일', type: FieldType.date, initial: p['birth_date']),
     if (p['role'] == 'organizer') Field('organization', '소속 기관', initial: p['organization']),
+    if (referee) ...[
+      Field('region', '활동 지역 (예: 서울)', initial: p['region']),
+      Field('sport', '주 종목 (예: 축구)', initial: p['sport']),
+      Field('bio', '소개·주요 경력', type: FieldType.multiline, initial: p['bio']),
+    ],
   ]);
-  if (v == null || !context.mounted) return;
-  await run(context, () => db.from('profiles').update(v).eq('id', uid), done: '저장했습니다.');
+  if (v == null || !context.mounted) return false;
+  return run(context, () => db.from('profiles').update(v).eq('id', uid), done: '저장했습니다.');
+}
+
+// ---------- 프로필 사진 ----------
+
+final _signedUrls = <String, Future<String>>{};
+
+/// 비공개 저장소 이미지를 서명 URL 로 보여주는 원형 아바타 (사진 없으면 이름 첫 글자)
+class Avatar extends StatelessWidget {
+  final String? path;
+  final String name;
+  final double size;
+  const Avatar({super.key, required this.path, required this.name, this.size = 48});
+
+  @override
+  Widget build(BuildContext context) {
+    final initial = Container(
+      width: size,
+      height: size,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(color: Brand.ivoryDeep, shape: BoxShape.circle, border: Border.all(color: Brand.gold, width: 1.5)),
+      child: Text(name.isEmpty ? '?' : name.characters.first,
+          style: TextStyle(color: Brand.navy, fontSize: size * 0.4, fontWeight: FontWeight.w700)),
+    );
+    if (path == null || path!.isEmpty) return initial;
+    return FutureBuilder<String>(
+      future: _signedUrls.putIfAbsent(path!, () => db.storage.from('files').createSignedUrl(path!, 60 * 60 * 24)),
+      builder: (_, s) => !s.hasData
+          ? initial
+          : Container(
+              width: size,
+              height: size,
+              decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: Brand.gold, width: 1.5)),
+              child: ClipOval(
+                child: Image.network(s.data!, fit: BoxFit.cover, errorBuilder: (_, __, ___) => initial),
+              ),
+            ),
+    );
+  }
+}
+
+/// 프로필 사진 변경: avatars/<uid>/ 에 업로드 후 profiles.avatar_path 갱신
+Future<bool> changeAvatar(BuildContext context) async {
+  final path = await pickAndUpload(context, 'avatars/$uid', imagesOnly: true);
+  if (path == null || !context.mounted) return false;
+  return run(context, () => db.from('profiles').update({'avatar_path': path}).eq('id', uid), done: '프로필 사진을 변경했습니다.');
+}
+
+// ---------- CSV(엑셀) 내보내기 ----------
+
+String _cell(Object? v) {
+  var s = v?.toString() ?? '';
+  if (RegExp(r'^[=+\-@]').hasMatch(s)) s = "'$s"; // 수식 주입 방지
+  if (s.contains(RegExp(r'[",\n\r]'))) s = '"${s.replaceAll('"', '""')}"';
+  return s;
+}
+
+/// 전화번호를 엑셀에서 문자로 유지 (앞자리 0 보존)
+String phoneCell(Object? v) => v == null ? '' : '\t$v';
+
+/// UTF-8 BOM 을 붙인 CSV 를 내려받는다 (엑셀에서 한글 깨짐 방지). 모바일은 클립보드 복사.
+Future<void> exportCsv(BuildContext context, String fileBase, List<String> headers, List<List<Object?>> rows) async {
+  final csv = StringBuffer('\uFEFF')..writeln(headers.map(_cell).join(','));
+  for (final r in rows) {
+    csv.writeln(r.map(_cell).join(','));
+  }
+  final name = '${fileBase}_${DateFormat('yyyyMMdd_HHmm').format(DateTime.now())}.csv';
+  final saved = await saveFile(name, utf8.encode(csv.toString()), 'text/csv;charset=utf-8');
+  if (!saved) await Clipboard.setData(ClipboardData(text: csv.toString()));
+  if (context.mounted) {
+    toast(context, saved ? '$name 파일을 내려받았습니다. (${rows.length}건)' : '${rows.length}건을 클립보드에 복사했습니다. 엑셀에 붙여넣으세요.');
+  }
 }
 
 /// 회원 탈퇴: 계정과 개인 데이터 삭제 (되돌릴 수 없음)
@@ -355,7 +440,11 @@ List<Widget> commonActions(BuildContext context, Map<String, dynamic> profile) =
             case 'notice':
               Navigator.push(context, MaterialPageRoute(builder: (_) => const NoticesScreen()));
             case 'me':
-              editProfile(context, profile);
+              if (profile['role'] == 'referee') {
+                Navigator.push(context, MaterialPageRoute(builder: (_) => const ProfileScreen()));
+              } else {
+                editProfile(context, profile);
+              }
             case 'logout':
               signOut();
             case 'delete':

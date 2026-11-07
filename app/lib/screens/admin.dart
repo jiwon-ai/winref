@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../common.dart';
 import '../theme.dart';
 import 'organizer.dart';
+import 'profile.dart';
 
 /// WINREF 관리자 콘솔 (웹 우선, 모바일에서도 동작)
 class AdminHome extends StatefulWidget {
@@ -197,13 +198,43 @@ class _Members extends StatefulWidget {
 
 class _MembersState extends State<_Members> {
   String? _role; // null = 전체
+  String _q = '';
   final _key = GlobalKey<AsyncListState>();
+  List<Map<String, dynamic>> _shown = [];
 
-  Future<List<Map<String, dynamic>>> _load() {
+  Future<List<Map<String, dynamic>>> _load() async {
     var q = db.from('profiles').select();
     if (_role != null) q = q.eq('role', _role!);
-    return q.order('created_at', ascending: false);
+    final rows = await q.order('created_at', ascending: false);
+    final k = _q.trim().toLowerCase();
+    _shown = k.isEmpty
+        ? rows
+        : rows
+            .where((p) => '${p['name']} ${p['phone'] ?? ''} ${p['organization'] ?? ''} ${p['region'] ?? ''}'
+                .toLowerCase()
+                .contains(k))
+            .toList();
+    return _shown;
   }
+
+  Future<void> _export() => exportCsv(
+        context,
+        '회원목록',
+        ['이름', '유형', '소속기관', '기관승인', '연락처', '지역', '종목', '가입일'],
+        [
+          for (final p in _shown)
+            [
+              p['name'],
+              switch (p['role']) { 'admin' => '관리자', 'organizer' => '대회관계자', _ => '심판·교육신청자' },
+              p['organization'],
+              p['role'] == 'organizer' ? label(p['org_status']) : '',
+              phoneCell(p['phone']),
+              p['region'],
+              p['sport'],
+              fmtDate(p['created_at']),
+            ],
+        ],
+      );
 
   Future<void> _setOrg(BuildContext c, Map<String, dynamic> p, String status) async {
     await run(c, () => db.from('profiles').update({'org_status': status}).eq('id', p['id']),
@@ -214,6 +245,30 @@ class _MembersState extends State<_Members> {
   @override
   Widget build(BuildContext context) {
     return Column(children: [
+      Padding(
+        padding: const EdgeInsets.fromLTRB(12, 12, 12, 0),
+        child: Row(children: [
+          Expanded(
+            child: TextField(
+              decoration: const InputDecoration(
+                hintText: '이름·연락처·소속·지역 검색',
+                prefixIcon: Icon(Icons.search),
+                isDense: true,
+              ),
+              onChanged: (v) {
+                _q = v;
+                _key.currentState?.reload();
+              },
+            ),
+          ),
+          const SizedBox(width: 8),
+          OutlinedButton.icon(
+            onPressed: _export,
+            icon: const Icon(Icons.file_download_outlined),
+            label: const Text('엑셀 내보내기'),
+          ),
+        ]),
+      ),
       Padding(
         padding: const EdgeInsets.all(12),
         child: SegmentedButton<String?>(
@@ -252,6 +307,30 @@ class _MembersState extends State<_Members> {
                           ),
                         ])
                       : StatusChip(label(p['org_status']), p['org_status'] ?? 'pending'),
+              leading: Avatar(path: p['avatar_path'], name: p['name'] ?? '', size: 40),
+              onTap: p['role'] != 'referee'
+                  ? null
+                  : () => showModalBottomSheet(
+                        context: c,
+                        isScrollControlled: true,
+                        builder: (_) => DraggableScrollableSheet(
+                          expand: false,
+                          initialChildSize: 0.85,
+                          builder: (_, sc) => SingleChildScrollView(
+                            controller: sc,
+                            padding: const EdgeInsets.all(20),
+                            child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                              Row(children: [
+                                Avatar(path: p['avatar_path'], name: p['name'] ?? '', size: 56),
+                                const SizedBox(width: 14),
+                                Text(p['name'], style: Theme.of(c).textTheme.titleLarge),
+                              ]),
+                              const SizedBox(height: 20),
+                              CareerView(profile: p, showContact: true),
+                            ]),
+                          ),
+                        ),
+                      ),
               onLongPress: org && p['org_status'] != 'pending'
                   ? () => _setOrg(c, p, p['org_status'] == 'approved' ? 'rejected' : 'approved')
                   : null,
@@ -376,16 +455,31 @@ class _CoursesState extends State<_Courses> {
 class _CourseApplicants extends StatelessWidget {
   final Map<String, dynamic> course;
   const _CourseApplicants({required this.course});
+
+  Future<List<Map<String, dynamic>>> _load() => db
+      .from('course_applications')
+      .select('*, profiles(name, phone)')
+      .eq('course_id', course['id'])
+      .order('created_at');
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text('${course['title']} 신청자')),
+      appBar: AppBar(title: Text('${course['title']} 신청자'), actions: [
+        IconButton(
+          tooltip: '엑셀 내보내기',
+          icon: const Icon(Icons.file_download_outlined),
+          onPressed: () async {
+            final rows = await _load();
+            if (!context.mounted) return;
+            await exportCsv(context, '교육신청자_${course['id']}', ['이름', '연락처', '상태', '신청일'], [
+              for (final a in rows)
+                [a['profiles']['name'], phoneCell(a['profiles']['phone']), label(a['status']), fmtDateTime(a['created_at'])],
+            ]);
+          },
+        ),
+      ]),
       body: AsyncList(
-        load: () => db
-            .from('course_applications')
-            .select('*, profiles(name, phone)')
-            .eq('course_id', course['id'])
-            .order('created_at'),
+        load: _load,
         empty: '신청자가 없습니다.',
         item: (c, a, reload) => ListTile(
           title: Text(a['profiles']['name']),

@@ -2,7 +2,7 @@
 // 환경: APP_URL(정적 서버), DB_URL(psql 접속 문자열)
 import { chromium } from 'playwright';
 import { execSync } from 'node:child_process';
-import { mkdirSync } from 'node:fs';
+import { mkdirSync, readFileSync } from 'node:fs';
 
 const APP = process.env.APP_URL ?? 'http://127.0.0.1:8080';
 const DB = process.env.DB_URL;
@@ -25,6 +25,7 @@ async function shot(name) {
 
 // Flutter 접근성 트리에서 라벨로 요소 찾기
 function el(name, role) {
+  if (role === 'text!') return page.getByText(name, { exact: true }).first();
   if (role?.endsWith('!')) return page.getByRole(role.slice(0, -1), { name, exact: true }).first();
   return role ? page.getByRole(role, { name, exact: false }).first() : page.getByText(name, { exact: false }).first();
 }
@@ -93,6 +94,25 @@ try {
     await shot('referee-home');
   });
 
+  await check('프로필 편집·사진 업로드', async () => {
+    await tap('내 프로필·경력 보기');
+    await see('보유 자격');
+    await tap('편집', 'button');
+    await type('활동 지역', '서울');
+    await type('주 종목', '축구');
+    await type('소개', 'K3리그 부심 3년');
+    await tap('저장', 'button');
+    await see('서울 · 축구');
+    const [chooser] = await Promise.all([page.waitForEvent('filechooser', { timeout: 15000 }), tap('사진 변경', 'button')]);
+    await chooser.setFiles('../store/icon-512.png');
+    await see('프로필 사진을 변경했습니다');
+    const av = sql(`select avatar_path from profiles where name='김심판'`);
+    if (!av.startsWith('avatars/')) throw new Error('avatar_path: ' + av);
+    if (sql(`select region||'/'||sport from profiles where name='김심판'`) !== '서울/축구') throw new Error('지역·종목 저장 안 됨');
+    await shot('profile');
+    await back();
+  });
+
   async function goTab(name) {
     await tap(name, 'tab!').catch(() => tap(name, 'button!'));
   }
@@ -150,11 +170,21 @@ try {
     await shot('organizer-home');
     await tap('2026 서울 유소년 축구대회');
     await tap('지원자', 'tab');
+    await see('주심 선발 0/2');
+    await tap('일괄 선택', 'button');
+    await tap('김심판', 'checkbox');
+    await tap('박심판', 'checkbox');
+    await shot('bulk-select');
+    await tap('일괄 선발', 'button');
+    await see('주심 선발 2/2');
+    if (sql(`select count(*) from applications where status='selected' and user_id in (select id from profiles where name in ('김심판','박심판'))`) !== '2')
+      throw new Error('일괄 선발 저장 안 됨');
+    if (sql(`select count(*) from notifications n join profiles p on p.id=n.user_id where n.kind='selection' and p.name in ('김심판','박심판')`) !== '2')
+      throw new Error('선발 알림 생성 안 됨');
     await tap('김심판');
+    await see('활동 완료');      // 경력 카드
+    await see('010');            // 연락처
     await shot('applicant-sheet');
-    await tap('선발', 'checkbox!');
-    await page.waitForTimeout(800);
-    await tap('김심판');
     await tap('참석', 'checkbox!');
     await page.waitForTimeout(800);
     await tap('김심판');
@@ -173,6 +203,10 @@ try {
   await check('심판: 선발결과·브리핑·활동이력', async () => {
     await login('ref@test.kr');
     await see('다가오는 일정');
+    await tap('알림', 'button');
+    await see('심판 선발 안내');
+    await shot('notifications');
+    await back();
     await see('활동 완료');
     await shot('referee-dashboard');
     await goTab('내 활동');
@@ -184,6 +218,12 @@ try {
     await tap('활동 이력', 'tab');
     await see('주심');
     await shot('history');
+    await goTab('홈');
+    await tap('내 프로필·경력 보기');
+    await see('포지션별 활동');
+    await see('1회');
+    await shot('career');
+    await back();
     await logout();
   });
 
@@ -207,6 +247,19 @@ try {
     await shot('admin-dashboard');
   });
 
+  await check('관리자: 회원 검색·엑셀 내보내기', async () => {
+    await tap('회원', 'text!');
+    await type('이름·연락처', '박관계');
+    await see('서울시축구협회');
+    const [dl] = await Promise.all([page.waitForEvent('download', { timeout: 15000 }), tap('엑셀 내보내기', 'button')]);
+    const name = dl.suggestedFilename();
+    const csv = readFileSync(await dl.path(), 'utf8');
+    if (!name.startsWith('회원목록_') || !name.endsWith('.csv')) throw new Error('파일명 ' + name);
+    if (csv.charCodeAt(0) !== 0xfeff) throw new Error('BOM 없음 (엑셀 한글 깨짐)');
+    if (!csv.includes('박관계') || csv.includes('김심판')) throw new Error('검색 결과와 내보낸 내용 불일치');
+    await shot('admin-members');
+  });
+
   await check('관리자: 알림 일괄 발송', async () => {
     await tap('공지·알림');
     await tap('알림 발송', 'button');
@@ -215,7 +268,7 @@ try {
     await tap('전체 회원');
     await page.waitForTimeout(1000);
     const n = sql(`select count(*) from notifications where title='테스트 알림'`);
-    if (n !== '3') throw new Error('발송 건수 ' + n); // 관리자·관계자·김심판 (이심판은 탈퇴)
+    if (n !== '4') throw new Error('발송 건수 ' + n); // 관리자·관계자·김심판·박심판 (이심판은 탈퇴)
     await shot('admin-broadcast');
   });
 } catch (e) {
@@ -224,5 +277,5 @@ try {
   await browser.close();
   const fail = results.filter((r) => r[0] === 'FAIL').length;
   console.log(`\n결과: ${results.length - fail} 통과 / ${fail} 실패 (총 시나리오 ${results.length})`);
-  process.exit(fail || results.length < 12 ? 1 : 0);
+  process.exit(fail || results.length < 14 ? 1 : 0);
 }

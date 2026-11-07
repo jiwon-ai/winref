@@ -26,3 +26,8 @@ select id, '부심', 1, false from competitions where name = '경기도 생활�
 insert into applications (recruitment_id, user_id, status)
 select r.id, u.id, 'selected' from recruitments r, auth.users u
 where r.position = '부심' and u.email = 'ref2@test.kr';
+
+-- 일괄 선발 확인용: 박심판이 서울 대회 주심에 지원
+insert into applications (recruitment_id, user_id)
+select r.id, u.id from recruitments r join competitions c on c.id = r.competition_id, auth.users u
+where c.name = '2026 서울 유소년 축구대회' and r.position = '주심' and u.email = 'ref3@test.kr';

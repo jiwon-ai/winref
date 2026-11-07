@@ -67,6 +67,7 @@ jobs:
           mk admin@test.kr '{"name":"관리자"}'
           mk org@test.kr '{"name":"박관계","role":"organizer","organization":"서울시축구협회"}'
           mk ref2@test.kr '{"name":"이심판"}'
+          mk ref3@test.kr '{"name":"박심판"}'
           psql "$DB_URL" -v ON_ERROR_STOP=1 -q -f e2e/seed.sql
           psql "$DB_URL" -c "select role, name, org_status from profiles"
 

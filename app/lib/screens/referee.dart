@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../common.dart';
 import '../theme.dart';
 import 'browse.dart';
+import 'profile.dart';
 
 /// 심판·교육신청자 홈: 홈 / 대회 / 교육 / 내 활동 / 자격
 class RefereeHome extends StatefulWidget {
@@ -107,7 +108,9 @@ class _DashboardTabState extends State<_DashboardTab> {
       final e = DateTime.tryParse(q['expires_on'] ?? '');
       return e != null && e.difference(DateTime.now()).inDays <= 90;
     }).toList();
+    final me = await db.from('profiles').select().eq('id', uid).single();
     return {
+      'me': me,
       'pending': apps.where((a) => a['status'] == 'applied').length,
       'selected': upcoming.length,
       'done': apps.where((a) => a['completed_at'] != null).length,
@@ -218,9 +221,23 @@ class _DashboardTabState extends State<_DashboardTab> {
       color: Brand.navy,
       padding: const EdgeInsets.fromLTRB(20, 8, 20, 20),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text('${widget.profile['name']} 님', style: const TextStyle(color: Brand.ivory, fontSize: 20, fontWeight: FontWeight.w700)),
-        const SizedBox(height: 4),
-        Container(width: 24, height: 2, color: Brand.gold),
+        InkWell(
+          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ProfileScreen()))
+              .then((_) => setState(() => _f = _load())),
+          child: Row(children: [
+            Avatar(path: d['me']['avatar_path'], name: d['me']['name'] ?? '', size: 44),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text('${d['me']['name']} 님',
+                    style: const TextStyle(color: Brand.ivory, fontSize: 20, fontWeight: FontWeight.w700)),
+                const SizedBox(height: 2),
+                const Text('내 프로필·경력 보기', style: TextStyle(color: Color(0xFFB9C0D0), fontSize: 12)),
+              ]),
+            ),
+            const Icon(Icons.chevron_right, color: Brand.gold),
+          ]),
+        ),
         const SizedBox(height: 16),
         Container(
           decoration: BoxDecoration(

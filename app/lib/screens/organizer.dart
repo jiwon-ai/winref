@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../common.dart';
 import '../theme.dart';
+import 'profile.dart';
 
 /// 대회관계자 홈: 내 대회 목록 → 대회별 모집공고·지원자·브리핑 관리
 class OrganizerHome extends StatefulWidget {
@@ -162,34 +163,196 @@ class _RecruitmentsManageState extends State<_RecruitmentsManage> {
 
 // ---------- 지원자 확인·선발·참석·활동완료 ----------
 
-class _ApplicantsManage extends StatelessWidget {
+class _ApplicantsManage extends StatefulWidget {
   final int cid;
   const _ApplicantsManage({required this.cid});
+  @override
+  State<_ApplicantsManage> createState() => _ApplicantsManageState();
+}
+
+class _ApplicantsManageState extends State<_ApplicantsManage> {
+  late Future<List<Map<String, dynamic>>> _f = _load();
+  bool _picking = false;
+  final _picked = <int>{};
+  String _filter = 'all';
+
+  Future<List<Map<String, dynamic>>> _load() => db
+      .from('applications')
+      .select('*, profiles(*), recruitments!inner(id, position, headcount, competition_id)')
+      .eq('recruitments.competition_id', widget.cid)
+      .neq('status', 'cancelled')
+      .order('created_at');
+
+  void _reload() => setState(() {
+        _f = _load();
+        _picking = false;
+        _picked.clear();
+      });
+
+  Future<void> _bulk(String status) async {
+    final ids = _picked.toList();
+    final ok = await run(context, () => db.from('applications').update({'status': status}).inFilter('id', ids),
+        done: '${ids.length}명을 ${label(status)} 처리했습니다. 결과 알림이 발송됩니다.');
+    if (ok) _reload();
+  }
+
+  Future<void> _export(List<Map<String, dynamic>> rows) => exportCsv(
+        context,
+        '지원자_${widget.cid}',
+        ['이름', '연락처', '지역', '포지션', '선발결과', '참석', '활동완료', '지원일'],
+        [
+          for (final a in rows)
+            [
+              a['profiles']['name'],
+              phoneCell(a['profiles']['phone']),
+              a['profiles']['region'],
+              a['recruitments']['position'],
+              label(a['status']),
+              label(a['attendance']),
+              a['completed_at'] == null ? '' : fmtDateTime(a['completed_at']),
+              fmtDateTime(a['created_at']),
+            ],
+        ],
+      );
 
   @override
   Widget build(BuildContext context) {
-    return AsyncList(
-      load: () => db
-          .from('applications')
-          .select('*, profiles(id, name, phone), recruitments!inner(position, competition_id)')
-          .eq('recruitments.competition_id', cid)
-          .neq('status', 'cancelled')
-          .order('created_at'),
-      empty: '지원자가 없습니다.',
-      item: (c, a, reload) {
-        final p = a['profiles'] as Map<String, dynamic>;
-        final done = a['completed_at'] != null;
-        return ListTile(
-          title: Text('${p['name']} · ${a['recruitments']['position']}'),
-          subtitle: Text(a['status'] == 'selected'
-              ? '참석 ${label(a['attendance'])}${done ? ' · 활동완료' : ''}'
-              : '지원 ${fmtDate(a['created_at'])}'),
-          trailing: StatusChip(done ? '활동완료' : label(a['status']), done ? 'approved' : a['status']),
-          onTap: () async {
-            await showModalBottomSheet(context: c, builder: (_) => _ApplicantSheet(app: a));
-            reload();
-          },
+    return FutureBuilder<List<Map<String, dynamic>>>(
+      future: _f,
+      builder: (context, snap) {
+        if (snap.hasError) return Center(child: TextButton(onPressed: _reload, child: const Text('불러오기 실패 (다시 시도)')));
+        if (!snap.hasData) return const Center(child: CircularProgressIndicator());
+        final all = snap.data!;
+        // 포지션별 선발 현황 (선발 n / 모집 m)
+        final quota = <String, (int, int)>{};
+        for (final a in all) {
+          final r = a['recruitments'];
+          final cur = quota[r['position']] ?? (0, (r['headcount'] as num).toInt());
+          quota[r['position']] = (cur.$1 + (a['status'] == 'selected' ? 1 : 0), cur.$2);
+        }
+        final rows = all.where((a) => _filter == 'all' || a['status'] == _filter).toList();
+        return Scaffold(
+          body: Column(children: [
+            Container(
+              color: Colors.white,
+              padding: const EdgeInsets.fromLTRB(16, 12, 8, 8),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Row(children: [
+                  Expanded(
+                    child: Wrap(spacing: 6, runSpacing: 6, children: [
+                      for (final e in quota.entries)
+                        StatusChip('${e.key} 선발 ${e.value.$1}/${e.value.$2}',
+                            e.value.$1 >= e.value.$2 ? 'selected' : 'pending'),
+                    ]),
+                  ),
+                  IconButton(
+                    tooltip: '엑셀 내보내기',
+                    onPressed: all.isEmpty ? null : () => _export(rows),
+                    icon: const Icon(Icons.file_download_outlined),
+                  ),
+                  TextButton(
+                    onPressed: all.isEmpty ? null : () => setState(() { _picking = !_picking; _picked.clear(); }),
+                    child: Text(_picking ? '선택 취소' : '일괄 선택'),
+                  ),
+                ]),
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(children: [
+                    for (final f in const [('all', '전체'), ('applied', '지원완료'), ('selected', '선발'), ('reserve', '예비'), ('rejected', '미선발')])
+                      Padding(
+                        padding: const EdgeInsets.only(right: 6, top: 6),
+                        child: ChoiceChip(
+                          label: Text('${f.$2} ${f.$1 == 'all' ? all.length : all.where((a) => a['status'] == f.$1).length}'),
+                          selected: _filter == f.$1,
+                          showCheckmark: false,
+                          visualDensity: VisualDensity.compact,
+                          onSelected: (_) => setState(() => _filter = f.$1),
+                        ),
+                      ),
+                  ]),
+                ),
+              ]),
+            ),
+            const Divider(),
+            Expanded(
+              child: RefreshIndicator(
+                onRefresh: () async => _reload(),
+                child: rows.isEmpty
+                    ? ListView(children: const [Padding(padding: EdgeInsets.all(40), child: Center(child: Text('지원자가 없습니다.')))])
+                    : ListView.separated(
+                        itemCount: rows.length,
+                        separatorBuilder: (_, __) => const Divider(height: 1),
+                        itemBuilder: (c, i) => _tile(c, rows[i]),
+                      ),
+              ),
+            ),
+          ]),
+          bottomNavigationBar: !_picking
+              ? null
+              : SafeArea(
+                  child: Container(
+                    color: Brand.navy,
+                    padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
+                    child: Row(children: [
+                      Expanded(
+                        child: Text('${_picked.length}명 선택',
+                            style: const TextStyle(color: Brand.ivory, fontWeight: FontWeight.w600)),
+                      ),
+                      for (final st in const [('selected', '일괄 선발'), ('reserve', '일괄 예비'), ('rejected', '일괄 미선발')])
+                        Padding(
+                          padding: const EdgeInsets.only(left: 6),
+                          child: FilledButton(
+                            style: FilledButton.styleFrom(
+                              minimumSize: const Size(0, 38),
+                              padding: const EdgeInsets.symmetric(horizontal: 12),
+                              backgroundColor: st.$1 == 'selected' ? Brand.gold : Brand.navyLight,
+                            ),
+                            onPressed: _picked.isEmpty ? null : () => _bulk(st.$1),
+                            child: Text(st.$2),
+                          ),
+                        ),
+                    ]),
+                  ),
+                ),
         );
+      },
+    );
+  }
+
+  Widget _tile(BuildContext c, Map<String, dynamic> a) {
+    final p = a['profiles'] as Map<String, dynamic>;
+    final done = a['completed_at'] != null;
+    final title = '${p['name']} · ${a['recruitments']['position']}';
+    final sub = a['status'] == 'selected'
+        ? '참석 ${label(a['attendance'])}${done ? ' · 활동완료' : ''}'
+        : '지원 ${fmtDate(a['created_at'])}${p['region'] != null ? ' · ${p['region']}' : ''}';
+    if (_picking) {
+      final id = a['id'] as int;
+      return CheckboxListTile(
+        value: _picked.contains(id),
+        onChanged: done ? null : (v) => setState(() => v == true ? _picked.add(id) : _picked.remove(id)),
+        secondary: Avatar(path: p['avatar_path'], name: p['name'] ?? '', size: 40),
+        title: Text(title),
+        subtitle: Text(sub),
+      );
+    }
+    return ListTile(
+      leading: Avatar(path: p['avatar_path'], name: p['name'] ?? '', size: 40),
+      title: Text(title),
+      subtitle: Text(sub),
+      trailing: StatusChip(done ? '활동완료' : label(a['status']), done ? 'approved' : a['status']),
+      onTap: () async {
+        await showModalBottomSheet(
+          context: c,
+          isScrollControlled: true,
+          builder: (_) => DraggableScrollableSheet(
+            expand: false,
+            initialChildSize: 0.85,
+            maxChildSize: 0.95,
+            builder: (_, sc) => _ApplicantSheet(app: a, controller: sc),
+          ),
+        );
+        _reload();
       },
     );
   }
@@ -197,7 +360,8 @@ class _ApplicantsManage extends StatelessWidget {
 
 class _ApplicantSheet extends StatelessWidget {
   final Map<String, dynamic> app;
-  const _ApplicantSheet({required this.app});
+  final ScrollController controller;
+  const _ApplicantSheet({required this.app, required this.controller});
 
   Future<void> _set(BuildContext context, Map<String, dynamic> v, String msg) async {
     final ok = await run(context, () => db.from('applications').update(v).eq('id', app['id']), done: msg);
@@ -211,24 +375,22 @@ class _ApplicantSheet extends StatelessWidget {
     final done = app['completed_at'] != null;
     return SafeArea(
       child: SingleChildScrollView(
+        controller: controller,
         padding: const EdgeInsets.all(20),
         child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
-          Text(p['name'], style: Theme.of(context).textTheme.titleLarge),
-          Text(p['phone'] ?? '', style: const TextStyle(color: Brand.muted)),
-          const SizedBox(height: 12),
-          const Text('자격정보', style: TextStyle(fontWeight: FontWeight.w600)),
-          FutureBuilder<List<Map<String, dynamic>>>(
-            future: db.from('qualifications').select().eq('user_id', p['id']),
-            builder: (c, s) {
-              if (!s.hasData) return const LinearProgressIndicator();
-              if (s.data!.isEmpty) return const Text('등록된 자격 없음', style: TextStyle(color: Brand.muted));
-              return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                for (final q in s.data!)
-                  Text('· ${q['name']} ${q['grade'] ?? ''} (만료 ${fmtDate(q['expires_on'])}, ${label(q['status'])})'),
-              ]);
-            },
-          ),
-          const Divider(height: 28),
+          Row(children: [
+            Avatar(path: p['avatar_path'], name: p['name'] ?? '', size: 56),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text(p['name'], style: Theme.of(context).textTheme.titleLarge),
+                Text('${app['recruitments']['position']} 지원 · ${fmtDate(app['created_at'])}',
+                    style: const TextStyle(color: Brand.muted)),
+              ]),
+            ),
+            StatusChip(label(app['status']), app['status']),
+          ]),
+          const SizedBox(height: 16),
           if (!done) ...[
             const Text('선발 처리', style: TextStyle(fontWeight: FontWeight.w600)),
             const SizedBox(height: 8),
@@ -261,6 +423,8 @@ class _ApplicantSheet extends StatelessWidget {
             ),
           ],
           if (done) Text('활동완료: ${fmtDateTime(app['completed_at'])}'),
+          const Divider(height: 36),
+          CareerView(profile: p, showContact: true),
         ]),
       ),
     );
