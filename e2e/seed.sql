@@ -41,3 +41,6 @@ insert into courses (title, description, location, starts_at, apply_deadline, ca
 values ('소규모 실기 특강', '정원 1명', 'WINREF 교육장', now() + interval '8 days', now() + interval '4 days', 1);
 insert into course_applications (course_id, user_id)
 select c.id, u.id from courses c, auth.users u where c.title = '소규모 실기 특강' and u.email = 'ref3@test.kr';
+
+-- 지도 표시용 주소
+update competitions set address = '서울 송파구 올림픽로 25' where name = '2026 서울 유소년 축구대회';

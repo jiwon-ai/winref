@@ -25,8 +25,8 @@ begin
   update profiles set org_status = 'approved', organization = coalesce(organization, '서울시축구협회') where id = v_org;
   update profiles set region = '서울', sport = '축구', bio = 'K3리그 부심 3년, 유소년 대회 주심 다수' where id = v_ref;
 
-  insert into competitions (organizer_id, name, starts_on, ends_on, venue, host_org)
-  values (v_org, '[시연] 2026 서울 유소년 축구 페스티벌', current_date + 3, current_date + 4, '잠실 보조경기장', '서울시축구협회')
+  insert into competitions (organizer_id, name, starts_on, ends_on, venue, address, host_org)
+  values (v_org, '[시연] 2026 서울 유소년 축구 페스티벌', current_date + 3, current_date + 4, '잠실 보조경기장', '서울 송파구 올림픽로 25', '서울시축구협회')
   returning id into c1;
   insert into competitions (organizer_id, name, starts_on, venue, host_org)
   values (v_org, '[시연] 경기도 생활체육 축구 리그', current_date + 12, '수원 종합운동장', '경기도체육회')

@@ -226,6 +226,7 @@ Future<Map<String, dynamic>?> editCompetitionForm(BuildContext context, [Map<Str
     Field('starts_on', '시작일', type: FieldType.date, required: true, initial: c?['starts_on']),
     Field('ends_on', '종료일', type: FieldType.date, initial: c?['ends_on']),
     Field('venue', '장소', initial: c?['venue']),
+    Field('address', '주소 (지도 표시용, 예: 서울 송파구 올림픽로 25)', initial: c?['address']),
     Field('host_org', '주최·주관기관', initial: c?['host_org']),
     Field('poster_path', '포스터 (이미지/PDF)', type: FieldType.file, initial: c?['poster_path']),
   ], fileFolder: 'posters');

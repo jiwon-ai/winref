@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>대회 장소</title>
+<style>
+  html, body, #map { margin: 0; height: 100%; }
+  .msg { display: flex; height: 100%; align-items: center; justify-content: center; text-align: center;
+         padding: 12px; box-sizing: border-box; background: #E6EEF8; color: #5D6B7E;
+         font: 14px/1.5 system-ui, -apple-system, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif; }
+</style>
+<script src="map-config.js"></script>
+</head>
+<body>
+<div id="map"></div>
+<script>
+  // 사용: map.html?address=<주소>&venue=<장소명>  (앱의 대회 상세 화면에서 미리보기로 띄움)
+  const p = new URLSearchParams(location.search);
+  const query = p.get('address') || p.get('venue') || '';
+  const label = p.get('venue') || query;
+  function msg(text, sub) {
+    const box = document.createElement('div');
+    box.className = 'msg';
+    box.textContent = text;
+    if (sub) { box.appendChild(document.createElement('br')); box.appendChild(document.createTextNode(sub)); }
+    document.getElementById('map').replaceChildren(box);
+  }
+  window.navermap_authFailure = () => msg('네이버 지도 인증 실패', 'Client ID 또는 Web 서비스 URL 설정을 확인하세요');
+
+  function draw() {
+    naver.maps.Service.geocode({ query }, (status, res) => {
+      const list = status === naver.maps.Service.Status.OK ? res.v2.addresses : [];
+      if (!list.length) { msg('지도에서 주소를 찾지 못했습니다', label); return; }
+      const pos = new naver.maps.LatLng(Number(list[0].y), Number(list[0].x));
+      const map = new naver.maps.Map('map', {
+        center: pos, zoom: 16,
+        draggable: false, pinchZoom: false, scrollWheel: false, keyboardShortcuts: false,
+        disableDoubleTapZoom: true, disableDoubleClickZoom: true, disableTwoFingerTapZoom: true,
+        mapDataControl: false, scaleControl: false,
+      });
+      new naver.maps.Marker({ position: pos, map });
+    });
+  }
+
+  if (!window.NAVER_MAP_KEY_ID) msg('지도 준비 중', '네이버 지도 키 설정 후 표시됩니다');
+  else if (!query) msg('장소 정보가 없습니다');
+  else {
+    const s = document.createElement('script');
+    s.src = 'https://oapi.map.naver.com/openapi/v3/maps.js?ncpKeyId=' + encodeURIComponent(window.NAVER_MAP_KEY_ID) + '&submodules=geocoder';
+    s.onload = () => { if (naver.maps.Service) draw(); else naver.maps.onJSContentLoaded = draw; };
+    s.onerror = () => msg('지도를 불러오지 못했습니다', '인터넷 연결을 확인하세요');
+    document.head.appendChild(s);
+  }
+</script>
+</body>
+</html>

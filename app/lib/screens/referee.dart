@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import '../common.dart';
 import '../theme.dart';
 import 'browse.dart';
 import 'profile.dart';
+import '../venue_map.dart';
 
 /// 심판·교육신청자 홈: 홈 / 대회 / 교육 / 내 활동 / 자격
 class RefereeHome extends StatefulWidget {
@@ -529,18 +529,9 @@ class _RecruitmentDetailState extends State<RecruitmentDetail> {
         const SizedBox(height: 16),
         _row('일정', '${fmtDate(comp['starts_on'])}${comp['ends_on'] != null ? ' ~ ${fmtDate(comp['ends_on'])}' : ''}'),
         _row('장소', comp['venue'] ?? '-'),
-        if ((comp['venue'] ?? '').toString().isNotEmpty)
-          Align(
-            alignment: Alignment.centerLeft,
-            child: TextButton.icon(
-              onPressed: () => launchUrl(
-                Uri.parse('https://map.naver.com/p/search/${Uri.encodeComponent(comp['venue'])}'),
-                mode: LaunchMode.externalApplication,
-              ),
-              icon: const Icon(Icons.map_outlined, size: 18),
-              label: const Text('지도 보기'),
-            ),
-          ),
+        if ((comp['address'] ?? '').toString().isNotEmpty) _row('주소', comp['address']),
+        const SizedBox(height: 8),
+        VenueMap(venue: comp['venue'], address: comp['address']),
         _row('주최·주관', comp['host_org'] ?? '-'),
         const Divider(height: 32),
         _row('모집 포지션', r['position']),

@@ -150,6 +150,8 @@ try {
     await shot('competitions');
     await tap('2026 서울 유소년 축구대회');
     await see('잠실 보조경기장');
+    await see('서울 송파구 올림픽로 25');
+    await see('네이버 지도에서 크게 보기');
     await shot('competition-detail');
     await tap('심판 지원하기', 'button');
     await see('지원완료');
