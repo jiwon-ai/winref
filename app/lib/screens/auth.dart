@@ -174,7 +174,7 @@ class BrandHero extends StatelessWidget {
   }
 }
 
-/// 지원사업 결과물 표기: [사회적기업 창업지원사업]
+/// 지원사업 결과물 표기: 사회적기업 창업지원사업
 class SupportProgramMark extends StatelessWidget {
   const SupportProgramMark({super.key});
   @override
@@ -185,7 +185,7 @@ class SupportProgramMark extends StatelessWidget {
       child: Row(mainAxisSize: MainAxisSize.min, children: [
         SizedBox(width: 20, child: Divider(color: Color(0xFFD5DCE6), thickness: 1)),
         SizedBox(width: 10),
-        Text('[사회적기업 창업지원사업]',
+        Text('사회적기업 창업지원사업',
             style: TextStyle(color: gray, fontSize: 11.5, fontWeight: FontWeight.w500, letterSpacing: 1.2)),
         SizedBox(width: 10),
         SizedBox(width: 20, child: Divider(color: Color(0xFFD5DCE6), thickness: 1)),

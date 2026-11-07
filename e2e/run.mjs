@@ -97,7 +97,7 @@ async function logout() {
 
 try {
   await page.goto(APP);
-  await check('로그인 화면 표시 (로고·지원사업 표기)', async () => { await see('WINREF ACADEMY'); await see('[사회적기업 창업지원사업]'); await shot('login'); });
+  await check('로그인 화면 표시 (로고·지원사업 표기)', async () => { await see('WINREF ACADEMY'); await see('사회적기업 창업지원사업'); await shot('login'); });
 
   await check('잘못된 비밀번호 안내(한국어)', async () => {
     await type('이메일', 'org@test.kr');

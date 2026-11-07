@@ -87,7 +87,7 @@ def main():
     fg.paste(wm, (380, 150), wm)
     d = ImageDraw.Draw(fg)
     d.text((384, 150 + wm.height + 22), "스포츠 인재은행 · 교육 · 대회 · 심판 활동이력", font=ImageFont.truetype(KR, 30), fill=WHITE)
-    d.text((1024 - 24, 500 - 22), "[사회적기업 창업지원사업]", font=ImageFont.truetype(KR_REG, 18),
+    d.text((1024 - 24, 500 - 22), "사회적기업 창업지원사업", font=ImageFont.truetype(KR_REG, 18),
            fill=(225, 238, 252), anchor="rs")
     fg.save(store / "feature-graphic-1024x500.png")
 
