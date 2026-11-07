@@ -89,6 +89,13 @@ try {
   await page.goto(APP);
   await check('로그인 화면 표시', async () => { await see('WINREF ACADEMY'); await shot('login'); });
 
+  await check('잘못된 비밀번호 안내(한국어)', async () => {
+    await type('이메일', 'org@test.kr');
+    await type('비밀번호', 'wrong-password');
+    await tap('로그인', 'button');
+    await see('이메일 또는 비밀번호가 올바르지 않습니다');
+  });
+
   await check('회원가입(심판·교육신청자)', async () => {
     await tap('회원가입', 'button');
     await type('이름', '김심판');
@@ -294,5 +301,5 @@ try {
   await browser.close();
   const fail = results.filter((r) => r[0] === 'FAIL').length;
   console.log(`\n결과: ${results.length - fail} 통과 / ${fail} 실패 (총 시나리오 ${results.length})`);
-  process.exit(fail || results.length < 14 ? 1 : 0);
+  process.exit(fail || results.length < 15 ? 1 : 0);
 }

@@ -12,6 +12,22 @@ import 'screens/profile.dart';
 import 'theme.dart';
 
 final db = Supabase.instance.client;
+
+/// 인증 메일(가입 확인·비밀번호 재설정) 링크가 돌아올 앱 주소.
+/// Supabase > Authentication > URL Configuration 의 Redirect URLs 에 등록돼 있어야 한다.
+const appUrl = String.fromEnvironment('APP_URL', defaultValue: 'https://jiwon.fr/winref/');
+
+/// Supabase 인증 오류를 사용자용 한국어로
+String authMessage(AuthException e) {
+  final m = e.message.toLowerCase();
+  if (m.contains('invalid login credentials')) return '이메일 또는 비밀번호가 올바르지 않습니다.';
+  if (m.contains('email not confirmed')) return '이메일 인증이 필요합니다. 받은 메일의 링크를 눌러주세요.';
+  if (m.contains('already registered') || m.contains('already been registered')) return '이미 가입된 이메일입니다. 로그인해 주세요.';
+  if (m.contains('password should be') || m.contains('weak')) return '비밀번호가 너무 짧거나 쉽습니다. 8자 이상으로 정해주세요.';
+  if (m.contains('rate limit') || m.contains('too many')) return '요청이 많습니다. 잠시 후 다시 시도해 주세요.';
+  if (m.contains('invalid email') || m.contains('unable to validate email')) return '이메일 형식이 올바르지 않습니다.';
+  return '오류: ${e.message}';
+}
 final messengerKey = GlobalKey<ScaffoldMessengerState>();
 
 /// 로그아웃: 이전 사용자 화면의 안내 메시지를 지우고 세션 종료
@@ -46,7 +62,7 @@ Future<bool> run(BuildContext context, Future<void> Function() action, {String? 
   } on PostgrestException catch (e) {
     if (context.mounted) toast(context, '오류: ${e.message}');
   } on AuthException catch (e) {
-    if (context.mounted) toast(context, '오류: ${e.message}');
+    if (context.mounted) toast(context, authMessage(e));
   } catch (e) {
     if (context.mounted) toast(context, '오류: $e');
   }

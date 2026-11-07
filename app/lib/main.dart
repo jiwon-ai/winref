@@ -49,16 +49,24 @@ class WinrefApp extends StatelessWidget {
 }
 
 /// 로그인 상태와 회원 유형(role)에 따라 첫 화면을 고른다.
-class AuthGate extends StatelessWidget {
+class AuthGate extends StatefulWidget {
   const AuthGate({super.key});
+  @override
+  State<AuthGate> createState() => _AuthGateState();
+}
+
+class _AuthGateState extends State<AuthGate> {
+  bool _recovery = false; // 비밀번호 재설정 링크로 진입
 
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<AuthState>(
       stream: db.auth.onAuthStateChange,
-      builder: (context, _) {
+      builder: (context, snap) {
+        if (snap.data?.event == AuthChangeEvent.passwordRecovery) _recovery = true;
         final user = db.auth.currentUser;
         if (user == null) return const LoginScreen();
+        if (_recovery) return NewPasswordScreen(onDone: () => setState(() => _recovery = false));
         return FutureBuilder<Map<String, dynamic>>(
           key: ValueKey(user.id),
           future: db.from('profiles').select().eq('id', user.id).single(),

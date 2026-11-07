@@ -23,8 +23,40 @@ class _LoginScreenState extends State<LoginScreen> {
 
   Future<void> _login() async {
     setState(() => _busy = true);
-    await run(context, () => db.auth.signInWithPassword(email: _email.text.trim(), password: _pw.text));
+    try {
+      await db.auth.signInWithPassword(email: _email.text.trim(), password: _pw.text);
+    } on AuthException catch (e) {
+      if (!mounted) return;
+      if (e.message.toLowerCase().contains('email not confirmed')) {
+        _offerResend();
+      } else {
+        toast(context, authMessage(e));
+      }
+    } catch (e) {
+      if (mounted) toast(context, '서버에 연결할 수 없습니다. 인터넷 연결을 확인해 주세요.');
+    }
     if (mounted) setState(() => _busy = false);
+  }
+
+  /// 이메일 미인증 계정: 인증 메일 재발송
+  Future<void> _offerResend() async {
+    final again = await showDialog<bool>(
+      context: context,
+      builder: (d) => AlertDialog(
+        title: const Text('이메일 인증이 필요합니다'),
+        content: Text('${_email.text.trim()} 로 보낸 인증 메일의 링크를 눌러주세요.\n메일이 없다면 다시 보낼 수 있습니다.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('닫기')),
+          TextButton(onPressed: () => Navigator.pop(d, true), child: const Text('인증 메일 다시 보내기')),
+        ],
+      ),
+    );
+    if (again != true || !mounted) return;
+    await run(
+      context,
+      () => db.auth.resend(type: OtpType.signup, email: _email.text.trim(), emailRedirectTo: appUrl),
+      done: '인증 메일을 다시 보냈습니다.',
+    );
   }
 
   Future<void> _reset() async {
@@ -33,7 +65,7 @@ class _LoginScreenState extends State<LoginScreen> {
       toast(context, '이메일을 먼저 입력하세요.');
       return;
     }
-    await run(context, () => db.auth.resetPasswordForEmail(email), done: '비밀번호 재설정 메일을 보냈습니다.');
+    await run(context, () => db.auth.resetPasswordForEmail(email, redirectTo: appUrl), done: '비밀번호 재설정 메일을 보냈습니다.');
   }
 
   @override
@@ -139,7 +171,7 @@ class _SignupScreenState extends State<SignupScreen> {
     setState(() => _busy = true);
     bool needsConfirm = false;
     final ok = await run(context, () async {
-      final res = await db.auth.signUp(email: _email.text.trim(), password: _pw.text, data: {
+      final res = await db.auth.signUp(email: _email.text.trim(), password: _pw.text, emailRedirectTo: appUrl, data: {
         'role': _role,
         'name': _name.text.trim(),
         'phone': _phone.text.trim(),
@@ -219,6 +251,70 @@ class _SignupScreenState extends State<SignupScreen> {
           if (required && (v == null || v.trim().isEmpty)) return '필수 입력';
           return validator?.call(v);
         },
+      ),
+    );
+  }
+}
+
+/// 비밀번호 재설정 메일의 링크로 들어왔을 때 새 비밀번호 입력
+class NewPasswordScreen extends StatefulWidget {
+  final VoidCallback onDone;
+  const NewPasswordScreen({super.key, required this.onDone});
+  @override
+  State<NewPasswordScreen> createState() => _NewPasswordScreenState();
+}
+
+class _NewPasswordScreenState extends State<NewPasswordScreen> {
+  final _form = GlobalKey<FormState>();
+  final _pw = TextEditingController();
+  final _pw2 = TextEditingController();
+  bool _busy = false;
+
+  @override
+  void dispose() {
+    _pw.dispose();
+    _pw2.dispose();
+    super.dispose();
+  }
+
+  Future<void> _save() async {
+    if (!_form.currentState!.validate()) return;
+    setState(() => _busy = true);
+    final ok = await run(context, () => db.auth.updateUser(UserAttributes(password: _pw.text)),
+        done: '비밀번호를 변경했습니다.');
+    if (!mounted) return;
+    setState(() => _busy = false);
+    if (ok) widget.onDone();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('새 비밀번호 설정'), automaticallyImplyLeading: false),
+      body: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 420),
+          child: Form(
+            key: _form,
+            child: ListView(padding: const EdgeInsets.all(24), shrinkWrap: true, children: [
+              TextFormField(
+                controller: _pw,
+                obscureText: true,
+                decoration: const InputDecoration(labelText: '새 비밀번호 (8자 이상)'),
+                validator: (v) => (v ?? '').length >= 8 ? null : '8자 이상 입력',
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _pw2,
+                obscureText: true,
+                decoration: const InputDecoration(labelText: '새 비밀번호 확인'),
+                validator: (v) => v == _pw.text ? null : '비밀번호가 일치하지 않습니다',
+              ),
+              const SizedBox(height: 24),
+              FilledButton(onPressed: _busy ? null : _save, child: const Text('변경하기')),
+            ]),
+          ),
+        ),
       ),
     );
   }
