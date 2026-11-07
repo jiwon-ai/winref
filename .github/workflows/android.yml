@@ -7,6 +7,8 @@ on:
 
 permissions:
   contents: write
+  pages: write
+  id-token: write
 
 jobs:
   build:
@@ -71,7 +73,7 @@ jobs:
         run: |
           flutter build apk --release $DEFINES
           flutter build appbundle --release $DEFINES
-          flutter build web --release $DEFINES
+          flutter build web --release --base-href /winref/ $DEFINES
 
       - uses: actions/upload-artifact@v4
         with:
@@ -84,3 +86,20 @@ jobs:
         with:
           name: winref-admin-web
           path: app/build/web
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: app/build/web
+
+  # 고객 시연용 웹 주소: https://jiwon-ai.github.io/winref/
+  # 저장소 Settings > Pages > Source 를 "GitHub Actions" 로 한 번 설정해야 배포된다.
+  pages:
+    needs: build
+    runs-on: ubuntu-latest
+    continue-on-error: true   # Pages 미설정 상태에서 빌드 전체가 실패로 표시되지 않게
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - id: deploy
+        uses: actions/deploy-pages@v4
