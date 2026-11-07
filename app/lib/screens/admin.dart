@@ -173,10 +173,10 @@ class _Kpi extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         border: Border(
-          left: BorderSide(color: alert ? Brand.gold : Brand.navy, width: 3),
-          top: const BorderSide(color: Color(0xFFE2DACA)),
-          right: const BorderSide(color: Color(0xFFE2DACA)),
-          bottom: const BorderSide(color: Color(0xFFE2DACA)),
+          left: BorderSide(color: alert ? Brand.warn : Brand.navy, width: 3),
+          top: const BorderSide(color: Color(0xFFDCE5F0)),
+          right: const BorderSide(color: Color(0xFFDCE5F0)),
+          bottom: const BorderSide(color: Color(0xFFDCE5F0)),
         ),
       ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [

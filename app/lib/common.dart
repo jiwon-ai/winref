@@ -8,6 +8,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import 'download_stub.dart' if (dart.library.js_interop) 'download_web.dart';
+import 'screens/auth.dart';
 import 'screens/profile.dart';
 import 'theme.dart';
 
@@ -363,7 +364,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         item: (c, n, reload) {
           final unread = n['read_at'] == null;
           return ListTile(
-            tileColor: unread ? const Color(0xFFFBF7EE) : Colors.white,
+            tileColor: unread ? const Color(0xFFF1F7FF) : Colors.white,
             leading: Icon(_icons[n['kind']] ?? Icons.campaign_outlined, color: unread ? Brand.gold : Brand.muted),
             title: Text(n['title'], style: TextStyle(fontWeight: unread ? FontWeight.w700 : FontWeight.w500)),
             subtitle: Text('${n['body'] ?? ''}\n${fmtDateTime(n['created_at'])}'),
@@ -549,11 +550,21 @@ List<Widget> commonActions(BuildContext context, Map<String, dynamic> profile) =
               signOut();
             case 'delete':
               deleteAccount(context);
+            case 'about':
+              showAboutDialog(
+                context: context,
+                applicationName: 'WINREF 인재은행',
+                applicationVersion: '1.0.0',
+                applicationIcon: Image.asset('assets/brand/snowflake_blue.png', width: 48, height: 48),
+                applicationLegalese: '운영 윈렙아카데미 · 개발 빠드빠닉',
+                children: const [SizedBox(height: 16), SupportProgramMark()],
+              );
           }
         },
         itemBuilder: (_) => [
           const PopupMenuItem(value: 'notice', child: Text('공지사항')),
           const PopupMenuItem(value: 'me', child: Text('내 정보')),
+          const PopupMenuItem(value: 'about', child: Text('앱 정보')),
           const PopupMenuItem(value: 'logout', child: Text('로그아웃')),
           if (profile['role'] != 'admin') const PopupMenuItem(value: 'delete', child: Text('회원 탈퇴')),
         ],

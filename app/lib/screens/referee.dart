@@ -146,7 +146,7 @@ class _DashboardTabState extends State<_DashboardTab> {
               _Section('자격 알림', [
                 for (final q in expiring)
                   _CardTile(
-                    accent: Brand.gold,
+                    accent: Brand.warn,
                     icon: Icons.warning_amber_rounded,
                     title: '${q['name']} 만료 ${dday(q['expires_on'])}',
                     subtitle: '유효기간 ${fmtDate(q['expires_on'])} · 보수교육 ${q['refresher_done'] == true ? '이수' : '필요'}',
@@ -213,7 +213,7 @@ class _DashboardTabState extends State<_DashboardTab> {
               child: Column(children: [
                 Text('$n', style: const TextStyle(color: Brand.ivory, fontSize: 24, fontWeight: FontWeight.w700)),
                 const SizedBox(height: 2),
-                Text(label, style: const TextStyle(color: Color(0xFFB9C0D0), fontSize: 12)),
+                Text(label, style: const TextStyle(color: Color(0xFFC9DCF5), fontSize: 12)),
               ]),
             ),
           ),
@@ -233,10 +233,10 @@ class _DashboardTabState extends State<_DashboardTab> {
                 Text('${d['me']['name']} 님',
                     style: const TextStyle(color: Brand.ivory, fontSize: 20, fontWeight: FontWeight.w700)),
                 const SizedBox(height: 2),
-                const Text('내 프로필·경력 보기', style: TextStyle(color: Color(0xFFB9C0D0), fontSize: 12)),
+                const Text('내 프로필·경력 보기', style: TextStyle(color: Color(0xFFC9DCF5), fontSize: 12)),
               ]),
             ),
-            const Icon(Icons.chevron_right, color: Brand.gold),
+            const Icon(Icons.chevron_right, color: Brand.ice),
           ]),
         ),
         const SizedBox(height: 16),
@@ -302,7 +302,7 @@ class _CardTile extends StatelessWidget {
                 margin: const EdgeInsets.only(right: 12),
                 decoration: BoxDecoration(color: Brand.navy, borderRadius: BorderRadius.circular(4)),
                 alignment: Alignment.center,
-                child: Text(badge!, style: const TextStyle(color: Brand.gold, fontWeight: FontWeight.w700)),
+                child: Text(badge!, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
               )
             else if (icon != null)
               Padding(padding: const EdgeInsets.only(right: 12), child: Icon(icon, color: accent)),

@@ -40,7 +40,7 @@ class _OrganizerHomeState extends State<OrganizerHome> {
         if (!_approved)
           Container(
             width: double.infinity,
-            color: const Color(0xFFF1E7D3),
+            color: const Color(0xFFE3EFFC),
             padding: const EdgeInsets.all(16),
             child: Row(children: [
               Expanded(
@@ -144,9 +144,9 @@ class _OrganizerBoardState extends State<_OrganizerBoard> {
   Widget _sum(String label, String value, {bool highlight = false}) => Expanded(
         child: Column(children: [
           Text(value,
-              style: TextStyle(color: highlight ? Brand.gold : Brand.ivory, fontSize: 22, fontWeight: FontWeight.w700)),
+              style: TextStyle(color: highlight ? Brand.ice : Colors.white, fontSize: 22, fontWeight: FontWeight.w700)),
           const SizedBox(height: 2),
-          Text(label, style: const TextStyle(color: Color(0xFFB9C0D0), fontSize: 12)),
+          Text(label, style: const TextStyle(color: Color(0xFFC9DCF5), fontSize: 12)),
         ]),
       );
 
@@ -182,7 +182,7 @@ class _OrganizerBoardState extends State<_OrganizerBoard> {
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(color: past ? Brand.ivoryDeep : Brand.navy, borderRadius: BorderRadius.circular(3)),
                 child: Text(dday,
-                    style: TextStyle(color: past ? Brand.muted : Brand.gold, fontWeight: FontWeight.w700, fontSize: 12)),
+                    style: TextStyle(color: past ? Brand.muted : Colors.white, fontWeight: FontWeight.w700, fontSize: 12)),
               ),
             ]),
             const SizedBox(height: 4),

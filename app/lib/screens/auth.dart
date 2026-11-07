@@ -84,17 +84,17 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: SafeArea(
-        child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(28),
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 420),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  const _Wordmark(),
-                  const SizedBox(height: 48),
+      body: SingleChildScrollView(
+        child: Column(children: [
+          const BrandHero(),
+          Center(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(28, 32, 28, 8),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 420),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
                   TextField(
                     controller: _email,
                     keyboardType: TextInputType.emailAddress,
@@ -148,32 +148,50 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
             ),
           ),
-        ),
+          ),
+          const SupportProgramMark(),
+        ]),
       ),
     );
   }
 }
 
-class _Wordmark extends StatelessWidget {
-  const _Wordmark();
+/// 로그인 상단 브랜드 영역: 로고 파랑 배경 + WINREF ACADEMY 로고(눈꽃·워드마크·슬로건)
+class BrandHero extends StatelessWidget {
+  const BrandHero({super.key});
   @override
   Widget build(BuildContext context) {
-    return Column(children: [
-      Container(
-        width: 64,
-        height: 64,
-        decoration: BoxDecoration(color: Brand.navy, borderRadius: BorderRadius.circular(4)),
-        alignment: Alignment.center,
-        child: const Text('W', style: TextStyle(color: Brand.gold, fontSize: 32, fontWeight: FontWeight.w700)),
+    return Container(
+      width: double.infinity,
+      color: Brand.gold, // 로고 원본 배경색 #4A90E2
+      padding: EdgeInsets.fromLTRB(24, MediaQuery.paddingOf(context).top + 40, 24, 32),
+      child: Column(children: [
+        Image.asset('assets/brand/lockup_white.png', width: 260, semanticLabel: 'WINREF ACADEMY'),
+        const SizedBox(height: 14),
+        const Text('스포츠 인재은행', style: TextStyle(color: Colors.white, fontSize: 15, letterSpacing: 3)),
+      ]),
+    );
+  }
+}
+
+/// 지원사업 결과물 표기: [사회적기업 창업지원사업]
+class SupportProgramMark extends StatelessWidget {
+  const SupportProgramMark({super.key});
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(24, 8, 24, 28),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        decoration: BoxDecoration(
+          border: Border.all(color: const Color(0xFFC3D0E0)),
+          borderRadius: BorderRadius.circular(4),
+          color: Colors.white,
+        ),
+        child: const Text('[사회적기업 창업지원사업]',
+            style: TextStyle(color: Brand.ink, fontSize: 13, fontWeight: FontWeight.w600, letterSpacing: 0.5)),
       ),
-      const SizedBox(height: 20),
-      const Text('WINREF ACADEMY',
-          style: TextStyle(color: Brand.navy, fontSize: 22, fontWeight: FontWeight.w700, letterSpacing: 4)),
-      const SizedBox(height: 6),
-      Container(width: 32, height: 1, color: Brand.gold),
-      const SizedBox(height: 6),
-      const Text('스포츠 인재은행', style: TextStyle(color: Brand.muted, letterSpacing: 2)),
-    ]);
+    );
   }
 }
 

@@ -65,7 +65,7 @@ class FilterPill extends StatelessWidget {
       visualDensity: VisualDensity.compact,
       selectedColor: Brand.navy,
       backgroundColor: Brand.ivory,
-      side: BorderSide(color: selected ? Brand.navy : const Color(0xFFCFC6B2)),
+      side: BorderSide(color: selected ? Brand.navy : const Color(0xFFC3D0E0)),
       labelStyle: TextStyle(color: selected ? Brand.ivory : Brand.navy, fontWeight: FontWeight.w600, fontSize: 13),
     );
   }

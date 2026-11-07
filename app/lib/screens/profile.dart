@@ -163,14 +163,14 @@ class _QualBadge extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
       decoration: BoxDecoration(
-        color: approved && !expired ? const Color(0xFFF1E7D3) : Colors.white,
+        color: approved && !expired ? const Color(0xFFE3EFFC) : Colors.white,
         borderRadius: BorderRadius.circular(4),
-        border: Border.all(color: approved && !expired ? Brand.gold : const Color(0xFFCFC6B2)),
+        border: Border.all(color: approved && !expired ? Brand.gold : const Color(0xFFC3D0E0)),
       ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
         Row(mainAxisSize: MainAxisSize.min, children: [
           Icon(approved ? Icons.workspace_premium : Icons.hourglass_empty,
-              size: 16, color: approved ? const Color(0xFF7A5C2E) : Brand.muted),
+              size: 16, color: approved ? const Color(0xFF1F5FAF) : Brand.muted),
           const SizedBox(width: 4),
           Text('${q['name']}${q['grade'] != null ? ' ${q['grade']}' : ''}',
               style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
@@ -237,14 +237,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       const SizedBox(height: 4),
                       Text(
                         [p['region'], p['sport']].where((e) => (e ?? '').toString().isNotEmpty).join(' · ').ifEmpty('지역·종목을 등록하세요'),
-                        style: const TextStyle(color: Color(0xFFB9C0D0)),
+                        style: const TextStyle(color: Color(0xFFC9DCF5)),
                       ),
                     ]),
                   ),
                   OutlinedButton(
                     style: OutlinedButton.styleFrom(
                       foregroundColor: Brand.ivory,
-                      side: const BorderSide(color: Brand.gold),
+                      side: const BorderSide(color: Brand.ice),
                       minimumSize: const Size(56, 36),
                     ),
                     onPressed: () async {
