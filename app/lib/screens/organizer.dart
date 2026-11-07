@@ -13,7 +13,7 @@ class OrganizerHome extends StatefulWidget {
 }
 
 class _OrganizerHomeState extends State<OrganizerHome> {
-  final _key = GlobalKey<AsyncListState>();
+  final _key = GlobalKey<_OrganizerBoardState>();
   late Map<String, dynamic> _profile = widget.profile;
   bool get _approved => _profile['org_status'] == 'approved';
 
@@ -61,21 +61,165 @@ class _OrganizerHomeState extends State<OrganizerHome> {
               TextButton(onPressed: _refreshProfile, child: const Text('승인 확인')),
             ]),
           ),
-        Expanded(
-          child: AsyncList(
-            key: _key,
-            load: () => db.from('competitions').select().eq('organizer_id', uid).order('starts_on', ascending: false),
-            empty: '등록한 대회가 없습니다.',
-            item: (c, comp, reload) => ListTile(
-              title: Text(comp['name'], style: const TextStyle(fontWeight: FontWeight.w600)),
-              subtitle: Text('${fmtDate(comp['starts_on'])} · ${comp['venue'] ?? '-'}'),
-              trailing: const Icon(Icons.chevron_right),
-              onTap: () => Navigator.push(c, MaterialPageRoute(builder: (_) => CompetitionManage(competition: comp)))
-                  .then((_) => reload()),
-            ),
-          ),
-        ),
+        Expanded(child: _OrganizerBoard(key: _key)),
       ]),
+    );
+  }
+}
+
+/// 대회관계자 홈: 요약 + 대회별 D-day·선발 진행률·검토 대기
+class _OrganizerBoard extends StatefulWidget {
+  const _OrganizerBoard({super.key});
+  @override
+  State<_OrganizerBoard> createState() => _OrganizerBoardState();
+}
+
+class _OrganizerBoardState extends State<_OrganizerBoard> {
+  late Future<List<Map<String, dynamic>>> _f = _load();
+
+  Future<List<Map<String, dynamic>>> _load() => db
+      .from('competitions')
+      .select('*, recruitments(id, position, headcount, is_open, deadline, applications(status, completed_at))')
+      .eq('organizer_id', uid)
+      .order('starts_on');
+
+  void reload() => setState(() => _f = _load());
+
+  /// 대회 하나의 집계: 모집 인원, 지원, 검토 대기, 선발, 모집중 여부
+  static ({int quota, int applied, int pending, int selected, bool open}) stats(Map<String, dynamic> c) {
+    var quota = 0, applied = 0, pending = 0, selected = 0;
+    var open = false;
+    for (final r in (c['recruitments'] as List)) {
+      quota += (r['headcount'] as num).toInt();
+      final dl = DateTime.tryParse(r['deadline'] ?? '');
+      if (r['is_open'] == true && (dl == null || dl.isAfter(DateTime.now()))) open = true;
+      for (final a in (r['applications'] as List)) {
+        if (a['status'] == 'cancelled') continue;
+        applied++;
+        if (a['status'] == 'applied') pending++;
+        if (a['status'] == 'selected') selected++;
+      }
+    }
+    return (quota: quota, applied: applied, pending: pending, selected: selected, open: open);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<List<Map<String, dynamic>>>(
+      future: _f,
+      builder: (context, snap) {
+        if (snap.hasError) return Center(child: TextButton(onPressed: reload, child: const Text('불러오기 실패 (다시 시도)')));
+        if (!snap.hasData) return const Center(child: CircularProgressIndicator());
+        final today = DateTime.now().toIso8601String().substring(0, 10);
+        final upcoming = snap.data!.where((c) => (c['ends_on'] ?? c['starts_on']).toString().compareTo(today) >= 0).toList();
+        final past = snap.data!.where((c) => !upcoming.contains(c)).toList().reversed.toList();
+        final all = upcoming.map(stats).toList();
+        final pending = all.fold<int>(0, (s, x) => s + x.pending);
+        final quota = all.fold<int>(0, (s, x) => s + x.quota);
+        final selected = all.fold<int>(0, (s, x) => s + x.selected);
+        return RefreshIndicator(
+          onRefresh: () async => reload(),
+          child: ListView(padding: const EdgeInsets.only(bottom: 96), children: [
+            Container(
+              color: Brand.navy,
+              padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
+              child: Container(
+                decoration: BoxDecoration(color: Brand.navyLight, borderRadius: BorderRadius.circular(6)),
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                child: Row(children: [
+                  _sum('예정 대회', '${upcoming.length}'),
+                  _sum('검토 대기', '$pending', highlight: pending > 0),
+                  _sum('선발 충원율', quota == 0 ? '-' : '${(selected * 100 / quota).round()}%'),
+                ]),
+              ),
+            ),
+            if (snap.data!.isEmpty)
+              const Padding(
+                padding: EdgeInsets.all(40),
+                child: Center(child: Text('등록한 대회가 없습니다.\n오른쪽 아래 버튼으로 대회를 등록하세요.', textAlign: TextAlign.center)),
+              ),
+            if (upcoming.isNotEmpty) _label('진행 예정'),
+            for (final c in upcoming) _card(context, c),
+            if (past.isNotEmpty) _label('지난 대회'),
+            for (final c in past) _card(context, c, past: true),
+          ]),
+        );
+      },
+    );
+  }
+
+  Widget _sum(String label, String value, {bool highlight = false}) => Expanded(
+        child: Column(children: [
+          Text(value,
+              style: TextStyle(color: highlight ? Brand.gold : Brand.ivory, fontSize: 22, fontWeight: FontWeight.w700)),
+          const SizedBox(height: 2),
+          Text(label, style: const TextStyle(color: Color(0xFFB9C0D0), fontSize: 12)),
+        ]),
+      );
+
+  Widget _label(String t) => Padding(
+        padding: const EdgeInsets.fromLTRB(20, 20, 20, 8),
+        child: Text(t, style: const TextStyle(color: Brand.navy, fontSize: 15, fontWeight: FontWeight.w700)),
+      );
+
+  Widget _card(BuildContext context, Map<String, dynamic> c, {bool past = false}) {
+    final st = stats(c);
+    final start = DateTime.tryParse(c['starts_on'] ?? '');
+    final days = start == null
+        ? null
+        : DateTime(start.year, start.month, start.day)
+            .difference(DateTime(DateTime.now().year, DateTime.now().month, DateTime.now().day))
+            .inDays;
+    final dday = days == null ? '' : (days == 0 ? 'D-DAY' : (days > 0 ? 'D-$days' : '종료'));
+    final ratio = st.quota == 0 ? 0.0 : (st.selected / st.quota).clamp(0.0, 1.0);
+    return Card(
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => CompetitionManage(competition: c)))
+            .then((_) => reload()),
+        child: Padding(
+          padding: const EdgeInsets.all(14),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Row(children: [
+              Expanded(
+                child: Text(c['name'],
+                    style: TextStyle(fontWeight: FontWeight.w700, color: past ? Brand.muted : Brand.ink)),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(color: past ? Brand.ivoryDeep : Brand.navy, borderRadius: BorderRadius.circular(3)),
+                child: Text(dday,
+                    style: TextStyle(color: past ? Brand.muted : Brand.gold, fontWeight: FontWeight.w700, fontSize: 12)),
+              ),
+            ]),
+            const SizedBox(height: 4),
+            Text('${fmtDate(c['starts_on'])} · ${c['venue'] ?? '-'}', style: const TextStyle(color: Brand.muted, fontSize: 13)),
+            const SizedBox(height: 12),
+            Row(children: [
+              Expanded(
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(2),
+                  child: LinearProgressIndicator(
+                    value: ratio,
+                    minHeight: 6,
+                    color: ratio >= 1 ? Brand.gold : Brand.navy,
+                    backgroundColor: Brand.ivoryDeep,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Text('선발 ${st.selected}/${st.quota}', style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+            ]),
+            const SizedBox(height: 10),
+            Wrap(spacing: 6, runSpacing: 6, children: [
+              StatusChip('지원 ${st.applied}명', 'pending'),
+              if (st.pending > 0) StatusChip('검토 대기 ${st.pending}명', 'selected'),
+              if (!past) StatusChip(st.open ? '모집중' : '모집 마감', st.open ? 'approved' : 'cancelled'),
+              if ((c['recruitments'] as List).isEmpty && !past) const StatusChip('모집공고 없음', 'rejected'),
+            ]),
+          ]),
+        ),
+      ),
     );
   }
 }

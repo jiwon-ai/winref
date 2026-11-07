@@ -177,6 +177,7 @@ try {
   await check('대회관계자: 지원자 선발·참석·활동완료', async () => {
     await login('org@test.kr');
     await see('내 대회');
+    await see('검토 대기 2명');   // 홈 보드: 대회별 검토 대기 인원
     await shot('organizer-home');
     await tap('2026 서울 유소년 축구대회');
     await tap('지원자', 'tab');
@@ -207,16 +208,22 @@ try {
 
   await check('대회관계자 화면에서 뒤로가기·로그아웃', async () => {
     await back();
+    await see('선발 2/2');        // 홈 보드 진행률 갱신
     await logout();
   });
 
   await check('심판: 선발결과·브리핑·활동이력', async () => {
     await login('ref@test.kr');
     await see('다가오는 일정');
-    await tap('알림', 'button');
+    await tap('알림 읽지 않음 1건', 'button');   // 배지
     await see('심판 선발 안내');
+    await tap('모두 읽음', 'button');
+    await see('모두 읽음으로 표시했습니다');
     await shot('notifications');
+    if (sql(`select count(*) from notifications n join profiles p on p.id=n.user_id where p.name='김심판' and n.read_at is null`) !== '0')
+      throw new Error('모두 읽음 저장 안 됨');
     await back();
+    await el('알림', 'button!').waitFor({ state: 'visible', timeout: 10000 });  // 배지 사라짐
     await see('활동 완료');
     await shot('referee-dashboard');
     await goTab('내 활동');

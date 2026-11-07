@@ -294,28 +294,110 @@ class NoticesScreen extends StatelessWidget {
   }
 }
 
-class NotificationsScreen extends StatelessWidget {
+class NotificationsScreen extends StatefulWidget {
   const NotificationsScreen({super.key});
+  @override
+  State<NotificationsScreen> createState() => _NotificationsScreenState();
+}
+
+class _NotificationsScreenState extends State<NotificationsScreen> {
+  final _key = GlobalKey<AsyncListState>();
+
+  static const _icons = {
+    'selection': Icons.how_to_reg_outlined,
+    'briefing': Icons.description_outlined,
+    'qualification': Icons.workspace_premium_outlined,
+    'competition_d1': Icons.event_outlined,
+    'course_deadline': Icons.school_outlined,
+    'refresher': Icons.warning_amber_rounded,
+  };
+
+  Future<void> _readAll() async {
+    await run(
+      context,
+      () => db
+          .from('notifications')
+          .update({'read_at': DateTime.now().toUtc().toIso8601String()})
+          .eq('user_id', uid)
+          .isFilter('read_at', null),
+      done: '모두 읽음으로 표시했습니다.',
+    );
+    _key.currentState?.reload();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('알림')),
+      appBar: AppBar(title: const Text('알림'), actions: [
+        TextButton(
+          onPressed: _readAll,
+          child: const Text('모두 읽음', style: TextStyle(color: Brand.ivory)),
+        ),
+      ]),
       body: AsyncList(
+        key: _key,
         load: () => db.from('notifications').select().eq('user_id', uid).order('created_at', ascending: false).limit(100),
         empty: '알림이 없습니다.',
-        item: (c, n, reload) => ListTile(
-          leading: Icon(n['read_at'] == null ? Icons.notifications_active : Icons.notifications_none),
-          title: Text(n['title']),
-          subtitle: Text('${n['body'] ?? ''}\n${fmtDateTime(n['created_at'])}'),
-          isThreeLine: true,
-          onTap: n['read_at'] != null
-              ? null
-              : () async {
-                  await db.from('notifications').update({'read_at': DateTime.now().toUtc().toIso8601String()}).eq('id', n['id']);
-                  reload();
-                },
-        ),
+        item: (c, n, reload) {
+          final unread = n['read_at'] == null;
+          return ListTile(
+            tileColor: unread ? const Color(0xFFFBF7EE) : Colors.white,
+            leading: Icon(_icons[n['kind']] ?? Icons.campaign_outlined, color: unread ? Brand.gold : Brand.muted),
+            title: Text(n['title'], style: TextStyle(fontWeight: unread ? FontWeight.w700 : FontWeight.w500)),
+            subtitle: Text('${n['body'] ?? ''}\n${fmtDateTime(n['created_at'])}'),
+            isThreeLine: true,
+            onTap: !unread
+                ? null
+                : () async {
+                    await db.from('notifications').update({'read_at': DateTime.now().toUtc().toIso8601String()}).eq('id', n['id']);
+                    reload();
+                  },
+          );
+        },
       ),
+    );
+  }
+}
+
+/// 앱바 알림 버튼: 읽지 않은 알림 수 배지
+class NotificationBell extends StatefulWidget {
+  const NotificationBell({super.key});
+  @override
+  State<NotificationBell> createState() => _NotificationBellState();
+}
+
+class _NotificationBellState extends State<NotificationBell> {
+  int _unread = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _count();
+  }
+
+  Future<void> _count() async {
+    try {
+      final rows = await db.from('notifications').select('id').eq('user_id', uid).isFilter('read_at', null).limit(100);
+      if (mounted) setState(() => _unread = rows.length);
+    } catch (_) {
+      // 배지는 부가 정보라 실패해도 화면을 막지 않는다
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return IconButton(
+      tooltip: _unread == 0 ? '알림' : '알림 읽지 않음 $_unread건',
+      icon: Badge(
+        isLabelVisible: _unread > 0,
+        backgroundColor: Brand.gold,
+        label: Text(_unread > 99 ? '99+' : '$_unread'),
+        child: const Icon(Icons.notifications_outlined),
+      ),
+      onPressed: () async {
+        await Navigator.push(context, MaterialPageRoute(builder: (_) => const NotificationsScreen()));
+        _count();
+      },
     );
   }
 }
@@ -429,11 +511,7 @@ Future<void> deleteAccount(BuildContext context) async {
 
 /// 앱바 공통 메뉴: 알림·공지·내정보·로그아웃
 List<Widget> commonActions(BuildContext context, Map<String, dynamic> profile) => [
-      IconButton(
-        tooltip: '알림',
-        icon: const Icon(Icons.notifications_outlined),
-        onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const NotificationsScreen())),
-      ),
+      const NotificationBell(),
       PopupMenuButton<String>(
         onSelected: (v) {
           switch (v) {
