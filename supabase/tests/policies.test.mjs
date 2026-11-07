@@ -122,6 +122,30 @@ ok((await as(SOC, `update profiles set role='referee', org_status=null where id=
 ok((await as(REF2, `update profiles set onboarded=false where id=$1`, [REF2])).err, '이메일 가입자 onboarded 조작 차단');
 ok((await db.query(`select onboarded from profiles where id='${REF2}'`)).rows[0].onboarded === true, '이메일 가입은 가입정보 완료 상태');
 
+// --- 0006: 정원·대회 삭제 보호·처리자 알림·자격증 사본 ---
+const nc = async (u, kind) => (await db.query(`select count(*)::int n from notifications where user_id='${u}' and kind='${kind}'`)).rows[0].n;
+ok(await nc(ORG, 'new_applicant') === 2, '새 지원자 → 관계자 알림 (2명)');
+ok(await nc(ADMIN, 'org_request') === 1, '기관 승인 요청 → 관리자 알림');
+ok(await nc(ADMIN, 'qual_request') === 1, '자격 등록 → 관리자 확인 요청 알림');
+const cid = (await as(ADMIN, `insert into courses (title, capacity) values ('정원1 과정', 1) returning id`)).rows[0].id;
+ok(!(await as(REF, `insert into course_applications (course_id,user_id) values (${cid},$1)`, [REF])).err, '정원 내 신청');
+const full = await as(REF2, `insert into course_applications (course_id,user_id) values (${cid},$1)`, [REF2]);
+ok(full.err?.includes('정원'), '정원 초과 신청 차단');
+ok(Number((await as(REF2, `select taken from course_seats() where course_id=${cid}`)).rows?.[0]?.taken) === 1, '잔여석 계산(타인 신청 수 노출, 개인정보 없음)');
+await as(REF, `update course_applications set status='cancelled' where course_id=${cid} and user_id=$1`, [REF]);
+ok(!(await as(REF2, `insert into course_applications (course_id,user_id) values (${cid},$1)`, [REF2])).err, '취소로 생긴 자리에 신청');
+ok(!(await as(ADMIN, `update course_applications set status='confirmed' where course_id=${cid} and user_id='${REF2}'`)).err, '신청→확정은 정원 재검사 없이 허용');
+ok((await as(ADMIN, `update course_applications set status='confirmed' where course_id=${cid} and user_id='${REF}'`)).err, '정원 찬 상태에서 취소건 되살리기 차단');
+ok((await as(ORG, `delete from competitions where id=${c.rows[0].id}`)).err, '활동완료 기록 있는 대회 삭제 차단');
+const cB = (await as(ORG, `insert into competitions (organizer_id,name,starts_on) values ($1,'삭제용', current_date+5) returning id`, [ORG])).rows[0].id;
+ok(!(await as(ORG, `delete from competitions where id=${cB}`)).err, '기록 없는 대회 삭제');
+ok(!(await as(REF, `insert into storage.objects (bucket_id,name) values ('files','quals/${REF}/c.png')`)).err, '본인 자격증 사본 업로드');
+ok((await as(REF2, `insert into storage.objects (bucket_id,name) values ('files','quals/${REF}/x.png')`)).err, '타인 폴더 사본 업로드 차단');
+const qn = async (u) => (await as(u, `select count(*)::int n from storage.objects where name like 'quals/%'`)).rows[0].n;
+ok(await qn(REF) === 1 && await qn(ADMIN) === 1 && await qn(ORG) === 1, '사본 열람: 본인·관리자·지원받은 관계자');
+ok(await qn(REF2) === 0, '사본 열람 차단: 다른 심판');
+ok(await qn(SOC) === 0, '사본 열람 차단: 지원받지 않은 관계자');
+
 ok((await as(ADMIN, `select delete_my_account()`)).err, '관리자 탈퇴 차단');
 ok(!(await as(REF, `select delete_my_account()`)).err, '심판 탈퇴');
 ok((await db.query(`select count(*)::int n from applications where user_id='${REF}'`)).rows[0].n === 0, '탈퇴 시 지원·이력 삭제');

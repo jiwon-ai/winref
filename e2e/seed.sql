@@ -35,3 +35,9 @@ where c.name = '2026 서울 유소년 축구대회' and r.position = '주심' an
 -- 소셜(구글·카카오) 첫 가입 상태 재현: 가입 정보 미입력
 update profiles set onboarded = false, agreed_at = null, name = '최소셜'
 where id = (select id from auth.users where email = 'social@test.kr');
+
+-- 정원 마감 표시 확인용: 정원 1명 과정에 박심판이 이미 신청
+insert into courses (title, description, location, starts_at, apply_deadline, capacity)
+values ('소규모 실기 특강', '정원 1명', 'WINREF 교육장', now() + interval '8 days', now() + interval '4 days', 1);
+insert into course_applications (course_id, user_id)
+select c.id, u.id from courses c, auth.users u where c.title = '소규모 실기 특강' and u.email = 'ref3@test.kr';

@@ -329,6 +329,9 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     'competition_d1': Icons.event_outlined,
     'course_deadline': Icons.school_outlined,
     'refresher': Icons.warning_amber_rounded,
+    'new_applicant': Icons.person_add_alt_outlined,
+    'org_request': Icons.domain_verification_outlined,
+    'qual_request': Icons.fact_check_outlined,
   };
 
   Future<void> _readAll() async {

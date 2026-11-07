@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../common.dart';
 import '../theme.dart';
@@ -528,6 +529,18 @@ class _RecruitmentDetailState extends State<RecruitmentDetail> {
         const SizedBox(height: 16),
         _row('일정', '${fmtDate(comp['starts_on'])}${comp['ends_on'] != null ? ' ~ ${fmtDate(comp['ends_on'])}' : ''}'),
         _row('장소', comp['venue'] ?? '-'),
+        if ((comp['venue'] ?? '').toString().isNotEmpty)
+          Align(
+            alignment: Alignment.centerLeft,
+            child: TextButton.icon(
+              onPressed: () => launchUrl(
+                Uri.parse('https://map.naver.com/p/search/${Uri.encodeComponent(comp['venue'])}'),
+                mode: LaunchMode.externalApplication,
+              ),
+              icon: const Icon(Icons.map_outlined, size: 18),
+              label: const Text('지도 보기'),
+            ),
+          ),
         _row('주최·주관', comp['host_org'] ?? '-'),
         const Divider(height: 32),
         _row('모집 포지션', r['position']),
@@ -576,6 +589,8 @@ class _CoursesTabState extends State<_CoursesTab> {
     final courses = await db.from('courses').select().order('starts_at', ascending: false);
     final mine = await db.from('course_applications').select().eq('user_id', uid);
     final byCourse = {for (final a in mine) a['course_id']: a};
+    final seats = await db.rpc('course_seats') as List;
+    final taken = {for (final r in seats) r['course_id']: (r['taken'] as num).toInt()};
     final q = _q.trim().toLowerCase();
     final now = DateTime.now();
     return [
@@ -587,7 +602,7 @@ class _CoursesTabState extends State<_CoursesTab> {
             'mine' => ['applied', 'confirmed'].contains(byCourse[c['id']]?['status']),
             _ => true,
           })
-            {...c, '_mine': byCourse[c['id']]},
+            {...c, '_mine': byCourse[c['id']], '_taken': taken[c['id']] ?? 0},
     ];
   }
 
@@ -642,19 +657,23 @@ class _CoursesTabState extends State<_CoursesTab> {
         final status = mine?['status'] as String?;
         final deadline = DateTime.tryParse(c['apply_deadline'] ?? '');
         final closed = deadline != null && deadline.isBefore(DateTime.now());
+        final cap = (c['capacity'] as num?)?.toInt();
+        final left = cap == null ? null : (cap - (c['_taken'] as int)).clamp(0, cap);
+        final full = left == 0;
+        final seatText = cap == null ? '' : (full ? ' · 정원 마감' : ' · 잔여 $left석');
         return ExpansionTile(
           title: Row(children: [
             Expanded(child: Text(c['title'], style: const TextStyle(fontWeight: FontWeight.w600))),
             if (c['is_refresher'] == true) const StatusChip('보수교육', 'pending'),
           ]),
-          subtitle: Text('${fmtDateTime(c['starts_at'])} · ${c['location'] ?? '-'}'),
+          subtitle: Text('${fmtDateTime(c['starts_at'])} · ${c['location'] ?? '-'}$seatText'),
           expandedCrossAxisAlignment: CrossAxisAlignment.start,
           expandedAlignment: Alignment.centerLeft,
           childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
           children: [
             Text(c['description'] ?? ''),
             const SizedBox(height: 8),
-            Text('신청 마감 ${fmtDateTime(c['apply_deadline'])} · 정원 ${c['capacity'] ?? '-'}명',
+            Text('신청 마감 ${fmtDateTime(c['apply_deadline'])} · 정원 ${cap ?? '-'}명 · 신청 ${c['_taken']}명',
                 style: const TextStyle(color: Brand.muted)),
             const SizedBox(height: 12),
             if (status == 'applied' || status == 'confirmed')
@@ -665,6 +684,8 @@ class _CoursesTabState extends State<_CoursesTab> {
               ])
             else if (closed)
               const Text('신청이 마감되었습니다.', style: TextStyle(color: Brand.muted))
+            else if (full)
+              const FilledButton(onPressed: null, child: Text('정원 마감'))
             else
               FilledButton(onPressed: () => _apply(c), child: const Text('교육 신청')),
           ],
@@ -769,7 +790,8 @@ class _QualificationsTabState extends State<_QualificationsTab> {
       Field('grade', '등급'),
       Field('acquired_on', '취득일', type: FieldType.date),
       Field('expires_on', '유효기간(만료일)', type: FieldType.date),
-    ]);
+      Field('file_path', '자격증 사본 (사진/PDF) — 관리자 확인용', type: FieldType.file),
+    ], fileFolder: 'quals/$uid');
     if (v == null || !mounted) return;
     await run(context, () => db.from('qualifications').insert({...v, 'user_id': uid}),
         done: '등록했습니다. 관리자 확인 후 승인됩니다.');
@@ -779,7 +801,7 @@ class _QualificationsTabState extends State<_QualificationsTab> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      floatingActionButton: FloatingActionButton(onPressed: _add, child: const Icon(Icons.add)),
+      floatingActionButton: FloatingActionButton(tooltip: '자격 등록', onPressed: _add, child: const Icon(Icons.add)),
       body: AsyncList(
         key: _key,
         load: () => db.from('qualifications').select().eq('user_id', uid).order('created_at', ascending: false),
@@ -790,9 +812,11 @@ class _QualificationsTabState extends State<_QualificationsTab> {
           return ListTile(
             title: Text('${q['name']}${q['grade'] != null ? ' · ${q['grade']}' : ''}'),
             subtitle: Text('취득 ${fmtDate(q['acquired_on'])} · 만료 ${fmtDate(q['expires_on'])}'
-                '${soon ? ' (보수교육 필요)' : ''}\n보수교육 ${q['refresher_done'] == true ? '이수' : '미이수'}'),
+                '${soon ? ' (보수교육 필요)' : ''}\n보수교육 ${q['refresher_done'] == true ? '이수' : '미이수'}'
+                '${q['file_path'] != null ? ' · 사본 첨부됨' : ''}'),
             isThreeLine: true,
             trailing: StatusChip(label(q['status']), q['status']),
+            onTap: q['file_path'] == null ? null : () => openFile(c, q['file_path']),
             onLongPress: q['status'] != 'pending'
                 ? null
                 : () async {

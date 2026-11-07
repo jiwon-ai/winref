@@ -23,14 +23,7 @@ class _OrganizerHomeState extends State<OrganizerHome> {
   }
 
   Future<void> _create() async {
-    final v = await showForm(context, '대회 등록', const [
-      Field('name', '대회명', required: true),
-      Field('starts_on', '시작일', type: FieldType.date, required: true),
-      Field('ends_on', '종료일', type: FieldType.date),
-      Field('venue', '장소'),
-      Field('host_org', '주최·주관기관'),
-      Field('poster_path', '포스터 (이미지/PDF)', type: FieldType.file),
-    ], fileFolder: 'posters');
+    final v = await editCompetitionForm(context);
     if (v == null || !mounted) return;
     await run(context, () => db.from('competitions').insert({...v, 'organizer_id': uid}), done: '대회를 등록했습니다.');
     _key.currentState?.reload();
@@ -226,10 +219,53 @@ class _OrganizerBoardState extends State<_OrganizerBoard> {
   }
 }
 
+/// 대회 등록·수정 입력 화면 (관계자·관리자 공용). 기존 값이 있으면 채워서 연다.
+Future<Map<String, dynamic>?> editCompetitionForm(BuildContext context, [Map<String, dynamic>? c]) {
+  return showForm(context, c == null ? '대회 등록' : '대회 수정', [
+    Field('name', '대회명', required: true, initial: c?['name']),
+    Field('starts_on', '시작일', type: FieldType.date, required: true, initial: c?['starts_on']),
+    Field('ends_on', '종료일', type: FieldType.date, initial: c?['ends_on']),
+    Field('venue', '장소', initial: c?['venue']),
+    Field('host_org', '주최·주관기관', initial: c?['host_org']),
+    Field('poster_path', '포스터 (이미지/PDF)', type: FieldType.file, initial: c?['poster_path']),
+  ], fileFolder: 'posters');
+}
+
 /// 대회 하나의 관리 화면 (관리자도 같은 화면을 사용)
-class CompetitionManage extends StatelessWidget {
+class CompetitionManage extends StatefulWidget {
   final Map<String, dynamic> competition;
   const CompetitionManage({super.key, required this.competition});
+  @override
+  State<CompetitionManage> createState() => _CompetitionManageState();
+}
+
+class _CompetitionManageState extends State<CompetitionManage> {
+  late Map<String, dynamic> competition = widget.competition;
+
+  Future<void> _edit() async {
+    final v = await editCompetitionForm(context, competition);
+    if (v == null || !mounted) return;
+    final ok = await run(context, () => db.from('competitions').update(v).eq('id', competition['id']), done: '대회 정보를 수정했습니다.');
+    if (ok) setState(() => competition = {...competition, ...v});
+  }
+
+  Future<void> _delete() async {
+    final yes = await showDialog<bool>(
+      context: context,
+      builder: (d) => AlertDialog(
+        title: const Text('대회 삭제'),
+        content: Text('${competition['name']}\n모집공고·지원 내역·브리핑이 함께 삭제되며 되돌릴 수 없습니다.\n'
+            '(활동완료 기록이 있는 대회는 삭제되지 않습니다)'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('취소')),
+          TextButton(onPressed: () => Navigator.pop(d, true), child: const Text('삭제')),
+        ],
+      ),
+    );
+    if (yes != true || !mounted) return;
+    final ok = await run(context, () => db.from('competitions').delete().eq('id', competition['id']), done: '대회를 삭제했습니다.');
+    if (ok && mounted) Navigator.pop(context);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -237,6 +273,10 @@ class CompetitionManage extends StatelessWidget {
       length: 3,
       child: Scaffold(
         appBar: AppBar(
+          actions: [
+            IconButton(tooltip: '대회 수정', onPressed: _edit, icon: const Icon(Icons.edit_outlined)),
+            IconButton(tooltip: '대회 삭제', onPressed: _delete, icon: const Icon(Icons.delete_outline)),
+          ],
           title: Text(competition['name']),
           bottom: const TabBar(tabs: [Tab(text: '모집공고'), Tab(text: '지원자'), Tab(text: '브리핑')]),
         ),

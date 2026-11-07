@@ -358,13 +358,26 @@ class _Qualifications extends StatelessWidget {
       item: (c, q, reload) => ListTile(
         title: Text('${q['profiles']['name']} · ${q['name']} ${q['grade'] ?? ''}'),
         subtitle: Text('취득 ${fmtDate(q['acquired_on'])} · 만료 ${fmtDate(q['expires_on'])} · '
-            '보수교육 ${q['refresher_done'] == true ? '이수' : '미이수'}'),
+            '보수교육 ${q['refresher_done'] == true ? '이수' : '미이수'}'
+            '${q['file_path'] != null ? ' · 사본 첨부' : ''}'),
         trailing: StatusChip(label(q['status']), q['status']),
         onTap: () async {
           final v = await showModalBottomSheet<Map<String, dynamic>>(
             context: c,
             builder: (s) => SafeArea(
               child: Column(mainAxisSize: MainAxisSize.min, children: [
+                if (q['file_path'] != null)
+                  ListTile(
+                    leading: const Icon(Icons.attach_file),
+                    title: const Text('자격증 사본 보기'),
+                    onTap: () => openFile(s, q['file_path']),
+                  )
+                else
+                  const ListTile(
+                    leading: Icon(Icons.info_outline),
+                    title: Text('첨부된 사본 없음'),
+                    enabled: false,
+                  ),
                 ListTile(title: const Text('승인'), onTap: () => Navigator.pop(s, {'status': 'approved'})),
                 ListTile(title: const Text('반려'), onTap: () => Navigator.pop(s, {'status': 'rejected'})),
                 ListTile(
@@ -433,11 +446,18 @@ class _CoursesState extends State<_Courses> {
       floatingActionButton: FloatingActionButton(onPressed: _edit, child: const Icon(Icons.add)),
       body: AsyncList(
         key: _key,
-        load: () => db.from('courses').select().order('starts_at', ascending: false),
+        load: () async {
+          final courses = await db.from('courses').select().order('starts_at', ascending: false);
+          final seats = await db.rpc('course_seats') as List;
+          final taken = {for (final r in seats) r['course_id']: (r['taken'] as num).toInt()};
+          return [for (final c in courses) {...c, '_taken': taken[c['id']] ?? 0}];
+        },
         empty: '교육과정이 없습니다.',
         item: (c, course, _) => ListTile(
           title: Text(course['title']),
-          subtitle: Text('${fmtDateTime(course['starts_at'])} · 마감 ${fmtDateTime(course['apply_deadline'])}'),
+          subtitle: Text('${fmtDateTime(course['starts_at'])} · 마감 ${fmtDateTime(course['apply_deadline'])}\n'
+              '신청 ${course['_taken']}${course['capacity'] != null ? ' / 정원 ${course['capacity']}' : ''}명'),
+          isThreeLine: true,
           trailing: Wrap(children: [
             IconButton(tooltip: '수정', icon: const Icon(Icons.edit_outlined), onPressed: () => _edit(course)),
             IconButton(
@@ -503,11 +523,38 @@ class _CourseApplicants extends StatelessWidget {
 
 // ---------- 대회·모집공고·지원/선발/활동완료 현황 ----------
 
-class _Competitions extends StatelessWidget {
+class _Competitions extends StatefulWidget {
   const _Competitions();
   @override
+  State<_Competitions> createState() => _CompetitionsState();
+}
+
+class _CompetitionsState extends State<_Competitions> {
+  final _key = GlobalKey<AsyncListState>();
+
+  Future<void> _create() async {
+    final v = await editCompetitionForm(context);
+    if (v == null || !mounted) return;
+    await run(context, () => db.from('competitions').insert({...v, 'organizer_id': uid}), done: '대회를 등록했습니다.');
+    _key.currentState?.reload();
+  }
+
+  @override
   Widget build(BuildContext context) {
+    return Scaffold(
+      floatingActionButton: FloatingActionButton.extended(
+        heroTag: 'admin-comp',
+        onPressed: _create,
+        icon: const Icon(Icons.add),
+        label: const Text('대회 등록'),
+      ),
+      body: _list(),
+    );
+  }
+
+  Widget _list() {
     return AsyncList(
+      key: _key,
       load: () => db.from('competitions').select('*, profiles(name, organization)').order('starts_on', ascending: false),
       empty: '등록된 대회가 없습니다.',
       item: (c, comp, reload) => ListTile(

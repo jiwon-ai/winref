@@ -25,6 +25,8 @@ async function shot(name) {
 
 // Flutter 접근성 트리에서 라벨로 요소 찾기
 function el(name, role) {
+  if (role === 'exact') // 정확히 그 글자인 요소 (목록 항목 등 버튼 역할이 없는 것)
+    return page.getByText(name, { exact: true }).or(page.locator(`[aria-label="${name}"]`)).first();
   if (role === 'any!') // 탭/메뉴: 접근성 이름이 '라벨' 또는 '라벨 탭 n개 중 m번째'
     return page.getByRole('button', { name: new RegExp(`^${name}(\\s|$)`) })
       .or(page.getByRole('tab', { name: new RegExp(`^${name}(\\s|$)`) })).first();
@@ -59,6 +61,14 @@ async function type(label, text) {
   catch (e) { await dumpLabels(); throw new Error(`입력칸 "${label}" 을 찾지 못함`); }
   await l.click();
   await page.waitForTimeout(400); // Flutter 입력창 포커스 대기 (첫 글자 유실 방지)
+  await page.keyboard.type(text, { delay: 20 });
+}
+async function retype(label, text) {  // 기존 값을 지우고 새로 입력
+  const l = page.getByRole('textbox', { name: label, exact: false }).first();
+  await l.waitFor({ state: 'visible', timeout: 15000 });
+  await l.click();
+  await page.waitForTimeout(400);
+  await page.keyboard.press('Control+A');
   await page.keyboard.type(text, { delay: 20 });
 }
 async function see(text) {
@@ -169,8 +179,30 @@ try {
     await tap('3급 심판 양성과정');
     await tap('교육 신청', 'button');
     await see('신청 취소');
-    if (sql(`select count(*) from course_applications where status='applied'`) !== '1') throw new Error('교육 신청 저장 안 됨');
+    if (sql(`select count(*) from course_applications a join profiles p on p.id=a.user_id where p.name='김심판' and a.status='applied'`) !== '1')
+      throw new Error('교육 신청 저장 안 됨');
+    await see('정원 마감');      // 정원 1명 과정 (다른 사람이 신청함)
     await shot('course-applied');
+  });
+
+  await check('자격 등록·자격증 사본 업로드', async () => {
+    await goTab('자격');
+    await tap('자격 등록', 'button');
+    await type('자격명', '대한축구협회 심판');
+    await type('등급', '3급');
+    const [chooser] = await Promise.all([
+      page.waitForEvent('filechooser', { timeout: 15000 }),
+      page.getByRole('textbox', { name: '자격증 사본', exact: false }).first().click(),
+    ]);
+    await chooser.setFiles('../store/icon-512.png');
+    await page.waitForTimeout(2500);  // 업로드
+    await tap('저장', 'button');
+    await see('관리자 확인 후 승인됩니다');
+    const fp = sql(`select file_path from qualifications q join profiles p on p.id=q.user_id where p.name='김심판'`);
+    if (!fp.startsWith('quals/')) throw new Error('사본 경로: ' + fp);
+    if (sql(`select count(*) from notifications n join profiles p on p.id=n.user_id where p.role='admin' and n.kind='qual_request'`) !== '1')
+      throw new Error('관리자 확인 요청 알림 없음');
+    await shot('qualification');
   });
 
   await check('공지·알림 화면', async () => {
@@ -213,9 +245,31 @@ try {
     await shot('completed');
   });
 
-  await check('대회관계자 화면에서 뒤로가기·로그아웃', async () => {
+  await check('대회관계자 화면에서 뒤로가기', async () => {
     await back();
     await see('선발 2/2');        // 홈 보드 진행률 갱신
+    if (Number(sql(`select count(*) from notifications n join profiles p on p.id=n.user_id where p.name='박관계' and n.kind='new_applicant'`)) < 1)
+      throw new Error('새 지원자 알림 없음');
+    await el('알림 읽지 않음', 'button').waitFor({ state: 'visible', timeout: 10000 });
+  });
+
+  await check('대회 등록·수정·삭제', async () => {
+    await tap('대회 등록', 'button');
+    await type('대회명', '삭제 테스트 대회');
+    await page.getByRole('textbox', { name: '시작일', exact: false }).first().click();
+    await tap('확인', 'button!');           // 날짜 선택 (오늘)
+    await tap('저장', 'button');
+    await see('대회를 등록했습니다');
+    await tap('삭제 테스트 대회', 'button');
+    await tap('대회 수정', 'button');
+    await retype('대회명', '삭제 테스트 대회 수정본');
+    await tap('저장', 'button');
+    await see('대회 정보를 수정했습니다');
+    if (sql(`select count(*) from competitions where name='삭제 테스트 대회 수정본'`) !== '1') throw new Error('수정 저장 안 됨');
+    await tap('대회 삭제', 'button');
+    await tap('삭제', 'button!');
+    await see('대회를 삭제했습니다');
+    if (sql(`select count(*) from competitions where name like '삭제 테스트%'`) !== '0') throw new Error('삭제 안 됨');
     await logout();
   });
 
@@ -291,6 +345,16 @@ try {
     await shot('admin-dashboard');
   });
 
+  await check('관리자: 자격 확인(사본)·승인', async () => {
+    await tap('자격 승인', 'any!');
+    await tap('대한축구협회 심판');
+    await see('자격증 사본 보기');
+    await shot('admin-qualification');
+    await tap('승인', 'exact');
+    await page.waitForTimeout(800);
+    if (sql(`select status from qualifications where name='대한축구협회 심판'`) !== 'approved') throw new Error('승인 저장 안 됨');
+  });
+
   await check('관리자: 회원 검색·엑셀 내보내기', async () => {
     await tap('회원', 'any!');
     await type('이름·연락처', '박관계');
@@ -321,5 +385,5 @@ try {
   await browser.close();
   const fail = results.filter((r) => r[0] === 'FAIL').length;
   console.log(`\n결과: ${results.length - fail} 통과 / ${fail} 실패 (총 시나리오 ${results.length})`);
-  process.exit(fail || results.length < 17 ? 1 : 0);
+  process.exit(fail || results.length < 20 ? 1 : 0);
 }
