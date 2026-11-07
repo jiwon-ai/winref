@@ -147,6 +147,7 @@ try {
   await check('대회 조회·심판 지원', async () => {
     await goTab('대회');
     await see('대회 모집');
+    await shot('competitions');
     await tap('2026 서울 유소년 축구대회');
     await see('잠실 보조경기장');
     await shot('competition-detail');
@@ -176,6 +177,8 @@ try {
 
   await check('교육 신청', async () => {
     await goTab('교육');
+    await see('3급 심판 양성과정');
+    await shot('courses');
     await tap('3급 심판 양성과정');
     await tap('교육 신청', 'button');
     await see('신청 취소');
@@ -219,6 +222,8 @@ try {
     await see('검토 대기 2명');   // 홈 보드: 대회별 검토 대기 인원
     await shot('organizer-home');
     await tap('2026 서울 유소년 축구대회', 'button');
+    await see('모집 포지션').catch(() => {});
+    await shot('org-recruitments');
     await tap('지원자', 'tab');
     await see('주심 선발 0/2');
     await tap('일괄 선택', 'button');
@@ -246,16 +251,24 @@ try {
   });
 
   await check('대회관계자 화면에서 뒤로가기', async () => {
+    await tap('브리핑', 'tab');
+    await see('경기 일정 안내');
+    await shot('org-briefings');
     await back();
     await see('선발 2/2');        // 홈 보드 진행률 갱신
     if (Number(sql(`select count(*) from notifications n join profiles p on p.id=n.user_id where p.name='박관계' and n.kind='new_applicant'`)) < 1)
       throw new Error('새 지원자 알림 없음');
     await el('알림 읽지 않음', 'button').waitFor({ state: 'visible', timeout: 10000 });
+    await tap('알림 읽지 않음', 'button');
+    await see('새 심판 지원');
+    await shot('org-notifications');
+    await back();
   });
 
   await check('대회 등록·수정·삭제', async () => {
     await tap('대회 등록', 'button');
     await type('대회명', '삭제 테스트 대회');
+    await shot('org-new-competition');
     await page.getByRole('textbox', { name: '시작일', exact: false }).first().click();
     await tap('확인', 'button!');           // 날짜 선택 (오늘)
     await tap('저장', 'button');
@@ -289,6 +302,7 @@ try {
     await shot('referee-dashboard');
     await goTab('내 활동');
     await see('선발');
+    await shot('my-applications');
     await tap('2026 서울 유소년 축구대회');
     await see('경기 일정 안내');
     await shot('briefing');
@@ -379,11 +393,23 @@ try {
     if (n !== '5') throw new Error('발송 건수 ' + n); // 관리자·관계자·김심판·박심판·최소셜 (이심판은 탈퇴)
     await shot('admin-broadcast');
   });
+
+  await check('관리자: 교육·대회·공지 화면', async () => {
+    await tap('교육', 'any!');
+    await see('3급 심판 양성과정');
+    await shot('admin-courses');
+    await tap('대회', 'any!');
+    await see('2026 서울 유소년 축구대회');
+    await shot('admin-competitions');
+    await tap('공지·알림', 'any!');
+    await see('WINREF 인재은행 오픈');
+    await shot('admin-notices');
+  });
 } catch (e) {
   // 첫 실패에서 멈춤 (뒤 단계는 앞 단계 결과에 의존)
 } finally {
   await browser.close();
   const fail = results.filter((r) => r[0] === 'FAIL').length;
   console.log(`\n결과: ${results.length - fail} 통과 / ${fail} 실패 (총 시나리오 ${results.length})`);
-  process.exit(fail || results.length < 20 ? 1 : 0);
+  process.exit(fail || results.length < 21 ? 1 : 0);
 }
