@@ -42,7 +42,15 @@ async function dumpLabels() {
 async function tap(name, role) {
   const l = el(name, role);
   try { await l.waitFor({ state: 'visible', timeout: 15000 }); }
-  catch (e) { await dumpLabels(); throw new Error(`"${name}" 요소를 찾지 못함`); }
+  catch (e) {
+    await dumpLabels();
+    const found = await page.$$eval('*', (ns, t) => ns
+      .filter((n) => (n.getAttribute('aria-label') ?? '').includes(t) || ([...n.childNodes].some((c) => c.nodeType === 3 && c.textContent.includes(t))))
+      .map((n) => `<${n.tagName.toLowerCase()} role=${n.getAttribute('role')} aria-label=${JSON.stringify(n.getAttribute('aria-label'))} text=${JSON.stringify(n.textContent.slice(0, 40))}>`)
+      .slice(0, 15), name);
+    console.log('  후보:', found.join(' | '));
+    throw new Error(`"${name}" 요소를 찾지 못함`);
+  }
   console.log('  tap', name);
   await l.click({ timeout: 10000 });
   await page.waitForTimeout(500);
