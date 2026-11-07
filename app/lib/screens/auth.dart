@@ -149,7 +149,11 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
           ),
           ),
-          const SupportProgramMark(),
+          // 갤럭시 등 하단 내비게이션 바에 가리지 않도록 시스템 바 높이만큼 올림
+          Padding(
+            padding: EdgeInsets.only(bottom: MediaQuery.viewPaddingOf(context).bottom + 16),
+            child: const SupportProgramMark(),
+          ),
         ]),
       ),
     );
@@ -164,7 +168,7 @@ class BrandHero extends StatelessWidget {
     return Container(
       width: double.infinity,
       color: Brand.gold, // 로고 원본 배경색 #4A90E2
-      padding: EdgeInsets.fromLTRB(24, MediaQuery.paddingOf(context).top + 40, 24, 32),
+      padding: EdgeInsets.fromLTRB(24, MediaQuery.viewPaddingOf(context).top + 36, 24, 32), // 상태바 높이만큼 내림
       child: Column(children: [
         Image.asset('assets/brand/lockup_white.png', width: 260, semanticLabel: 'WINREF ACADEMY'),
         const SizedBox(height: 14),
