@@ -179,7 +179,7 @@ try {
     await see('내 대회');
     await see('검토 대기 2명');   // 홈 보드: 대회별 검토 대기 인원
     await shot('organizer-home');
-    await tap('2026 서울 유소년 축구대회');
+    await tap('2026 서울 유소년 축구대회', 'button');
     await tap('지원자', 'tab');
     await see('주심 선발 0/2');
     await tap('일괄 선택', 'button');

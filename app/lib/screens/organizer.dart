@@ -197,7 +197,8 @@ class _OrganizerBoardState extends State<_OrganizerBoard> {
             const SizedBox(height: 12),
             Row(children: [
               Expanded(
-                child: ClipRRect(
+                child: ExcludeSemantics( // 진행률은 옆 '선발 n/m' 텍스트로 읽힘. 카드가 버튼으로 인식되게 함
+                  child: ClipRRect(
                   borderRadius: BorderRadius.circular(2),
                   child: LinearProgressIndicator(
                     value: ratio,
@@ -205,6 +206,7 @@ class _OrganizerBoardState extends State<_OrganizerBoard> {
                     color: ratio >= 1 ? Brand.gold : Brand.navy,
                     backgroundColor: Brand.ivoryDeep,
                   ),
+                ),
                 ),
               ),
               const SizedBox(width: 10),
