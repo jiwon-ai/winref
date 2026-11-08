@@ -99,6 +99,19 @@ try {
   await page.goto(APP);
   await check('로그인 화면 표시 (로고·지원사업 표기)', async () => { await see('WINREF ACADEMY'); await see('사회적기업 창업지원사업'); await shot('login'); });
 
+  // 기기별 화면 높이: 갤럭시 S24(384x832, 시스템 바 제외 약 384x760)·소형(360x640)에서 스크롤 없이 들어오는지
+  await check('로그인 화면 한 화면 맞춤 (S24·소형)', async () => {
+    for (const [w, h, name] of [[384, 760, 'login-s24'], [360, 640, 'login-small']]) {
+      await page.setViewportSize({ width: w, height: h });
+      await page.waitForTimeout(800);
+      const box = await page.getByText('사회적기업 창업지원사업', { exact: false }).or(page.locator('[aria-label*="사회적기업 창업지원사업"]')).first().boundingBox();
+      await shot(name);
+      if (name === 'login-s24' && (!box || box.y + box.height > h)) throw new Error(`S24 높이에서 하단 표기가 화면 밖 (${box && Math.round(box.y)})`);
+    }
+    await page.setViewportSize({ width: 405, height: 720 });
+    await page.waitForTimeout(500);
+  });
+
   await check('잘못된 비밀번호 안내(한국어)', async () => {
     await type('이메일', 'org@test.kr');
     await type('비밀번호', 'wrong-password');
