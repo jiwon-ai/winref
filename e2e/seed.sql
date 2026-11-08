@@ -44,3 +44,8 @@ select c.id, u.id from courses c, auth.users u where c.title = '소규모 실기
 
 -- 지도 표시용 주소
 update competitions set address = '서울 송파구 올림픽로 25' where name = '2026 서울 유소년 축구대회';
+
+-- 일정 겹침 확인용: 내일 경기도 리그에 선발된 이심판이 같은 날 서울 대회에도 지원
+insert into applications (recruitment_id, user_id)
+select r.id, u.id from recruitments r join competitions c on c.id = r.competition_id, auth.users u
+where c.name = '2026 서울 유소년 축구대회' and r.position = '주심' and u.email = 'ref2@test.kr';

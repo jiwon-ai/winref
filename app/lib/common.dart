@@ -333,6 +333,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     'new_applicant': Icons.person_add_alt_outlined,
     'org_request': Icons.domain_verification_outlined,
     'qual_request': Icons.fact_check_outlined,
+    'attendance': Icons.how_to_reg_outlined,
   };
 
   Future<void> _readAll() async {

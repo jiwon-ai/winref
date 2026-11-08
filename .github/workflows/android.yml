@@ -45,6 +45,12 @@ jobs:
 
       - run: flutter pub get
       - run: flutter analyze --no-fatal-infos
+      - name: Unit tests (활동 이력 PDF 등)
+        run: flutter test
+      - uses: actions/upload-artifact@v4
+        with:
+          name: career-pdf-sample
+          path: app/build/career_sample.pdf
 
       - name: Release keystore (Secrets 가 있을 때만)
         env:

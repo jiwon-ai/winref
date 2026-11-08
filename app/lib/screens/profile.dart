@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:printing/printing.dart';
 
+import '../career_pdf.dart';
 import '../common.dart';
 import '../theme.dart';
 
@@ -196,6 +199,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Future<Map<String, dynamic>> _load() => db.from('profiles').select().eq('id', uid).single();
   void _reload() => setState(() => _f = _load());
 
+  /// 활동완료 내역과 승인된 자격으로 PDF 를 만들어 저장·인쇄 화면을 연다
+  Future<void> _exportPdf(Map<String, dynamic> p) async {
+    await run(context, () async {
+      final history = await db.from('activity_history').select().eq('user_id', uid).order('starts_on', ascending: false);
+      final quals = await db.from('qualifications').select().eq('user_id', uid).eq('status', 'approved').order('acquired_on');
+      final regular = await PdfGoogleFonts.notoSansKRRegular();
+      final bold = await PdfGoogleFonts.notoSansKRBold();
+      final logo = (await rootBundle.load('assets/brand/snowflake_blue.png')).buffer.asUint8List();
+      final bytes = await buildCareerPdf(profile: p, history: history, quals: quals, regular: regular, bold: bold, logoPng: logo);
+      await Printing.layoutPdf(onLayout: (_) async => bytes, name: 'WINREF_활동이력_${p['name']}.pdf');
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -253,6 +269,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     child: const Text('편집'),
                   ),
                 ]),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+                child: OutlinedButton.icon(
+                  style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(46)),
+                  onPressed: () => _exportPdf(p),
+                  icon: const Icon(Icons.picture_as_pdf_outlined),
+                  label: const Text('활동 이력 PDF (저장·인쇄)'),
+                ),
               ),
               Padding(
                 padding: const EdgeInsets.all(20),

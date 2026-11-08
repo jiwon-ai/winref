@@ -116,6 +116,7 @@ try {
     await shot('signup');
     await tap('가입하기', 'button');
     await see('다가오는 일정');
+    await see('마감 임박 모집');  // 3일 안에 마감되는, 아직 지원 안 한 공고
     const role = sql(`select p.role from profiles p join auth.users u on u.id=p.id where u.email='ref@test.kr'`);
     if (role !== 'referee') throw new Error(`profile role 불일치: '${role}' / users: ${sql(`select string_agg(email||':'||coalesce(raw_user_meta_data::text,''), ' ; ') from auth.users`)}`);
     await shot('referee-home');
@@ -161,6 +162,9 @@ try {
   });
 
   await check('검색·필터·캘린더', async () => {
+    await tap('내 지역 (서울)', 'checkbox').catch(() => tap('내 지역 (서울)'));
+    await see('2026 서울 유소년 축구대회');
+    await tap('내 지역 (서울)', 'checkbox').catch(() => tap('내 지역 (서울)'));
     await type('대회명', '부산');
     await see('조건에 맞는 모집 대회가 없습니다');
     await page.keyboard.press('Control+A');
@@ -221,12 +225,13 @@ try {
   await check('대회관계자: 지원자 선발·참석·활동완료', async () => {
     await login('org@test.kr');
     await see('내 대회');
-    await see('검토 대기 2명');   // 홈 보드: 대회별 검토 대기 인원
+    await see('검토 대기 3명');   // 홈 보드: 대회별 검토 대기 인원
     await shot('organizer-home');
     await tap('2026 서울 유소년 축구대회', 'button');
     await see('모집 포지션').catch(() => {});
     await shot('org-recruitments');
     await tap('지원자', 'tab');
+    await see('일정 겹침: 경기도 생활체육 리그');   // 같은 날 다른 대회에 선발된 지원자
     await see('주심 선발 0/2');
     await tap('일괄 선택', 'button');
     await tap('김심판', 'checkbox');
@@ -288,6 +293,24 @@ try {
     await logout();
   });
 
+  await check('선발 심판: 참석 응답(불참) → 관계자 알림', async () => {
+    await login('ref3@test.kr');
+    await see('참석 응답 필요');
+    await tap('참석 응답 필요', 'button');
+    await see('참석 여부를 알려주세요');
+    await el('캘린더에 추가', 'button').waitFor({ state: 'visible', timeout: 10000 });
+    await shot('rsvp');
+    await tap('불참', 'button!');
+    await tap('불참 응답', 'button!');
+    await see('불참으로 응답했습니다');
+    if (sql(`select attendance from applications a join profiles p on p.id=a.user_id where p.name='박심판'`) !== 'absent')
+      throw new Error('불참 저장 안 됨');
+    if (sql(`select count(*) from notifications n join profiles p on p.id=n.user_id where p.name='박관계' and n.kind='attendance'`) !== '1')
+      throw new Error('관계자 불참 알림 없음');
+    await back();
+    await logout();
+  });
+
   await check('심판: 선발결과·브리핑·활동이력', async () => {
     await login('ref@test.kr');
     await see('다가오는 일정');
@@ -308,6 +331,7 @@ try {
     await tap('2026 서울 유소년 축구대회');
     await see('경기 일정 안내');
     await shot('briefing');
+    await el('캘린더에 추가', 'button').waitFor({ state: 'visible', timeout: 10000 });
     await back();
     await tap('활동 이력', 'tab');
     await see('주심');
@@ -315,6 +339,7 @@ try {
     await goTab('홈');
     await tap('내 프로필·경력 보기');
     await see('포지션별 활동');
+    await see('활동 이력 PDF');
     await see('1회');
     await shot('career');
     await back();
@@ -324,8 +349,13 @@ try {
   await check('회원 탈퇴', async () => {
     await login('ref2@test.kr');
     await see('D-1');             // 선발된 내일 대회
-    await see('마감 임박 모집');  // 3일 내 마감, 미지원 공고
     await shot('dashboard-closing');
+    await goTab('대회');
+    await tap('2026 서울 유소년 축구대회');
+    await see('같은 날 선발된 대회가 있습니다');
+    await shot('clash-warning');
+    await back();
+    await goTab('홈');
     await tap('메뉴 표시', 'button');
     await tap('회원 탈퇴', 'menuitem');
     await tap('탈퇴', 'button!');
@@ -413,5 +443,5 @@ try {
   await browser.close();
   const fail = results.filter((r) => r[0] === 'FAIL').length;
   console.log(`\n결과: ${results.length - fail} 통과 / ${fail} 실패 (총 시나리오 ${results.length})`);
-  process.exit(fail || results.length < 21 ? 1 : 0);
+  process.exit(fail || results.length < 22 ? 1 : 0);
 }

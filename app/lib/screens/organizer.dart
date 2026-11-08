@@ -362,13 +362,26 @@ class _ApplicantsManageState extends State<_ApplicantsManage> {
   bool _picking = false;
   final _picked = <int>{};
   String _filter = 'all';
+  Map<String, List<String>> _clash = {}; // 지원자 id → 같은 기간 이미 선발된 다른 대회
 
-  Future<List<Map<String, dynamic>>> _load() => db
-      .from('applications')
-      .select('*, profiles(*), recruitments!inner(id, position, headcount, competition_id)')
-      .eq('recruitments.competition_id', widget.cid)
-      .neq('status', 'cancelled')
-      .order('created_at');
+  Future<List<Map<String, dynamic>>> _load() async {
+    final rows = await db
+        .from('applications')
+        .select('*, profiles(*), recruitments!inner(id, position, headcount, competition_id)')
+        .eq('recruitments.competition_id', widget.cid)
+        .neq('status', 'cancelled')
+        .order('created_at');
+    final clash = <String, List<String>>{};
+    try {
+      for (final r in await db.rpc('selection_conflicts', params: {'p_competition': widget.cid}) as List) {
+        clash.putIfAbsent(r['user_id'], () => []).add('${r['competition_name']} (${fmtDate(r['starts_on'])})');
+      }
+    } catch (_) {
+      // 겹침 정보는 부가 정보라 실패해도 목록은 보여준다
+    }
+    _clash = clash;
+    return rows;
+  }
 
   void _reload() => setState(() {
         _f = _load();
@@ -510,9 +523,11 @@ class _ApplicantsManageState extends State<_ApplicantsManage> {
     final p = a['profiles'] as Map<String, dynamic>;
     final done = a['completed_at'] != null;
     final title = '${p['name']} · ${a['recruitments']['position']}';
-    final sub = a['status'] == 'selected'
-        ? '참석 ${label(a['attendance'])}${done ? ' · 활동완료' : ''}'
-        : '지원 ${fmtDate(a['created_at'])}${p['region'] != null ? ' · ${p['region']}' : ''}';
+    final clash = _clash[p['id']];
+    final sub = (a['status'] == 'selected'
+            ? '참석 ${label(a['attendance'])}${done ? ' · 활동완료' : ''}'
+            : '지원 ${fmtDate(a['created_at'])}${p['region'] != null ? ' · ${p['region']}' : ''}') +
+        (clash == null ? '' : '\n일정 겹침: ${clash.join(', ')}');
     if (_picking) {
       final id = a['id'] as int;
       return CheckboxListTile(
@@ -528,6 +543,7 @@ class _ApplicantsManageState extends State<_ApplicantsManage> {
       title: Text(title),
       subtitle: Text(sub),
       trailing: StatusChip(done ? '활동완료' : label(a['status']), done ? 'approved' : a['status']),
+      isThreeLine: clash != null,
       onTap: () async {
         await showModalBottomSheet(
           context: c,

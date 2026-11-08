@@ -4,6 +4,7 @@ import '../common.dart';
 import '../theme.dart';
 import 'browse.dart';
 import 'profile.dart';
+import '../calendar_link.dart';
 import '../venue_map.dart';
 
 /// 심판·교육신청자 홈: 홈 / 대회 / 교육 / 내 활동 / 자격
@@ -26,7 +27,7 @@ class _RefereeHomeState extends State<RefereeHome> {
       appBar: AppBar(title: Text(_titles[_tab]), actions: commonActions(context, widget.profile)),
       body: IndexedStack(index: _tab, children: [
         _DashboardTab(profile: widget.profile, goTab: _go, active: _tab == 0),
-        const _RecruitmentsTab(),
+        _RecruitmentsTab(active: _tab == 1),
         const _CoursesTab(),
         const _MyActivityTab(),
         const _QualificationsTab(),
@@ -167,7 +168,8 @@ class _DashboardTabState extends State<_DashboardTab> {
                     badge: dday(a['recruitments']['competitions']['starts_on']),
                     title: a['recruitments']['competitions']['name'],
                     subtitle: '${fmtDate(a['recruitments']['competitions']['starts_on'])} · '
-                        '${a['recruitments']['competitions']['venue'] ?? '-'} · ${a['recruitments']['position']}',
+                        '${a['recruitments']['competitions']['venue'] ?? '-'} · ${a['recruitments']['position']}'
+                        '${switch (a['attendance']) { 'attending' => ' · 참석 확정', 'absent' => ' · 불참', _ => ' · 참석 응답 필요' }}',
                     onTap: () => Navigator.push(
                       context,
                       MaterialPageRoute(builder: (_) => BriefingScreen(competition: a['recruitments']['competitions'])),
@@ -326,7 +328,8 @@ class _CardTile extends StatelessWidget {
 // ---------- 대회 조회·지원 ----------
 
 class _RecruitmentsTab extends StatefulWidget {
-  const _RecruitmentsTab();
+  final bool active;
+  const _RecruitmentsTab({this.active = false});
   @override
   State<_RecruitmentsTab> createState() => _RecruitmentsTabState();
 }
@@ -338,6 +341,31 @@ class _RecruitmentsTabState extends State<_RecruitmentsTab> {
   String _period = 'all'; // all / week / month
   bool _calendar = false;
   DateTime? _day;
+  String? _myRegion; // 프로필 활동 지역
+  bool _regionOnly = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadRegion();
+  }
+
+  @override
+  void didUpdateWidget(_RecruitmentsTab old) {
+    super.didUpdateWidget(old);
+    if (widget.active && !old.active) {
+      _reload(); // 탭을 다시 열 때 최신 모집·내 지역 반영
+      _loadRegion();
+    }
+  }
+
+  Future<void> _loadRegion() async {
+    try {
+      final p = await db.from('profiles').select('region').eq('id', uid).single();
+      final r = (p['region'] ?? '').toString().trim();
+      if (mounted) setState(() => _myRegion = r.isEmpty ? null : r);
+    } catch (_) {}
+  }
 
   Future<List<Map<String, dynamic>>> _load() => db
       .from('recruitments')
@@ -365,6 +393,10 @@ class _RecruitmentsTabState extends State<_RecruitmentsTab> {
         return false;
       }
       if (_position != null && r['position'] != _position) return false;
+      if (_regionOnly && _myRegion != null &&
+          !'${c['venue'] ?? ''} ${c['address'] ?? ''} ${c['name']} ${c['host_org'] ?? ''}'.contains(_myRegion!)) {
+        return false;
+      }
       final d = _start(r);
       if (until != null && (d == null || d.isBefore(today) || d.isAfter(until))) return false;
       if (byDay && _calendar && _day != null && (d == null || dateOnly(d) != _day)) return false;
@@ -399,6 +431,8 @@ class _RecruitmentsTabState extends State<_RecruitmentsTab> {
               icon: Icon(_calendar ? Icons.view_list : Icons.calendar_month),
             ),
             chips: [
+              if (_myRegion != null)
+                FilterPill('내 지역 ($_myRegion)', selected: _regionOnly, onTap: () => setState(() => _regionOnly = !_regionOnly)),
               for (final p in const [('all', '전체 기간'), ('week', '7일 이내'), ('month', '한 달 이내')])
                 FilterPill(p.$2, selected: _period == p.$1, onTap: () => setState(() => _period = p.$1)),
               const SizedBox(width: 8),
@@ -484,6 +518,7 @@ class RecruitmentDetail extends StatefulWidget {
 class _RecruitmentDetailState extends State<RecruitmentDetail> {
   Map<String, dynamic>? _mine;
   bool _loaded = false;
+  List<String> _clash = []; // 기간이 겹치는, 이미 선발된 다른 대회 이름
 
   @override
   void initState() {
@@ -497,10 +532,39 @@ class _RecruitmentDetailState extends State<RecruitmentDetail> {
         .select()
         .eq('recruitment_id', widget.recruitment['id'])
         .eq('user_id', uid);
-    if (mounted) setState(() { _mine = rows.isEmpty ? null : rows.first; _loaded = true; });
+    final comp = widget.recruitment['competitions'] as Map<String, dynamic>;
+    final s = DateTime.tryParse(comp['starts_on'] ?? '');
+    final e = DateTime.tryParse(comp['ends_on'] ?? '') ?? s;
+    final selected = await db
+        .from('applications')
+        .select('recruitments(competitions(id, name, starts_on, ends_on))')
+        .eq('user_id', uid)
+        .eq('status', 'selected');
+    final clash = <String>{};
+    for (final a in selected) {
+      final o = a['recruitments']['competitions'];
+      final os = DateTime.tryParse(o['starts_on'] ?? '');
+      final oe = DateTime.tryParse(o['ends_on'] ?? '') ?? os;
+      if (o['id'] != comp['id'] && s != null && os != null && !os.isAfter(e!) && !oe!.isBefore(s)) clash.add(o['name']);
+    }
+    if (mounted) setState(() { _mine = rows.isEmpty ? null : rows.first; _loaded = true; _clash = clash.toList(); });
   }
 
   Future<void> _apply() async {
+    if (_clash.isNotEmpty) {
+      final go = await showDialog<bool>(
+        context: context,
+        builder: (d) => AlertDialog(
+          title: const Text('일정이 겹칩니다'),
+          content: Text('같은 기간에 이미 선발된 대회가 있습니다.\n${_clash.join(', ')}\n그래도 지원할까요?'),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('취소')),
+            TextButton(onPressed: () => Navigator.pop(d, true), child: const Text('지원하기')),
+          ],
+        ),
+      );
+      if (go != true || !mounted) return;
+    }
     final ok = await run(context, () async {
       if (_mine == null) {
         await db.from('applications').insert({'recruitment_id': widget.recruitment['id'], 'user_id': uid});
@@ -526,6 +590,21 @@ class _RecruitmentDetailState extends State<RecruitmentDetail> {
       appBar: AppBar(title: const Text('대회 상세')),
       body: ListView(padding: const EdgeInsets.all(20), children: [
         Text(comp['name'], style: Theme.of(context).textTheme.titleLarge),
+        if (_clash.isNotEmpty)
+          Container(
+            margin: const EdgeInsets.only(top: 12),
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: const Color(0xFFFFF4E8),
+              borderRadius: BorderRadius.circular(6),
+              border: Border.all(color: const Color(0xFFF2C08C)),
+            ),
+            child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              const Icon(Icons.event_busy_outlined, color: Brand.warn, size: 20),
+              const SizedBox(width: 8),
+              Expanded(child: Text('같은 날 선발된 대회가 있습니다: ${_clash.join(', ')}', style: const TextStyle(fontSize: 13))),
+            ]),
+          ),
         const SizedBox(height: 16),
         _row('일정', '${fmtDate(comp['starts_on'])}${comp['ends_on'] != null ? ' ~ ${fmtDate(comp['ends_on'])}' : ''}'),
         _row('장소', comp['venue'] ?? '-'),
@@ -671,6 +750,17 @@ class _CoursesTabState extends State<_CoursesTab> {
               Row(children: [
                 StatusChip(status == 'applied' ? '신청완료' : label(status), status!),
                 const Spacer(),
+                if (DateTime.tryParse(c['starts_at'] ?? '') != null)
+                  TextButton.icon(
+                    onPressed: () => addToCalendar(
+                      title: '[교육] ${c['title']}',
+                      start: DateTime.parse(c['starts_at']).toLocal(),
+                      end: DateTime.tryParse(c['ends_at'] ?? '')?.toLocal(),
+                      location: c['location'],
+                    ),
+                    icon: const Icon(Icons.event_available_outlined, size: 18),
+                    label: const Text('캘린더'),
+                  ),
                 if (!closed) TextButton(onPressed: () => _cancel(c), child: const Text('신청 취소')),
               ])
             else if (closed)
@@ -740,26 +830,129 @@ class _MyActivityTab extends StatelessWidget {
 }
 
 /// 선발된 대회의 공지·브리핑 자료
-class BriefingScreen extends StatelessWidget {
+class BriefingScreen extends StatefulWidget {
   final Map<String, dynamic> competition;
   const BriefingScreen({super.key, required this.competition});
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('브리핑 자료')),
-      body: AsyncList(
-        load: () => db.from('briefings').select().eq('competition_id', competition['id']).order('created_at'),
-        empty: '등록된 브리핑 자료가 없습니다.',
-        item: (c, b, _) => ExpansionTile(
-          initiallyExpanded: true,
-          title: Text(b['title']),
-          subtitle: Text(fmtDateTime(b['created_at'])),
-          expandedCrossAxisAlignment: CrossAxisAlignment.start,
-          expandedAlignment: Alignment.centerLeft,
-          childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-          children: [Text(b['body'] ?? ''), fileButton(c, b['file_path'])],
+  State<BriefingScreen> createState() => _BriefingScreenState();
+}
+
+/// 선발된 대회: 참석 응답 · 캘린더 추가 · 브리핑 자료
+class _BriefingScreenState extends State<BriefingScreen> {
+  Map<String, dynamic>? _comp;
+  List<Map<String, dynamic>> _mine = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    final cid = widget.competition['id'];
+    final comp = await db.from('competitions').select().eq('id', cid).single();
+    final mine = await db
+        .from('applications')
+        .select('id, status, attendance, completed_at, recruitments!inner(position, competition_id)')
+        .eq('user_id', uid)
+        .eq('recruitments.competition_id', cid)
+        .eq('status', 'selected');
+    if (mounted) setState(() { _comp = comp; _mine = mine; });
+  }
+
+  Future<void> _answer(Map<String, dynamic> a, String v) async {
+    if (v == 'absent') {
+      final yes = await showDialog<bool>(
+        context: context,
+        builder: (d) => AlertDialog(
+          title: const Text('불참으로 응답할까요?'),
+          content: const Text('대회관계자에게 불참 알림이 전달됩니다.'),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('취소')),
+            TextButton(onPressed: () => Navigator.pop(d, true), child: const Text('불참 응답')),
+          ],
         ),
-      ),
+      );
+      if (yes != true || !mounted) return;
+    }
+    final ok = await run(context, () => db.from('applications').update({'attendance': v}).eq('id', a['id']),
+        done: v == 'attending' ? '참석을 확정했습니다.' : '불참으로 응답했습니다.');
+    if (ok) _load();
+  }
+
+  Future<void> _calendar() async {
+    final c = _comp ?? widget.competition;
+    final start = DateTime.tryParse(c['starts_on'] ?? '');
+    if (start == null) return;
+    await addToCalendar(
+      title: '[심판] ${c['name']}',
+      start: start,
+      end: DateTime.tryParse(c['ends_on'] ?? ''),
+      allDay: true,
+      location: [c['venue'], c['address']].where((e) => (e ?? '').toString().isNotEmpty).join(' '),
+      details: _mine.isEmpty ? null : '포지션: ${_mine.first['recruitments']['position']}',
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final c = _comp ?? widget.competition;
+    return Scaffold(
+      appBar: AppBar(title: const Text('브리핑 자료'), actions: [
+        IconButton(tooltip: '캘린더에 추가', onPressed: _calendar, icon: const Icon(Icons.event_available_outlined)),
+      ]),
+      body: Column(children: [
+        for (final a in _mine.where((a) => a['completed_at'] == null))
+          Container(
+            width: double.infinity,
+            color: Colors.white,
+            padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text('${c['name']} · ${a['recruitments']['position']}', style: const TextStyle(fontWeight: FontWeight.w700)),
+              const SizedBox(height: 2),
+              Text(
+                switch (a['attendance']) {
+                  'attending' => '참석 확정했습니다. 일정이 바뀌면 불참으로 바꿔주세요.',
+                  'absent' => '불참으로 응답했습니다.',
+                  _ => '선발되었습니다. 참석 여부를 알려주세요.',
+                },
+                style: TextStyle(color: a['attendance'] == 'unknown' ? Brand.warn : Brand.muted, fontSize: 13),
+              ),
+              const SizedBox(height: 10),
+              Row(children: [
+                Expanded(
+                  child: a['attendance'] == 'attending'
+                      ? const FilledButton(onPressed: null, child: Text('참석 확정됨'))
+                      : FilledButton(onPressed: () => _answer(a, 'attending'), child: const Text('참석 확정')),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: OutlinedButton(
+                    style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(50)),
+                    onPressed: a['attendance'] == 'absent' ? null : () => _answer(a, 'absent'),
+                    child: Text(a['attendance'] == 'absent' ? '불참 응답함' : '불참'),
+                  ),
+                ),
+              ]),
+            ]),
+          ),
+        if (_mine.isNotEmpty) const Divider(),
+        Expanded(
+          child: AsyncList(
+            load: () => db.from('briefings').select().eq('competition_id', widget.competition['id']).order('created_at'),
+            empty: '등록된 브리핑 자료가 없습니다.',
+            item: (c, b, _) => ExpansionTile(
+              initiallyExpanded: true,
+              title: Text(b['title']),
+              subtitle: Text(fmtDateTime(b['created_at'])),
+              expandedCrossAxisAlignment: CrossAxisAlignment.start,
+              expandedAlignment: Alignment.centerLeft,
+              childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+              children: [Text(b['body'] ?? ''), fileButton(c, b['file_path'])],
+            ),
+          ),
+        ),
+      ]),
     );
   }
 }

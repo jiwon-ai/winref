@@ -146,10 +146,25 @@ ok(await qn(REF) === 1 && await qn(ADMIN) === 1 && await qn(ORG) === 1, '사본 
 ok(await qn(REF2) === 0, '사본 열람 차단: 다른 심판');
 ok(await qn(SOC) === 0, '사본 열람 차단: 지원받지 않은 관계자');
 
+// --- 0008: 참석 응답·일정 겹침 ---
+const c2 = (await as(ORG, `insert into competitions (organizer_id,name,starts_on) values ($1,'같은날 대회', current_date+1) returning id`, [ORG])).rows[0].id;
+const r2 = (await as(ORG, `insert into recruitments (competition_id,position,headcount) values (${c2},'부심',1) returning id`)).rows[0].id;
+await as(REF2, `insert into applications (recruitment_id,user_id) values (${r2},$1)`, [REF2]);
+ok((await as(REF2, `update applications set attendance='attending' where recruitment_id=${r2} and user_id=$1`, [REF2])).err, '선발 전 참석 응답 차단');
+await as(ORG, `update applications set status='selected' where recruitment_id=${r2}`);
+ok(!(await as(REF2, `update applications set attendance='absent' where recruitment_id=${r2} and user_id=$1`, [REF2])).err, '선발 후 본인 불참 응답');
+ok((await db.query(`select count(*)::int n from notifications where user_id='${ORG}' and kind='attendance' and title='심판 불참 응답'`)).rows[0].n === 1, '불참 응답 → 관계자 알림');
+ok((await as(REF2, `update applications set attendance='unknown' where recruitment_id=${r2} and user_id=$1`, [REF2])).err, '참석 응답은 참석/불참만');
+ok((await as(REF, `update applications set attendance='absent' where user_id=$1 and completed_at is not null`, [REF])).err, '활동완료 후 참석 응답 변경 차단');
+const conf = await as(ORG, `select * from selection_conflicts(${c.rows[0].id})`);
+ok(conf.rows?.length === 1 && conf.rows[0].user_id === REF2 && conf.rows[0].competition_name === '같은날 대회', '일정 겹침: 같은 날 다른 대회 선발자 표시');
+ok((await as(ORG, `select * from selection_conflicts(${c2})`)).rows?.length === 0, '일정 겹침 없음');
+ok((await as(REF, `select * from selection_conflicts(${c2})`)).err, '일정 겹침 조회는 관계자·관리자만');
+
 ok((await as(ADMIN, `select delete_my_account()`)).err, '관리자 탈퇴 차단');
 ok(!(await as(REF, `select delete_my_account()`)).err, '심판 탈퇴');
 ok((await db.query(`select count(*)::int n from applications where user_id='${REF}'`)).rows[0].n === 0, '탈퇴 시 지원·이력 삭제');
 ok(!(await as(ORG, `select delete_my_account()`)).err, '관계자 탈퇴');
-ok((await db.query(`select count(*)::int n from competitions where organizer_id is null`)).rows[0].n === 1, '관계자 탈퇴 후 대회 보존');
+ok((await db.query(`select count(*)::int n from competitions where organizer_id is null`)).rows[0].n === 2, '관계자 탈퇴 후 대회 보존 (2개)');
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);
