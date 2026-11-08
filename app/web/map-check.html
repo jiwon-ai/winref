@@ -1,0 +1,14 @@
+<!doctype html>
+<html lang="ko">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>지도 표시 점검</title>
+<style>body{font:14px system-ui,sans-serif;margin:16px;background:#F5F8FC} iframe{border:1px solid #DCE5F0;border-radius:8px;display:block;margin:8px 0 20px}</style></head>
+<body>
+<!-- 앱의 대회 상세 지도 칸과 같은 크기로 map.html 을 띄워 보는 점검용 페이지 -->
+<p>앱 지도 칸 크기 (380×190)</p>
+<iframe width="380" height="190" src="map.html?address=%EC%84%9C%EC%9A%B8%20%EC%86%A1%ED%8C%8C%EA%B5%AC%20%EC%98%AC%EB%A6%BC%ED%94%BD%EB%A1%9C%2025&venue=%EC%9E%A0%EC%8B%A4"></iframe>
+<p>처음엔 0 크기였다가 나중에 커지는 경우 (앱에서 화면이 그려지는 순서 재현)</p>
+<iframe id="late" width="0" height="0" src="map.html?address=%EC%84%9C%EC%9A%B8%20%EC%86%A1%ED%8C%8C%EA%B5%AC%20%EC%98%AC%EB%A6%BC%ED%94%BD%EB%A1%9C%2025&venue=%EC%9E%A0%EC%8B%A4"></iframe>
+<script>setTimeout(()=>{const f=document.getElementById('late');f.width=380;f.height=190;},1500);</script>
+<p>주소를 못 찾는 경우</p>
+<iframe width="380" height="190" src="map.html?venue=%EC%97%86%EB%8A%94%20%EC%9E%A5%EC%86%8C%20%EC%98%88%EC%8B%9C"></iframe>
+</body></html>
