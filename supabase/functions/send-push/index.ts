@@ -1,11 +1,18 @@
 // notifications 테이블에서 pushed_at 이 비어있는 건을 FCM(HTTP v1)으로 발송한다.
 // 호출: pg_cron (5분마다) → x-cron-secret 헤더로 인증.
 // 필요한 Secrets: FCM_SERVICE_ACCOUNT (Firebase 서비스계정 JSON 전체), CRON_SECRET
-// SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY 는 Supabase 가 자동 주입.
+// SUPABASE_URL, SUPABASE_SECRET_KEYS(또는 SUPABASE_SERVICE_ROLE_KEY) 는 Supabase 가 자동 주입.
 import { createClient } from "jsr:@supabase/supabase-js@2";
 
 const sa = JSON.parse(Deno.env.get("FCM_SERVICE_ACCOUNT") ?? "{}");
-const db = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+// 새 Secret 키(SUPABASE_SECRET_KEYS)를 우선 쓰고, 없으면 레거시 service role 키 사용
+const secretKey = (() => {
+  try {
+    const d = JSON.parse(Deno.env.get("SUPABASE_SECRET_KEYS") ?? "{}");
+    return (d.default ?? Object.values(d)[0]) as string | undefined;
+  } catch { return undefined; }
+})() || Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+const db = createClient(Deno.env.get("SUPABASE_URL")!, secretKey);
 
 const b64url = (b: ArrayBuffer | Uint8Array | string) => {
   const bytes = typeof b === "string" ? new TextEncoder().encode(b) : new Uint8Array(b as ArrayBuffer);
