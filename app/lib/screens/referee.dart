@@ -551,20 +551,23 @@ class _RecruitmentDetailState extends State<RecruitmentDetail> {
   }
 
   Future<void> _apply() async {
-    if (_clash.isNotEmpty) {
-      final go = await showDialog<bool>(
-        context: context,
-        builder: (d) => AlertDialog(
-          title: const Text('일정이 겹칩니다'),
-          content: Text('같은 기간에 이미 선발된 대회가 있습니다.\n${_clash.join(', ')}\n그래도 지원할까요?'),
-          actions: [
-            TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('취소')),
-            TextButton(onPressed: () => Navigator.pop(d, true), child: const Text('지원하기')),
-          ],
-        ),
-      );
-      if (go != true || !mounted) return;
-    }
+    final host = (widget.recruitment['competitions'] as Map)['host_org'] ?? '대회 주최 측';
+    final go = await showDialog<bool>(
+      context: context,
+      builder: (d) => AlertDialog(
+        title: Text(_clash.isEmpty ? '심판 지원' : '일정이 겹칩니다'),
+        content: Text([
+          if (_clash.isNotEmpty) '같은 기간에 이미 선발된 대회가 있습니다.\n${_clash.join(', ')}\n',
+          '지원하면 선발·연락을 위해 $host에 이름·연락처·이메일·프로필·자격정보·활동 이력이 제공됩니다.',
+        ].join('\n')),
+        actions: [
+          TextButton(onPressed: openPrivacy, child: const Text('방침 보기')),
+          TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('취소')),
+          FilledButton(onPressed: () => Navigator.pop(d, true), child: const Text('동의하고 지원')),
+        ],
+      ),
+    );
+    if (go != true || !mounted) return;
     final ok = await run(context, () async {
       if (_mine == null) {
         await db.from('applications').insert({'recruitment_id': widget.recruitment['id'], 'user_id': uid});

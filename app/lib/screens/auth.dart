@@ -289,7 +289,7 @@ class _SignupScreenState extends State<SignupScreen> {
               tileColor: Colors.transparent,
               controlAffinity: ListTileControlAffinity.leading,
               title: const Text('개인정보 수집·이용 동의 (필수)'),
-              subtitle: const Text('이름·연락처·자격정보를 교육·대회 운영 목적으로만 이용합니다.'),
+              subtitle: const PrivacySummary(),
             ),
             const SizedBox(height: 12),
             FilledButton(onPressed: _busy ? null : _submit, child: const Text('가입하기')),
@@ -522,7 +522,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             tileColor: Colors.transparent,
             controlAffinity: ListTileControlAffinity.leading,
             title: const Text('개인정보 수집·이용 동의 (필수)'),
-            subtitle: const Text('이름·연락처·자격정보를 교육·대회 운영 목적으로만 이용합니다.'),
+            subtitle: const PrivacySummary(),
           ),
           const SizedBox(height: 12),
           FilledButton(onPressed: _busy ? null : _submit, child: const Text('가입 완료')),
@@ -530,4 +530,19 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       ),
     );
   }
+}
+
+/// 동의 항목 요약 + 전문 보기
+class PrivacySummary extends StatelessWidget {
+  const PrivacySummary({super.key});
+
+  @override
+  Widget build(BuildContext context) => Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        const Text('이름·연락처·자격정보를 교육·대회 운영 목적으로만 이용하며, 탈퇴 시 삭제합니다.'),
+        TextButton(
+          onPressed: openPrivacy,
+          style: TextButton.styleFrom(padding: EdgeInsets.zero, minimumSize: const Size(0, 32)),
+          child: const Text('개인정보처리방침 전문 보기'),
+        ),
+      ]);
 }

@@ -18,6 +18,10 @@ final db = Supabase.instance.client;
 /// Supabase > Authentication > URL Configuration 의 Redirect URLs 에 등록돼 있어야 한다.
 const appUrl = String.fromEnvironment('APP_URL', defaultValue: 'https://jiwon.fr/winref/');
 
+/// 개인정보처리방침 전문 (웹에 게시된 privacy.html)
+Future<void> openPrivacy() =>
+    launchUrl(Uri.parse('${appUrl}privacy.html'), mode: LaunchMode.externalApplication);
+
 /// 안드로이드 앱으로 돌아오는 소셜 로그인 콜백 (AndroidManifest intent-filter 와 같아야 함)
 const mobileAuthCallback = 'kr.co.winref.app://login-callback';
 
@@ -562,7 +566,11 @@ List<Widget> commonActions(BuildContext context, Map<String, dynamic> profile) =
                 applicationVersion: '1.0.0',
                 applicationIcon: Image.asset('assets/brand/snowflake_blue.png', width: 48, height: 48),
                 applicationLegalese: '운영 윈렙아카데미 · 개발 빠드빠닉',
-                children: const [SizedBox(height: 16), SupportProgramMark()],
+                children: [
+                  TextButton(onPressed: openPrivacy, child: const Text('개인정보처리방침')),
+                  const SizedBox(height: 8),
+                  const SupportProgramMark(),
+                ],
               );
           }
         },

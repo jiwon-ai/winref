@@ -155,6 +155,7 @@ try {
     await see('네이버 지도에서 크게 보기');
     await shot('competition-detail');
     await tap('심판 지원하기', 'button');
+    await tap('동의하고 지원', 'button');
     await see('지원완료');
     if (sql(`select count(*) from applications a join profiles p on p.id=a.user_id where p.name='김심판'`) !== '1') throw new Error('지원 저장 안 됨');
     await shot('applied');
