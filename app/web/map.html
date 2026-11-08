@@ -40,6 +40,11 @@
         mapDataControl: false, scaleControl: false,
       });
       new naver.maps.Marker({ position: pos, map });
+      // 앱 안에서는 지도 칸 크기가 로드 후에 정해지므로, 크기가 바뀔 때마다 핀을 가운데로
+      const recenter = () => { map.setSize(new naver.maps.Size(innerWidth, innerHeight)); map.setCenter(pos); };
+      addEventListener('resize', recenter);
+      naver.maps.Event.once(map, 'init', recenter);
+      setTimeout(recenter, 300);
     });
   }
 
