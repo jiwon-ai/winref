@@ -37,6 +37,10 @@ final messengerKey = GlobalKey<ScaffoldMessengerState>();
 /// 로그아웃: 이전 사용자 화면의 안내 메시지를 지우고 세션 종료
 Future<void> signOut() async {
   messengerKey.currentState?.clearSnackBars();
+  // 같은 휴대폰으로 다른 사람이 로그인해도 이전 회원의 푸시가 오지 않게 기기 토큰 해제
+  try {
+    if (db.auth.currentUser != null) await db.from('profiles').update({'fcm_token': null}).eq('id', uid);
+  } catch (_) {}
   await db.auth.signOut();
 }
 String get uid => db.auth.currentUser!.id;
