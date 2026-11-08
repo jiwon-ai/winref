@@ -13,14 +13,23 @@ const sql = (q) => execSync(`psql "${DB}" -tAc "${q.replace(/"/g, '\\"')}"`).toS
 let step = 0;
 const results = [];
 const browser = await chromium.launch();
-// 405x720 @2x = 810x1440 (9:16) → Play 스토어 휴대전화 스크린샷 규격에 맞춤
-const page = await browser.newPage({ viewport: { width: 405, height: 720 }, deviceScaleFactor: 2, locale: 'ko-KR' });
+// 405x720 @8/3 = 1080x1920 (9:16) → Play 스토어 휴대전화 스크린샷 권장 규격
+const page = await browser.newPage({ viewport: { width: 405, height: 720 }, deviceScaleFactor: 8 / 3, locale: 'ko-KR' });
 page.on('console', (m) => { if (m.type() === 'error') console.log('[console]', m.text()); });
 
 async function shot(name) {
   step++;
   await page.waitForTimeout(600);
   await page.screenshot({ path: `shots/${String(step).padStart(2, '0')}-${name}.png` });
+}
+
+// Play 스토어용: 알림(스낵바)·툴팁이 사라진 깨끗한 화면
+let storeN = 0;
+async function store(name) {
+  await page.mouse.move(398, 380); // 툴팁 없는 화면 가장자리
+  await page.waitForTimeout(3300);
+  storeN++;
+  await page.screenshot({ path: `shots/store-${String(storeN).padStart(2, '0')}-${name}.png` });
 }
 
 // Flutter 접근성 트리에서 라벨로 요소 찾기
@@ -97,7 +106,7 @@ async function logout() {
 
 try {
   await page.goto(APP);
-  await check('로그인 화면 표시 (로고·지원사업 표기)', async () => { await see('WINREF ACADEMY'); await see('사회적기업 창업지원사업'); await shot('login'); });
+  await check('로그인 화면 표시 (로고·지원사업 표기)', async () => { await see('WINREF ACADEMY'); await see('사회적기업 창업지원사업'); await shot('login'); await store('login'); });
 
   // 기기별 화면 높이: 갤럭시 S24(384x832, 시스템 바 제외 약 384x760)·소형(360x640)에서 스크롤 없이 들어오는지
   await check('로그인 화면 한 화면 맞춤 (S24·소형)', async () => {
@@ -161,7 +170,7 @@ try {
   await check('대회 조회·심판 지원', async () => {
     await goTab('대회');
     await see('대회 모집');
-    await shot('competitions');
+    await shot('competitions'); await store('competitions');
     await tap('2026 서울 유소년 축구대회');
     await see('잠실 보조경기장');
     await see('서울 송파구 올림픽로 25');
@@ -188,7 +197,7 @@ try {
     await see('2026 서울 유소년 축구대회');
     await tap('캘린더 보기', 'button');
     await see('날짜를 선택하면');
-    await shot('calendar');
+    await shot('calendar'); await store('calendar');
     const d = new Date(Date.now() + 864e5);
     await tap(`${d.getMonth() + 1}월 ${d.getDate()}일 일정 1건`, 'button');
     await see('대회 1건');
@@ -240,7 +249,7 @@ try {
     await login('org@test.kr');
     await see('내 대회');
     await see('검토 대기 3명');   // 홈 보드: 대회별 검토 대기 인원
-    await shot('organizer-home');
+    await shot('organizer-home'); await store('organizer-home');
     await tap('2026 서울 유소년 축구대회', 'button');
     await see('모집 포지션').catch(() => {});
     await shot('org-recruitments');
@@ -250,7 +259,7 @@ try {
     await tap('일괄 선택', 'button');
     await tap('김심판', 'checkbox');
     await tap('박심판', 'checkbox');
-    await shot('bulk-select');
+    await shot('bulk-select'); await store('bulk-select');
     await tap('일괄 선발', 'button');
     await see('주심 선발 2/2');
     if (sql(`select count(*) from applications where status='selected' and user_id in (select id from profiles where name in ('김심판','박심판'))`) !== '2')
@@ -313,7 +322,7 @@ try {
     await tap('참석 응답 필요', 'button');
     await see('참석 여부를 알려주세요');
     await el('캘린더에 추가', 'button').waitFor({ state: 'visible', timeout: 10000 });
-    await shot('rsvp');
+    await shot('rsvp'); await store('rsvp');
     await tap('불참', 'button!');
     await tap('불참 응답', 'button!');
     await see('불참으로 응답했습니다');
@@ -338,7 +347,7 @@ try {
     await back();
     await el('알림', 'button!').waitFor({ state: 'visible', timeout: 10000 });  // 배지 사라짐
     await see('활동 완료');
-    await shot('referee-dashboard');
+    await shot('referee-dashboard'); await store('referee-dashboard');
     await goTab('내 활동');
     await see('선발');
     await shot('my-applications');
@@ -355,7 +364,7 @@ try {
     await see('포지션별 활동');
     await see('활동 이력 PDF');
     await see('1회');
-    await shot('career');
+    await shot('career'); await store('career');
     await back();
     await logout();
   });
