@@ -129,9 +129,7 @@ class _DashboardTabState extends State<_DashboardTab> {
       future: _f,
       builder: (context, snap) {
         if (snap.hasError) {
-          return Center(
-            child: TextButton(onPressed: () => setState(() => _f = _load()), child: const Text('불러오기 실패 (다시 시도)')),
-          );
+          return ErrorView(error: snap.error, onRetry: () => setState(() => _f = _load()));
         }
         if (!snap.hasData) return const Center(child: CircularProgressIndicator());
         final d = snap.data!;
@@ -410,7 +408,7 @@ class _RecruitmentsTabState extends State<_RecruitmentsTab> {
       future: _f,
       builder: (context, snap) {
         if (snap.hasError) {
-          return Center(child: TextButton(onPressed: _reload, child: const Text('불러오기 실패 (다시 시도)')));
+          return ErrorView(error: snap.error, onRetry: _reload);
         }
         if (!snap.hasData) return const Center(child: CircularProgressIndicator());
         final all = snap.data!;
@@ -808,7 +806,7 @@ class _MyActivityTab extends StatelessWidget {
                 return ListTile(
                   title: Text(comp['name']),
                   subtitle: Text('${fmtDate(comp['starts_on'])} · ${rec['position']}'
-                      '${selected ? ' · 참석 ${label(a['attendance'])}' : ''}'),
+                      '${selected ? ' · ${attendanceText(a['attendance'])}' : ''}'),
                   trailing: StatusChip(label(a['status']), a['status']),
                   onTap: selected
                       ? () => Navigator.push(c, MaterialPageRoute(builder: (_) => BriefingScreen(competition: comp)))
@@ -998,7 +996,7 @@ class _QualificationsTabState extends State<_QualificationsTab> {
           final soon = exp != null && exp.difference(DateTime.now()).inDays <= 90;
           return ListTile(
             title: Text('${q['name']}${q['grade'] != null ? ' · ${q['grade']}' : ''}'),
-            subtitle: Text('취득 ${fmtDate(q['acquired_on'])} · 만료 ${fmtDate(q['expires_on'])}'
+            subtitle: Text('${qualPeriod(q).isEmpty ? '기간 정보 없음' : qualPeriod(q)}'
                 '${soon ? ' (보수교육 필요)' : ''}\n보수교육 ${q['refresher_done'] == true ? '이수' : '미이수'}'
                 '${q['file_path'] != null ? ' · 사본 첨부됨' : ''}'),
             isThreeLine: true,

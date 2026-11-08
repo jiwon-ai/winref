@@ -101,7 +101,7 @@ class _OrganizerBoardState extends State<_OrganizerBoard> {
     return FutureBuilder<List<Map<String, dynamic>>>(
       future: _f,
       builder: (context, snap) {
-        if (snap.hasError) return Center(child: TextButton(onPressed: reload, child: const Text('불러오기 실패 (다시 시도)')));
+        if (snap.hasError) return ErrorView(error: snap.error, onRetry: reload);
         if (!snap.hasData) return const Center(child: CircularProgressIndicator());
         final today = DateTime.now().toIso8601String().substring(0, 10);
         final upcoming = snap.data!.where((c) => (c['ends_on'] ?? c['starts_on']).toString().compareTo(today) >= 0).toList();
@@ -420,7 +420,7 @@ class _ApplicantsManageState extends State<_ApplicantsManage> {
     return FutureBuilder<List<Map<String, dynamic>>>(
       future: _f,
       builder: (context, snap) {
-        if (snap.hasError) return Center(child: TextButton(onPressed: _reload, child: const Text('불러오기 실패 (다시 시도)')));
+        if (snap.hasError) return ErrorView(error: snap.error, onRetry: _reload);
         if (!snap.hasData) return const Center(child: CircularProgressIndicator());
         final all = snap.data!;
         // 포지션별 선발 현황 (선발 n / 모집 m)
@@ -525,7 +525,7 @@ class _ApplicantsManageState extends State<_ApplicantsManage> {
     final title = '${p['name']} · ${a['recruitments']['position']}';
     final clash = _clash[p['id']];
     final sub = (a['status'] == 'selected'
-            ? '참석 ${label(a['attendance'])}${done ? ' · 활동완료' : ''}'
+            ? '${attendanceText(a['attendance'])}${done ? ' · 활동완료' : ''}'
             : '지원 ${fmtDate(a['created_at'])}${p['region'] != null ? ' · ${p['region']}' : ''}') +
         (clash == null ? '' : '\n일정 겹침: ${clash.join(', ')}');
     if (_picking) {

@@ -107,7 +107,7 @@ class _DashboardState extends State<_Dashboard> {
     return FutureBuilder<dynamic>(
       future: _f,
       builder: (context, snap) {
-        if (snap.hasError) return Center(child: Text('통계를 불러오지 못했습니다.\n${snap.error}'));
+        if (snap.hasError) return ErrorView(error: snap.error, onRetry: () => setState(() => _f = db.rpc('admin_stats')));
         if (!snap.hasData) return const Center(child: CircularProgressIndicator());
         final s = snap.data as Map<String, dynamic>;
         final roles = (s['members_by_role'] as Map).cast<String, dynamic>();
@@ -357,7 +357,7 @@ class _Qualifications extends StatelessWidget {
       empty: '등록된 자격정보가 없습니다.',
       item: (c, q, reload) => ListTile(
         title: Text('${q['profiles']['name']} · ${q['name']} ${q['grade'] ?? ''}'),
-        subtitle: Text('취득 ${fmtDate(q['acquired_on'])} · 만료 ${fmtDate(q['expires_on'])} · '
+        subtitle: Text('${qualPeriod(q).isEmpty ? '' : '${qualPeriod(q)} · '}'
             '보수교육 ${q['refresher_done'] == true ? '이수' : '미이수'}'
             '${q['file_path'] != null ? ' · 사본 첨부' : ''}'),
         trailing: StatusChip(label(q['status']), q['status']),

@@ -32,7 +32,7 @@ class _CareerViewState extends State<CareerView> {
     return FutureBuilder<(Map<String, dynamic>, List<Map<String, dynamic>>)>(
       future: _f,
       builder: (context, snap) {
-        if (snap.hasError) return Text('경력을 불러오지 못했습니다.\n${snap.error}', style: const TextStyle(color: Brand.muted));
+        if (snap.hasError) return Text('경력을 불러오지 못했습니다. ${friendlyError(snap.error!)}', style: const TextStyle(color: Brand.muted));
         if (!snap.hasData) return const Padding(padding: EdgeInsets.all(24), child: LinearProgressIndicator());
         final (sum, quals) = snap.data!;
         final byPos = (sum['by_position'] as Map).cast<String, dynamic>();
@@ -219,7 +219,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       body: FutureBuilder<Map<String, dynamic>>(
         future: _f,
         builder: (context, snap) {
-          if (snap.hasError) return Center(child: TextButton(onPressed: _reload, child: const Text('다시 시도')));
+          if (snap.hasError) return ErrorView(error: snap.error, onRetry: _reload);
           if (!snap.hasData) return const Center(child: CircularProgressIndicator());
           final p = snap.data!;
           return RefreshIndicator(

@@ -43,6 +43,11 @@ class WinrefApp extends StatelessWidget {
       locale: const Locale('ko'),
       supportedLocales: const [Locale('ko')],
       localizationsDelegates: GlobalMaterialLocalizations.delegates,
+      // 휴대폰 글자 크기 설정은 반영하되, 화면이 깨질 만큼 커지지 않게 상한(1.2배)을 둔다.
+      builder: (context, child) {
+        final mq = MediaQuery.of(context);
+        return MediaQuery(data: mq.copyWith(textScaler: mq.textScaler.clamp(maxScaleFactor: 1.2)), child: child!);
+      },
       home: const AuthGate(),
     );
   }
@@ -74,9 +79,9 @@ class _AuthGateState extends State<AuthGate> {
           builder: (context, snap) {
             if (snap.hasError) {
               return Scaffold(
-                body: Center(
-                  child: Column(mainAxisSize: MainAxisSize.min, children: [
-                    Text('프로필을 불러오지 못했습니다.\n${snap.error}', textAlign: TextAlign.center),
+                body: SafeArea(
+                  child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+                    ErrorView(error: snap.error, onRetry: () => setState(() => _profileVersion++)),
                     TextButton(onPressed: signOut, child: const Text('로그아웃')),
                   ]),
                 ),

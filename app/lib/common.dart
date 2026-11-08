@@ -34,7 +34,13 @@ String authMessage(AuthException e) {
   if (m.contains('password should be') || m.contains('weak')) return '비밀번호가 너무 짧거나 쉽습니다. 8자 이상으로 정해주세요.';
   if (m.contains('rate limit') || m.contains('too many')) return '요청이 많습니다. 잠시 후 다시 시도해 주세요.';
   if (m.contains('invalid email') || m.contains('unable to validate email')) return '이메일 형식이 올바르지 않습니다.';
-  return '오류: ${e.message}';
+  if (m.contains('same') && m.contains('password')) return '이전과 다른 비밀번호를 입력해 주세요.';
+  if (m.contains('expired') || (m.contains('invalid') && m.contains('token'))) return '링크가 만료되었습니다. 다시 요청해 주세요.';
+  if (e is AuthRetryableFetchException || m.contains('fetch') || m.contains('socket')) {
+    return '인터넷 연결을 확인한 뒤 다시 시도해 주세요.';
+  }
+  debugPrint('인증 오류: ${e.message}');
+  return '로그인 처리 중 문제가 발생했습니다. 잠시 후 다시 시도해 주세요.';
 }
 final messengerKey = GlobalKey<ScaffoldMessengerState>();
 
@@ -62,7 +68,77 @@ String fmtDateTime(dynamic v) {
 }
 
 void toast(BuildContext context, String msg) {
-  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+  ScaffoldMessenger.of(context)
+    ..hideCurrentSnackBar() // 이전 알림이 쌓이지 않게 교체
+    ..showSnackBar(SnackBar(content: Text(msg), duration: const Duration(milliseconds: 2800)));
+}
+
+/// 사용자에게 보여줄 오류 문구. 서버·네트워크의 영문 원문을 그대로 노출하지 않는다.
+String friendlyError(Object e) {
+  if (e is String) return e; // 앱이 직접 던진 안내 문구
+  final raw = e.toString();
+  if (e is AuthException && e is! AuthRetryableFetchException) return authMessage(e);
+  if (RegExp(r'SocketException|ClientException|Failed host lookup|Connection (refused|reset|closed)|Network is unreachable|TimeoutException|XMLHttpRequest', caseSensitive: false)
+      .hasMatch(raw)) {
+    return '인터넷 연결을 확인한 뒤 다시 시도해 주세요.';
+  }
+  if (e is PostgrestException) {
+    switch (e.code) {
+      case '23505':
+        return '이미 등록된 내용입니다.';
+      case '23503':
+        return '연결된 정보가 있어 처리할 수 없습니다.';
+      case '42501':
+        return '이 작업을 할 권한이 없습니다.';
+      case 'P0001': // 서버 규칙(트리거)이 보낸 안내
+        if (e.message == 'forbidden') return '이 작업을 할 권한이 없습니다.';
+        if (e.message == 'not signed in') return '다시 로그인해 주세요.';
+        return e.message;
+    }
+    if (e.message.contains('row-level security')) return '이 작업을 할 권한이 없습니다.';
+  }
+  if (e is StorageException) return '파일을 처리하지 못했습니다. 잠시 후 다시 시도해 주세요.';
+  debugPrint('처리되지 않은 오류: $raw');
+  return '일시적인 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.';
+}
+
+/// 불러오기 실패 화면: 안내 + 다시 시도
+class ErrorView extends StatelessWidget {
+  final Object? error;
+  final VoidCallback onRetry;
+  const ErrorView({super.key, this.error, required this.onRetry});
+
+  @override
+  Widget build(BuildContext context) => Center(
+        child: Padding(
+          padding: const EdgeInsets.all(32),
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            const Icon(Icons.cloud_off_outlined, size: 40, color: Brand.muted),
+            const SizedBox(height: 12),
+            Text(error == null ? '불러오지 못했습니다.' : friendlyError(error!),
+                textAlign: TextAlign.center, style: const TextStyle(color: Brand.muted)),
+            const SizedBox(height: 12),
+            OutlinedButton.icon(onPressed: onRetry, icon: const Icon(Icons.refresh, size: 18), label: const Text('다시 시도')),
+          ]),
+        ),
+      );
+}
+
+/// 빈 목록 안내
+class EmptyView extends StatelessWidget {
+  final String text;
+  final IconData icon;
+  const EmptyView(this.text, {super.key, this.icon = Icons.inbox_outlined});
+
+  @override
+  Widget build(BuildContext context) => Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 56),
+        child: Column(children: [
+          Icon(icon, size: 40, color: const Color(0xFFB4C2D4)),
+          const SizedBox(height: 12),
+          Text(text, textAlign: TextAlign.center, style: const TextStyle(color: Brand.muted, height: 1.5)),
+        ]),
+      );
 }
 
 /// 서버 호출을 실행하고 실패 시 메시지를 띄운다. 성공하면 true.
@@ -71,12 +147,8 @@ Future<bool> run(BuildContext context, Future<void> Function() action, {String? 
     await action();
     if (context.mounted && done != null) toast(context, done);
     return true;
-  } on PostgrestException catch (e) {
-    if (context.mounted) toast(context, '오류: ${e.message}');
-  } on AuthException catch (e) {
-    if (context.mounted) toast(context, authMessage(e));
   } catch (e) {
-    if (context.mounted) toast(context, '오류: $e');
+    if (context.mounted) toast(context, friendlyError(e));
   }
   return false;
 }
@@ -281,14 +353,14 @@ class AsyncListState extends State<AsyncList> {
       future: _f,
       builder: (context, snap) {
         if (snap.hasError) {
-          return Center(child: TextButton(onPressed: reload, child: Text('불러오기 실패 (다시 시도)\n${snap.error}')));
+          return ErrorView(error: snap.error, onRetry: reload);
         }
         if (!snap.hasData) return const Center(child: CircularProgressIndicator());
         final rows = snap.data!;
         return RefreshIndicator(
           onRefresh: () async => reload(),
           child: rows.isEmpty
-              ? ListView(children: [Padding(padding: const EdgeInsets.all(32), child: Center(child: Text(widget.empty)))])
+              ? ListView(children: [EmptyView(widget.empty)])
               : ListView.separated(
                   itemCount: rows.length,
                   separatorBuilder: (_, __) => const Divider(height: 1),
@@ -537,7 +609,16 @@ Future<void> deleteAccount(BuildContext context) async {
     ),
   );
   if (ok != true || !context.mounted) return;
-  final done = await run(context, () => db.rpc('delete_my_account'));
+  final done = await run(context, () async {
+    // 본인이 올린 파일(프로필 사진·자격증 사본)을 먼저 지운다. 실패해도 탈퇴는 계속.
+    for (final folder in ['avatars/$uid', 'quals/$uid']) {
+      try {
+        final files = await db.storage.from('files').list(path: folder);
+        if (files.isNotEmpty) await db.storage.from('files').remove([for (final f in files) '$folder/${f.name}']);
+      } catch (_) {}
+    }
+    await db.rpc('delete_my_account');
+  });
   if (done) await signOut();
 }
 
@@ -599,3 +680,12 @@ const statusLabel = {
   'absent': '불참',
 };
 String label(dynamic s) => statusLabel[s] ?? '$s';
+
+/// 자격 기간 표시: 값이 있는 것만 ("취득 2024.03.01 · 만료 2027.02.28")
+String qualPeriod(Map q) => [
+      if (q['acquired_on'] != null) '취득 ${fmtDate(q['acquired_on'])}',
+      if (q['expires_on'] != null) '만료 ${fmtDate(q['expires_on'])}',
+    ].join(' · ');
+
+/// 선발 후 참석 응답 표시
+String attendanceText(dynamic a) => switch (a) { 'attending' => '참석 확정', 'absent' => '불참', _ => '참석 미응답' };

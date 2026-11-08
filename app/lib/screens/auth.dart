@@ -15,6 +15,7 @@ class _LoginScreenState extends State<LoginScreen> {
   final _email = TextEditingController();
   final _pw = TextEditingController();
   bool _busy = false;
+  bool _hidePw = true;
 
   @override
   void dispose() {
@@ -83,95 +84,125 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // 화면 높이에 맞춰 로고·여백을 줄여 대부분의 휴대폰에서 스크롤 없이 한 화면에 들어오게 한다.
+    // (작은 화면·큰 글씨 설정에서는 그래도 넘치면 스크롤)
+    final h = MediaQuery.sizeOf(context).height;
+    final t = ((h - 640) / 260).clamp(0.0, 1.0); // 640 이하 = 0(최소), 900 이상 = 1(넉넉)
+    double gap(double min, double max) => min + (max - min) * t;
     return Scaffold(
-      body: SingleChildScrollView(
-        child: Column(children: [
-          const BrandHero(),
-          Center(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(28, 32, 28, 8),
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 420),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                  TextField(
-                    controller: _email,
-                    keyboardType: TextInputType.emailAddress,
-                    decoration: const InputDecoration(labelText: '이메일'),
-                  ),
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: _pw,
-                    obscureText: true,
-                    decoration: const InputDecoration(labelText: '비밀번호'),
-                    onSubmitted: (_) => _login(),
-                  ),
-                  const SizedBox(height: 24),
-                  FilledButton(onPressed: _busy ? null : _login, child: const Text('로그인')),
-                  const SizedBox(height: 8),
-                  Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-                    TextButton(onPressed: _reset, child: const Text('비밀번호 재설정')),
-                    TextButton(
-                      onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SignupScreen())),
-                      child: const Text('회원가입'),
+      body: CustomScrollView(slivers: [
+        SliverFillRemaining(
+          hasScrollBody: false,
+          child: Column(children: [
+            BrandHero(scale: t),
+            Center(
+              child: Padding(
+                padding: EdgeInsets.fromLTRB(28, gap(16, 32), 28, 0),
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 420),
+                  child: AutofillGroup(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        TextField(
+                          controller: _email,
+                          keyboardType: TextInputType.emailAddress,
+                          autofillHints: const [AutofillHints.email],
+                          textInputAction: TextInputAction.next,
+                          decoration: const InputDecoration(labelText: '이메일', prefixIcon: Icon(Icons.mail_outline)),
+                        ),
+                        SizedBox(height: gap(10, 12)),
+                        TextField(
+                          controller: _pw,
+                          obscureText: _hidePw,
+                          autofillHints: const [AutofillHints.password],
+                          textInputAction: TextInputAction.done,
+                          decoration: InputDecoration(
+                            labelText: '비밀번호',
+                            prefixIcon: const Icon(Icons.lock_outline),
+                            suffixIcon: IconButton(
+                              tooltip: _hidePw ? '비밀번호 보기' : '비밀번호 숨기기',
+                              icon: Icon(_hidePw ? Icons.visibility_outlined : Icons.visibility_off_outlined),
+                              onPressed: () => setState(() => _hidePw = !_hidePw),
+                            ),
+                          ),
+                          onSubmitted: (_) => _login(),
+                        ),
+                        SizedBox(height: gap(14, 24)),
+                        FilledButton(
+                          onPressed: _busy ? null : _login,
+                          child: _busy
+                              ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2.5))
+                              : const Text('로그인'),
+                        ),
+                        Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+                          TextButton(onPressed: _reset, child: const Text('비밀번호 재설정')),
+                          TextButton(
+                            onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SignupScreen())),
+                            child: const Text('회원가입'),
+                          ),
+                        ]),
+                        SizedBox(height: gap(4, 16)),
+                        const Row(children: [
+                          Expanded(child: Divider()),
+                          Padding(
+                            padding: EdgeInsets.symmetric(horizontal: 12),
+                            child: Text('또는', style: TextStyle(color: Brand.muted, fontSize: 13)),
+                          ),
+                          Expanded(child: Divider()),
+                        ]),
+                        SizedBox(height: gap(12, 20)),
+                        _SocialButton(
+                          label: '카카오로 계속하기',
+                          background: const Color(0xFFFEE500),
+                          foreground: const Color(0xD9000000),
+                          icon: const Icon(Icons.chat_bubble, size: 18, color: Color(0xD9000000)),
+                          onPressed: () => _social(OAuthProvider.kakao),
+                        ),
+                        const SizedBox(height: 10),
+                        _SocialButton(
+                          label: 'Google로 계속하기',
+                          background: Colors.white,
+                          foreground: const Color(0xFF1F1F1F),
+                          border: const Color(0xFF747775),
+                          icon: const Text('G',
+                              style: TextStyle(color: Color(0xFF4285F4), fontWeight: FontWeight.w800, fontSize: 18)),
+                          onPressed: () => _social(OAuthProvider.google),
+                        ),
+                      ],
                     ),
-                  ]),
-                  const SizedBox(height: 20),
-                  const Row(children: [
-                    Expanded(child: Divider()),
-                    Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 12),
-                      child: Text('또는', style: TextStyle(color: Brand.muted, fontSize: 13)),
-                    ),
-                    Expanded(child: Divider()),
-                  ]),
-                  const SizedBox(height: 20),
-                  _SocialButton(
-                    label: '카카오로 계속하기',
-                    background: const Color(0xFFFEE500),
-                    foreground: const Color(0xD9000000),
-                    icon: const Icon(Icons.chat_bubble, size: 18, color: Color(0xD9000000)),
-                    onPressed: () => _social(OAuthProvider.kakao),
                   ),
-                  const SizedBox(height: 10),
-                  _SocialButton(
-                    label: 'Google로 계속하기',
-                    background: Colors.white,
-                    foreground: const Color(0xFF1F1F1F),
-                    border: const Color(0xFF747775),
-                    icon: const Text('G',
-                        style: TextStyle(color: Color(0xFF4285F4), fontWeight: FontWeight.w800, fontSize: 18)),
-                    onPressed: () => _social(OAuthProvider.google),
-                  ),
-                ],
+                ),
               ),
             ),
-          ),
-          ),
-          // 갤럭시 등 하단 내비게이션 바에 가리지 않도록 시스템 바 높이만큼 올림
-          Padding(
-            padding: EdgeInsets.only(bottom: MediaQuery.viewPaddingOf(context).bottom + 16),
-            child: const SupportProgramMark(),
-          ),
-        ]),
-      ),
+            const Spacer(), // 화면이 길면 표기를 맨 아래로
+            // 갤럭시 등 하단 내비게이션 바에 가리지 않도록 시스템 바 높이만큼 올림
+            Padding(
+              padding: EdgeInsets.only(top: gap(12, 20), bottom: MediaQuery.viewPaddingOf(context).bottom + gap(8, 16)),
+              child: const SupportProgramMark(),
+            ),
+          ]),
+        ),
+      ]),
     );
   }
 }
 
 /// 로그인 상단 브랜드 영역: 로고 파랑 배경 + WINREF ACADEMY 로고(눈꽃·워드마크·슬로건)
 class BrandHero extends StatelessWidget {
-  const BrandHero({super.key});
+  final double scale; // 0(작은 화면) ~ 1(큰 화면)
+  const BrandHero({super.key, this.scale = 1});
   @override
   Widget build(BuildContext context) {
+    final t = scale;
     return Container(
       width: double.infinity,
       color: Brand.gold, // 로고 원본 배경색 #4A90E2
-      padding: EdgeInsets.fromLTRB(24, MediaQuery.viewPaddingOf(context).top + 36, 24, 32), // 상태바 높이만큼 내림
+      // 상태바 높이만큼 내리고, 화면 높이에 따라 로고·여백 크기 조절
+      padding: EdgeInsets.fromLTRB(24, MediaQuery.viewPaddingOf(context).top + 18 + 18 * t, 24, 18 + 14 * t),
       child: Column(children: [
-        Image.asset('assets/brand/lockup_white.png', width: 260, semanticLabel: 'WINREF ACADEMY'),
-        const SizedBox(height: 14),
+        Image.asset('assets/brand/lockup_white.png', width: 200 + 60 * t, semanticLabel: 'WINREF ACADEMY'),
+        SizedBox(height: 8 + 6 * t),
         const Text('스포츠 인재은행', style: TextStyle(color: Colors.white, fontSize: 15, letterSpacing: 3)),
       ]),
     );
@@ -185,7 +216,7 @@ class SupportProgramMark extends StatelessWidget {
   Widget build(BuildContext context) {
     const gray = Color(0xFF9AA5B4);
     return const Padding(
-      padding: EdgeInsets.fromLTRB(24, 20, 24, 32),
+      padding: EdgeInsets.symmetric(horizontal: 24),
       child: Row(mainAxisSize: MainAxisSize.min, children: [
         SizedBox(width: 20, child: Divider(color: Color(0xFFD5DCE6), thickness: 1)),
         SizedBox(width: 10),

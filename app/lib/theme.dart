@@ -42,7 +42,7 @@ ThemeData buildTheme() {
   return base.copyWith(
     scaffoldBackgroundColor: Brand.ivory,
     textTheme: text.copyWith(
-      titleLarge: text.titleLarge?.copyWith(fontWeight: FontWeight.w700, letterSpacing: 0.5),
+      titleLarge: text.titleLarge?.copyWith(fontWeight: FontWeight.w700, letterSpacing: -0.2),
       titleMedium: text.titleMedium?.copyWith(fontWeight: FontWeight.w600, color: Brand.navy),
     ),
     appBarTheme: const AppBarTheme(
@@ -50,7 +50,7 @@ ThemeData buildTheme() {
       foregroundColor: Brand.ivory,
       elevation: 0,
       centerTitle: true,
-      titleTextStyle: TextStyle(color: Brand.ivory, fontSize: 18, fontWeight: FontWeight.w600, letterSpacing: 2),
+      titleTextStyle: TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.w700, letterSpacing: -0.2),
     ),
     navigationBarTheme: NavigationBarThemeData(
       backgroundColor: Colors.white,
@@ -78,7 +78,7 @@ ThemeData buildTheme() {
       surfaceTintColor: Colors.transparent,
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(6),
+        borderRadius: BorderRadius.circular(12),
         side: const BorderSide(color: Color(0xFFDCE5F0)),
       ),
     ),
@@ -89,33 +89,33 @@ ThemeData buildTheme() {
         backgroundColor: Brand.navy,
         foregroundColor: Brand.ivory,
         minimumSize: const Size.fromHeight(50),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
-        textStyle: const TextStyle(fontWeight: FontWeight.w600, letterSpacing: 1),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
       ),
     ),
     outlinedButtonTheme: OutlinedButtonThemeData(
       style: OutlinedButton.styleFrom(
         foregroundColor: Brand.navy,
         side: const BorderSide(color: Brand.navy),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
       ),
     ),
     textButtonTheme: TextButtonThemeData(style: TextButton.styleFrom(foregroundColor: Brand.navy)),
     floatingActionButtonTheme: const FloatingActionButtonThemeData(
       backgroundColor: Brand.gold,
       foregroundColor: Colors.white,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(6))),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(16))),
     ),
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
       fillColor: Colors.white,
-      border: OutlineInputBorder(borderRadius: BorderRadius.circular(4)),
+      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
       enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: BorderRadius.circular(10),
         borderSide: const BorderSide(color: Color(0xFFC3D0E0)),
       ),
       focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: BorderRadius.circular(10),
         borderSide: const BorderSide(color: Brand.navy, width: 1.5),
       ),
     ),
@@ -129,7 +129,24 @@ ThemeData buildTheme() {
       unselectedLabelColor: Color(0xFFC9DCF5),
       indicatorColor: Colors.white,
     ),
-    snackBarTheme: const SnackBarThemeData(backgroundColor: Brand.navy, contentTextStyle: TextStyle(color: Brand.ivory)),
+    snackBarTheme: SnackBarThemeData(
+      backgroundColor: Brand.ink,
+      contentTextStyle: const TextStyle(color: Colors.white, fontSize: 14),
+      behavior: SnackBarBehavior.floating, // 하단 버튼·FAB 를 가리지 않게 떠 있는 알림
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      actionTextColor: Brand.ice,
+    ),
+    dialogTheme: DialogThemeData(
+      backgroundColor: Colors.white,
+      surfaceTintColor: Colors.transparent,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+    ),
+    bottomSheetTheme: const BottomSheetThemeData(backgroundColor: Colors.white, surfaceTintColor: Colors.transparent),
+    popupMenuTheme: PopupMenuThemeData(
+      color: Colors.white,
+      surfaceTintColor: Colors.transparent,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+    ),
   );
 }
 
