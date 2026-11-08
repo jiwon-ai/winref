@@ -51,6 +51,15 @@ jobs:
         with:
           name: career-pdf-sample
           path: app/build/career_sample.pdf
+      - name: Publish PDF sample to samples branch
+        run: |
+          cp build/career_sample.pdf /tmp/career_sample.pdf
+          cd /tmp && rm -rf samples && mkdir samples && cd samples && git init -q -b samples
+          cp /tmp/career_sample.pdf .
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add career_sample.pdf && git commit -qm "PDF sample ${GITHUB_SHA::7}"
+          git push -fq "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" samples
 
       - name: Release keystore (Secrets 가 있을 때만)
         env:
