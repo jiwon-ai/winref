@@ -81,10 +81,10 @@ jobs:
           DEFINES: >-
             --dart-define=SUPABASE_URL=${{ secrets.SUPABASE_URL || 'https://oxdavtdvpwhcllnivizb.supabase.co' }}
             --dart-define=SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY || 'sb_publishable_n_LETmj8ZhCjOIZ5NfD5BA_afhksSoS' }}
-            --dart-define=FIREBASE_API_KEY=${{ secrets.FIREBASE_API_KEY }}
-            --dart-define=FIREBASE_APP_ID=${{ secrets.FIREBASE_APP_ID }}
-            --dart-define=FIREBASE_SENDER_ID=${{ secrets.FIREBASE_SENDER_ID }}
-            --dart-define=FIREBASE_PROJECT_ID=${{ secrets.FIREBASE_PROJECT_ID }}
+            --dart-define=FIREBASE_API_KEY=${{ secrets.FIREBASE_API_KEY || 'AIzaSyAHKupL2ylBhfDliQeH9MFsCTelQUznVLE' }}
+            --dart-define=FIREBASE_APP_ID=${{ secrets.FIREBASE_APP_ID || '1:946445900322:android:03d26c6ff771262797087b' }}
+            --dart-define=FIREBASE_SENDER_ID=${{ secrets.FIREBASE_SENDER_ID || '946445900322' }}
+            --dart-define=FIREBASE_PROJECT_ID=${{ secrets.FIREBASE_PROJECT_ID || 'winref' }}
         run: |
           flutter build apk --release $DEFINES
           flutter build appbundle --release $DEFINES
