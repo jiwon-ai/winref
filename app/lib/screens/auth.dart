@@ -195,17 +195,21 @@ class BrandHero extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = scale;
-    return Container(
-      width: double.infinity,
-      color: Brand.gold, // 로고 원본 배경색 #4A90E2
-      // 상태바 높이만큼 내리고, 화면 높이에 따라 로고·여백 크기 조절
-      padding: EdgeInsets.fromLTRB(24, MediaQuery.viewPaddingOf(context).top + 18 + 18 * t, 24, 18 + 14 * t),
-      child: Column(children: [
-        Image.asset('assets/brand/lockup_white.png', width: 200 + 60 * t, semanticLabel: 'WINREF ACADEMY'),
-        SizedBox(height: 8 + 6 * t),
-        const Text('스포츠 인재은행', style: TextStyle(color: Colors.white, fontSize: 15, letterSpacing: 3)),
-      ]),
-    );
+    return Stack(children: [
+      Container(
+        width: double.infinity,
+        color: Brand.gold, // 로고 원본 배경색 #4A90E2
+        // 상태바 높이만큼 내리고, 화면 높이에 따라 로고·여백 크기 조절. 아래는 설산 능선 자리
+        padding: EdgeInsets.fromLTRB(24, MediaQuery.viewPaddingOf(context).top + 18 + 18 * t, 24, 30 + 16 * t),
+        child: Column(children: [
+          Image.asset('assets/brand/lockup_white.png', width: 200 + 60 * t, semanticLabel: 'WINREF ACADEMY'),
+          SizedBox(height: 8 + 6 * t),
+          const Text('알파인 스키 · 스포츠 인재은행',
+              style: TextStyle(color: Colors.white, fontSize: 15, letterSpacing: 2)),
+        ]),
+      ),
+      Positioned(left: 0, right: 0, bottom: -1, child: MountainRidge(height: 22 + 12 * t)),
+    ]);
   }
 }
 

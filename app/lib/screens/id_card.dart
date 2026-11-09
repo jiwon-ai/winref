@@ -100,7 +100,7 @@ class _Card extends StatelessWidget {
                   color: Colors.white.withValues(alpha: 0.16),
                   borderRadius: BorderRadius.circular(20),
                 ),
-                child: const Text('REFEREE', style: TextStyle(color: Colors.white, fontSize: 11, letterSpacing: 1.5)),
+                child: const Text('ALPINE OFFICIAL', style: TextStyle(color: Colors.white, fontSize: 11, letterSpacing: 1.5)),
               ),
             ]),
             const SizedBox(height: 22),

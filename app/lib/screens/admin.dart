@@ -32,7 +32,7 @@ class _AdminHomeState extends State<AdminHome> {
     (Icons.people_outline, '회원'),
     (Icons.badge_outlined, '자격 승인'),
     (Icons.school_outlined, '교육'),
-    (Icons.sports_outlined, '대회'),
+    (Icons.downhill_skiing, '대회'),
     (Icons.campaign_outlined, '공지·알림'),
   ];
 
@@ -148,7 +148,7 @@ class _DashboardState extends State<_Dashboard> {
             const SizedBox(height: 10),
             Wrap(spacing: 12, runSpacing: 12, children: [
               _Kpi('전체 회원', '$total', icon: Icons.groups_outlined),
-              _Kpi('심판·교육신청자', '${roles['referee'] ?? 0}', icon: Icons.sports_outlined),
+              _Kpi('심판·교육신청자', '${roles['referee'] ?? 0}', icon: Icons.downhill_skiing),
               _Kpi('대회관계자', '${roles['organizer'] ?? 0}', icon: Icons.apartment_outlined),
               _Kpi('신규 회원 (30일)', '${s['new_members_30d']}', icon: Icons.person_add_alt_outlined),
               _Kpi('등록 대회', '${s['competitions']}', icon: Icons.emoji_events_outlined),

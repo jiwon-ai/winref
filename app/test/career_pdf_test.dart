@@ -22,17 +22,17 @@ void main() {
     final history = [
       for (var i = 0; i < 40; i++) // 40건 → 여러 페이지로 넘어가는지 확인
         {
-          'competition_name': '2026 서울 유소년 축구대회 $i',
+          'competition_name': '2026 용평컵 알파인 스키대회 $i',
           'starts_on': '2026-11-0${(i % 9) + 1}',
           'ends_on': i.isEven ? '2026-11-0${(i % 9) + 1}' : null,
-          'venue': '잠실 보조경기장',
-          'position': i % 3 == 0 ? '주심' : '부심',
+          'venue': '용평리조트 레인보우 슬로프',
+          'position': i % 3 == 0 ? '기문심판' : '출발심판',
         },
     ];
     final bytes = await buildCareerPdf(
-      profile: {'id': '1234abcd-0000-0000-0000-000000000000', 'name': '김심판', 'region': '서울', 'sport': '축구', 'birth_date': '1990-05-01'},
+      profile: {'id': '1234abcd-0000-0000-0000-000000000000', 'name': '김심판', 'region': '강원', 'sport': '대회전 (GS)', 'birth_date': '1990-05-01'},
       history: history,
-      quals: [{'name': '대한축구협회 심판', 'grade': '3급', 'cert_no': 'KFA-2024-01234', 'acquired_on': '2024-03-01', 'expires_on': '2027-02-28'}],
+      quals: [{'name': '대한스키협회 알파인 심판', 'grade': '3급', 'cert_no': 'KSA-AL-2024-0123', 'acquired_on': '2024-03-01', 'expires_on': '2027-02-28'}],
       regular: regular,
       bold: bold,
       issuedAt: DateTime(2026, 11, 8),

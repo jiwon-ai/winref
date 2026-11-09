@@ -203,11 +203,18 @@ class Field {
   final bool required;
   final String? initial;
   final String? helper; // 입력칸 아래 안내
+  final List<String>? options; // 목록에서 고르기(직접 입력도 가능)
   /// 날짜 자동 채움: [autoFrom] 날짜를 고르면 그 날짜 + [autoYears]년으로 채운다(직접 고치면 그 값 유지)
   final String? autoFrom;
   final int autoYears;
   const Field(this.key, this.label,
-      {this.type = FieldType.text, this.required = false, this.initial, this.helper, this.autoFrom, this.autoYears = 0});
+      {this.type = FieldType.text,
+      this.required = false,
+      this.initial,
+      this.helper,
+      this.autoFrom,
+      this.autoYears = 0,
+      this.options});
 }
 
 /// 필드 목록으로 입력 화면을 띄우고, 저장 시 key→값(빈 값은 null) 맵을 돌려준다.
@@ -284,6 +291,28 @@ class _FormScreenState extends State<_FormScreen> {
     setState(() { _values[f.key] = dt.toUtc().toIso8601String(); _c[f.key]!.text = fmtDateTime(dt.toIso8601String()); });
   }
 
+  Future<void> _choose(Field f) async {
+    final v = await showModalBottomSheet<String>(
+      context: context,
+      isScrollControlled: true,
+      builder: (s) => SafeArea(
+        child: ConstrainedBox(
+          constraints: BoxConstraints(maxHeight: MediaQuery.sizeOf(s).height * 0.7),
+          child: ListView(shrinkWrap: true, children: [
+            ListTile(title: Text(f.label, style: const TextStyle(fontWeight: FontWeight.w700))),
+            for (final o in f.options!)
+              ListTile(
+                title: Text(o),
+                trailing: _c[f.key]!.text == o ? const Icon(Icons.check, color: Brand.navy) : null,
+                onTap: () => Navigator.pop(s, o),
+              ),
+          ]),
+        ),
+      ),
+    );
+    if (v != null) setState(() => _c[f.key]!.text = v);
+  }
+
   void _setDate(String key, DateTime d) {
     _values[key] = DateFormat('yyyy-MM-dd').format(d);
     _c[key]!.text = fmtDate(d.toIso8601String());
@@ -334,6 +363,11 @@ class _FormScreenState extends State<_FormScreen> {
                     suffixIcon: switch (f.type) {
                       FieldType.date || FieldType.datetime => const Icon(Icons.calendar_today),
                       FieldType.file => const Icon(Icons.upload_file),
+                      _ when f.options != null => IconButton(
+                          tooltip: '${f.label} 목록에서 선택',
+                          icon: const Icon(Icons.arrow_drop_down_circle_outlined),
+                          onPressed: () => _choose(f),
+                        ),
                       _ => null,
                     },
                   ),
@@ -539,7 +573,7 @@ Future<bool> editProfile(BuildContext context, Map<String, dynamic> p) async {
     if (p['role'] == 'organizer') Field('organization', '소속 기관', initial: p['organization']),
     if (referee) ...[
       Field('region', '활동 지역 (예: 서울)', initial: p['region']),
-      Field('sport', '주 종목 (예: 축구)', initial: p['sport']),
+      Field('sport', '전문 종목', initial: p['sport'], options: alpineDisciplines),
       Field('bio', '소개·주요 경력', type: FieldType.multiline, initial: p['bio']),
     ],
   ]);
@@ -754,3 +788,96 @@ Future<bool> confirm(BuildContext context, String title, String body, {String ok
       ),
     ) ==
     true;
+
+/// 알파인 스키 경기 종목
+const alpineDisciplines = [
+  '회전 (SL)',
+  '대회전 (GS)',
+  '슈퍼대회전 (SG)',
+  '활강 (DH)',
+  '알파인 복합 (AC)',
+  '평행 회전 (PSL)',
+  '평행 대회전 (PGS)',
+];
+
+/// 알파인 스키 대회 심판·경기 운영 직무 (목록에 없으면 직접 입력)
+const alpineRoles = [
+  '기술대표 (TD)',
+  '심판장 (Referee)',
+  '경기위원장 (Chief of Race)',
+  '코스위원장',
+  '기문심판장',
+  '기문심판',
+  '출발심판',
+  '결승심판',
+  '계시위원장',
+  '계시원',
+  '코스요원',
+];
+
+/// 경기 종목 표시 (예: ⛷ 대회전 (GS))
+class DisciplineTag extends StatelessWidget {
+  final String text;
+  const DisciplineTag(this.text, {super.key});
+  @override
+  Widget build(BuildContext context) => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+        decoration: BoxDecoration(color: Brand.ice, borderRadius: BorderRadius.circular(6)),
+        child: Row(mainAxisSize: MainAxisSize.min, children: [
+          const Icon(Icons.downhill_skiing, size: 14, color: Brand.navy),
+          const SizedBox(width: 4),
+          Flexible(
+            child: Text(text,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(fontSize: 12, color: Brand.navy, fontWeight: FontWeight.w600)),
+          ),
+        ]),
+      );
+}
+
+/// 설산 능선 실루엣 (알파인 스키 분위기). 아래쪽 배경색으로 채워 위 영역과 자연스럽게 이어진다.
+class MountainRidge extends StatelessWidget {
+  final double height;
+  final Color color;
+  const MountainRidge({super.key, this.height = 36, this.color = Brand.ivory});
+  @override
+  Widget build(BuildContext context) =>
+      ExcludeSemantics(child: CustomPaint(size: Size(double.infinity, height), painter: _RidgePainter(color)));
+}
+
+class _RidgePainter extends CustomPainter {
+  final Color color;
+  _RidgePainter(this.color);
+  @override
+  void paint(Canvas canvas, Size s) {
+    // 뒤 능선(반투명) + 앞 능선(배경색)
+    final back = Path()
+      ..moveTo(0, s.height * 0.55)
+      ..lineTo(s.width * 0.18, s.height * 0.10)
+      ..lineTo(s.width * 0.30, s.height * 0.45)
+      ..lineTo(s.width * 0.47, 0)
+      ..lineTo(s.width * 0.64, s.height * 0.50)
+      ..lineTo(s.width * 0.80, s.height * 0.15)
+      ..lineTo(s.width, s.height * 0.55)
+      ..lineTo(s.width, s.height)
+      ..lineTo(0, s.height)
+      ..close();
+    canvas.drawPath(back, Paint()..color = Colors.white.withValues(alpha: 0.22));
+    final front = Path()
+      ..moveTo(0, s.height * 0.85)
+      ..lineTo(s.width * 0.12, s.height * 0.55)
+      ..lineTo(s.width * 0.26, s.height * 0.80)
+      ..lineTo(s.width * 0.40, s.height * 0.40)
+      ..lineTo(s.width * 0.58, s.height * 0.82)
+      ..lineTo(s.width * 0.72, s.height * 0.52)
+      ..lineTo(s.width * 0.88, s.height * 0.78)
+      ..lineTo(s.width, s.height * 0.60)
+      ..lineTo(s.width, s.height)
+      ..lineTo(0, s.height)
+      ..close();
+    canvas.drawPath(front, Paint()..color = color);
+  }
+
+  @override
+  bool shouldRepaint(_RidgePainter old) => old.color != color;
+}

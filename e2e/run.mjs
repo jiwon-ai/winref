@@ -148,17 +148,17 @@ try {
     await tap('내 프로필·경력 보기');
     await see('보유 자격');
     await tap('편집', 'button');
-    await type('활동 지역', '서울');
-    await type('주 종목', '축구');
-    await type('소개', 'K3리그 부심 3년');
+    await type('활동 지역', '강원');
+    await type('전문 종목', '대회전 (GS)');
+    await type('소개', '전국동계체전 기문심판 3년');
     await tap('저장', 'button');
-    await see('서울 · 축구');
+    await see('강원 · 대회전 (GS)');
     const [chooser] = await Promise.all([page.waitForEvent('filechooser', { timeout: 15000 }), tap('사진 변경', 'button')]);
     await chooser.setFiles('../store/icon-512.png');
     await see('프로필 사진을 변경했습니다');
     const av = sql(`select avatar_path from profiles where name='김심판'`);
     if (!av.startsWith('avatars/')) throw new Error('avatar_path: ' + av);
-    if (sql(`select region||'/'||sport from profiles where name='김심판'`) !== '서울/축구') throw new Error('지역·종목 저장 안 됨');
+    if (sql(`select region||'/'||sport from profiles where name='김심판'`) !== '강원/대회전 (GS)') throw new Error('지역·종목 저장 안 됨');
     await shot('profile');
     await back();
   });
@@ -171,9 +171,9 @@ try {
     await goTab('대회');
     await see('대회 모집');
     await shot('competitions'); await store('competitions');
-    await tap('2026 서울 유소년 축구대회');
-    await see('잠실 보조경기장');
-    await see('서울 송파구 올림픽로 25');
+    await tap('2026 용평컵 알파인 스키대회');
+    await see('용평리조트 레인보우 슬로프');
+    await see('강원 평창군 대관령면 올림픽로 715');
     await see('네이버 지도에서 크게 보기');
     await shot('competition-detail');
     await tap('심판 지원하기', 'button');
@@ -185,16 +185,16 @@ try {
   });
 
   await check('검색·필터·캘린더', async () => {
-    await tap('내 지역 (서울)', 'checkbox').catch(() => tap('내 지역 (서울)'));
-    await see('2026 서울 유소년 축구대회');
-    await tap('내 지역 (서울)', 'checkbox').catch(() => tap('내 지역 (서울)'));
+    await tap('내 지역 (강원)', 'checkbox').catch(() => tap('내 지역 (강원)'));
+    await see('2026 용평컵 알파인 스키대회');
+    await tap('내 지역 (강원)', 'checkbox').catch(() => tap('내 지역 (강원)'));
     await type('대회명', '부산');
     await see('조건에 맞는 모집 대회가 없습니다');
     await page.keyboard.press('Control+A');
-    await page.keyboard.type('잠실', { delay: 20 });
-    await see('2026 서울 유소년 축구대회');
+    await page.keyboard.type('용평', { delay: 20 });
+    await see('2026 용평컵 알파인 스키대회');
     await tap('7일 이내', 'checkbox').catch(() => tap('7일 이내'));
-    await see('2026 서울 유소년 축구대회');
+    await see('2026 용평컵 알파인 스키대회');
     await tap('캘린더 보기', 'button');
     await see('날짜를 선택하면');
     await shot('calendar'); await store('calendar');
@@ -206,9 +206,9 @@ try {
 
   await check('교육 신청', async () => {
     await goTab('교육');
-    await see('3급 심판 양성과정');
+    await see('알파인 심판 3급 양성과정');
     await shot('courses');
-    await tap('3급 심판 양성과정');
+    await tap('알파인 심판 3급 양성과정');
     await tap('교육 신청', 'button');
     await see('신청 취소');
     if (sql(`select count(*) from course_applications a join profiles p on p.id=a.user_id where p.name='김심판' and a.status='applied'`) !== '1')
@@ -220,9 +220,9 @@ try {
   await check('자격 등록·자격증 사본 업로드', async () => {
     await goTab('자격');
     await tap('자격 등록', 'button');
-    await type('자격명', '대한축구협회 심판');
+    await type('자격명', '대한스키협회 알파인 심판');
     await type('등급', '3급');
-    await type('자격번호', 'KFA-2024-01234');
+    await type('자격번호', 'KSA-AL-2024-0123');
     const [chooser] = await Promise.all([
       page.waitForEvent('filechooser', { timeout: 15000 }),
       page.getByRole('textbox', { name: '자격증 사본', exact: false }).first().click(),
@@ -231,7 +231,7 @@ try {
     await page.waitForTimeout(2500);  // 업로드
     await tap('저장', 'button');
     await see('관리자 확인 후 승인됩니다');
-    if (sql(`select cert_no from qualifications q join profiles p on p.id=q.user_id where p.name='김심판'`) !== 'KFA-2024-01234')
+    if (sql(`select cert_no from qualifications q join profiles p on p.id=q.user_id where p.name='김심판'`) !== 'KSA-AL-2024-0123')
       throw new Error('자격번호 저장 안 됨');
     const fp = sql(`select file_path from qualifications q join profiles p on p.id=q.user_id where p.name='김심판'`);
     if (!fp.startsWith('quals/')) throw new Error('사본 경로: ' + fp);
@@ -253,18 +253,18 @@ try {
     await see('내 대회');
     await see('검토 대기 3명');   // 홈 보드: 대회별 검토 대기 인원
     await shot('organizer-home'); await store('organizer-home');
-    await tap('2026 서울 유소년 축구대회', 'button');
-    await see('모집 포지션').catch(() => {});
+    await tap('2026 용평컵 알파인 스키대회', 'button');
+    await see('모집 직무').catch(() => {});
     await shot('org-recruitments');
     await tap('지원자', 'tab');
-    await see('일정 겹침: 경기도 생활체육 리그');   // 같은 날 다른 대회에 선발된 지원자
-    await see('주심 선발 0/2');
+    await see('일정 겹침: 하이원 주니어 알파인 대회');   // 같은 날 다른 대회에 선발된 지원자
+    await see('기문심판 선발 0/2');
     await tap('일괄 선택', 'button');
     await tap('김심판', 'checkbox');
     await tap('박심판', 'checkbox');
     await shot('bulk-select'); await store('bulk-select');
     await tap('일괄 선발', 'button');
-    await see('주심 선발 2/2');
+    await see('기문심판 선발 2/2');
     if (sql(`select count(*) from applications where status='selected' and user_id in (select id from profiles where name in ('김심판','박심판'))`) !== '2')
       throw new Error('일괄 선발 저장 안 됨');
     if (sql(`select count(*) from notifications n join profiles p on p.id=n.user_id where n.kind='selection' and p.name in ('김심판','박심판')`) !== '2')
@@ -354,22 +354,22 @@ try {
     await goTab('내 활동');
     await see('선발');
     await shot('my-applications');
-    await tap('2026 서울 유소년 축구대회');
+    await tap('2026 용평컵 알파인 스키대회');
     await see('경기 일정 안내');
     await shot('briefing');
     await el('캘린더에 추가', 'button').waitFor({ state: 'visible', timeout: 10000 });
     await back();
     await tap('활동 이력', 'tab');
-    await see('주심');
+    await see('기문심판');
     await shot('history');
     await goTab('홈');
     await tap('내 프로필·경력 보기');
-    await see('포지션별 활동');
+    await see('직무별 활동');
     await see('활동 이력 PDF');
     await see('1회');
     await shot('career'); await store('career');
     await tap('디지털 심판증', 'button');
-    await see('REFEREE');
+    await see('ALPINE OFFICIAL');
     await see('활동 완료 1회');
     await shot('id-card'); await store('id-card');
     await back();
@@ -382,7 +382,7 @@ try {
     await see('D-1');             // 선발된 내일 대회
     await shot('dashboard-closing');
     await goTab('대회');
-    await tap('2026 서울 유소년 축구대회');
+    await tap('2026 용평컵 알파인 스키대회');
     await see('같은 날 선발된 대회가 있습니다');
     await shot('clash-warning');
     await back();
@@ -405,7 +405,7 @@ try {
     await shot('onboarding');
     await tap('대회관계자');
     await type('휴대폰', '01099998888');
-    await type('소속 기관', '부산시축구협회');
+    await type('소속 기관', '무주스키클럽');
     await tap('개인정보 수집', 'checkbox');
     await tap('가입 완료', 'button');
     await see('기관 승인 대기');
@@ -426,18 +426,18 @@ try {
 
   await check('관리자: 자격 확인(사본)·승인', async () => {
     await tap('자격 승인', 'any!');
-    await tap('대한축구협회 심판');
+    await tap('대한스키협회 알파인 심판');
     await see('자격증 사본 보기');
     await shot('admin-qualification');
     await tap('승인', 'exact');
     await page.waitForTimeout(800);
-    if (sql(`select status from qualifications where name='대한축구협회 심판'`) !== 'approved') throw new Error('승인 저장 안 됨');
+    if (sql(`select status from qualifications where name='대한스키협회 알파인 심판'`) !== 'approved') throw new Error('승인 저장 안 됨');
   });
 
   await check('관리자: 회원 검색·엑셀 내보내기', async () => {
     await tap('회원', 'any!');
     await type('이름·연락처', '박관계');
-    await see('서울시축구협회');
+    await see('평창알파인클럽');
     const [dl] = await Promise.all([page.waitForEvent('download', { timeout: 15000 }), tap('엑셀 내보내기', 'button')]);
     const name = dl.suggestedFilename();
     const csv = readFileSync(await dl.path(), 'utf8');
@@ -476,10 +476,10 @@ try {
 
   await check('관리자: 교육·대회·공지 화면', async () => {
     await tap('교육', 'any!');
-    await see('3급 심판 양성과정');
+    await see('알파인 심판 3급 양성과정');
     await shot('admin-courses');
     await tap('대회', 'any!');
-    await see('2026 서울 유소년 축구대회');
+    await see('2026 용평컵 알파인 스키대회');
     await shot('admin-competitions');
     await tap('공지·알림', 'any!');
     await see('WINREF 인재은행 오픈');

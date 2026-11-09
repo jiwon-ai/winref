@@ -7,7 +7,7 @@ import '../common.dart';
 import '../theme.dart';
 import 'id_card.dart';
 
-/// 심판 경력 카드: 활동 통계 · 포지션별 활동 · 보유 자격 · 최근 활동 · 소개
+/// 심판 경력 카드: 활동 통계 · 직무별 활동 · 보유 자격 · 최근 활동 · 소개
 /// 본인 프로필 화면과 대회관계자의 지원자 상세에서 함께 쓴다.
 class CareerView extends StatefulWidget {
   final Map<String, dynamic> profile;
@@ -66,7 +66,7 @@ class _CareerViewState extends State<CareerView> {
             const Text('등록된 자격이 없습니다.', style: TextStyle(color: Brand.muted))
           else
             Wrap(spacing: 8, runSpacing: 8, children: [for (final q in quals) _QualBadge(q)]),
-          const _Head('포지션별 활동'),
+          const _Head('직무별 활동'),
           if (byPos.isEmpty)
             const Text('완료된 활동이 없습니다.', style: TextStyle(color: Brand.muted))
           else

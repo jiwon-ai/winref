@@ -225,8 +225,10 @@ Future<Map<String, dynamic>?> editCompetitionForm(BuildContext context, [Map<Str
     Field('name', '대회명', required: true, initial: c?['name']),
     Field('starts_on', '시작일', type: FieldType.date, required: true, initial: c?['starts_on']),
     Field('ends_on', '종료일', type: FieldType.date, initial: c?['ends_on']),
-    Field('venue', '장소', initial: c?['venue']),
-    Field('address', '주소 (지도 표시용, 예: 서울 송파구 올림픽로 25)', initial: c?['address']),
+    Field('discipline', '경기 종목', initial: c?['discipline'], options: alpineDisciplines,
+        helper: '여러 종목이면 쉼표로 (예: 회전 (SL), 대회전 (GS))'),
+    Field('venue', '스키장·슬로프 (예: 용평리조트 레인보우)', initial: c?['venue']),
+    Field('address', '주소 (지도 표시용, 예: 강원 평창군 대관령면 올림픽로 715)', initial: c?['address']),
     Field('host_org', '주최·주관기관', initial: c?['host_org']),
     Field('poster_path', '포스터 (이미지/PDF)', type: FieldType.file, initial: c?['poster_path']),
   ], fileFolder: 'posters');
@@ -305,7 +307,7 @@ class _RecruitmentsManageState extends State<_RecruitmentsManage> {
 
   Future<void> _edit([Map<String, dynamic>? r]) async {
     final v = await showForm(context, r == null ? '심판 모집공고 작성' : '모집공고 수정', [
-      Field('position', '모집 포지션', required: true, initial: r?['position']),
+      Field('position', '모집 직무', required: true, initial: r?['position'], options: alpineRoles),
       Field('headcount', '모집 인원', type: FieldType.number, required: true, initial: r?['headcount']?.toString()),
       Field('requirements', '자격조건', type: FieldType.multiline, initial: r?['requirements']),
       Field('deadline', '지원 마감', type: FieldType.datetime, initial: r?['deadline']),
@@ -399,7 +401,7 @@ class _ApplicantsManageState extends State<_ApplicantsManage> {
   Future<void> _export(List<Map<String, dynamic>> rows) => exportCsv(
         context,
         '지원자_${widget.cid}',
-        ['이름', '연락처', '지역', '포지션', '선발결과', '참석', '활동완료', '지원일'],
+        ['이름', '연락처', '지역', '직무', '선발결과', '참석', '활동완료', '지원일'],
         [
           for (final a in rows)
             [
@@ -423,7 +425,7 @@ class _ApplicantsManageState extends State<_ApplicantsManage> {
         if (snap.hasError) return ErrorView(error: snap.error, onRetry: _reload);
         if (!snap.hasData) return const Center(child: CircularProgressIndicator());
         final all = snap.data!;
-        // 포지션별 선발 현황 (선발 n / 모집 m)
+        // 직무별 선발 현황 (선발 n / 모집 m)
         final quota = <String, (int, int)>{};
         for (final a in all) {
           final r = a['recruitments'];

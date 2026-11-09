@@ -37,7 +37,7 @@ class _RefereeHomeState extends State<RefereeHome> {
         onDestinationSelected: _go,
         destinations: const [
           NavigationDestination(icon: Icon(Icons.home_outlined), selectedIcon: Icon(Icons.home), label: '홈'),
-          NavigationDestination(icon: Icon(Icons.sports_outlined), label: '대회'),
+          NavigationDestination(icon: Icon(Icons.downhill_skiing), label: '대회'),
           NavigationDestination(icon: Icon(Icons.school_outlined), label: '교육'),
           NavigationDestination(icon: Icon(Icons.assignment_outlined), label: '내 활동'),
           NavigationDestination(icon: Icon(Icons.badge_outlined), label: '자격'),
@@ -220,8 +220,10 @@ class _DashboardTabState extends State<_DashboardTab> {
         );
     return Container(
       color: Brand.navy,
-      padding: const EdgeInsets.fromLTRB(20, 8, 20, 20),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+       Padding(
+        padding: const EdgeInsets.fromLTRB(20, 8, 20, 8),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         InkWell(
           onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ProfileScreen()))
               .then((_) => setState(() => _f = _load())),
@@ -251,6 +253,9 @@ class _DashboardTabState extends State<_DashboardTab> {
             stat('활동 완료', d['done'] as int, 3),
           ]),
         ),
+        ]),
+       ),
+        MountainRidge(height: 26, color: Theme.of(context).scaffoldBackgroundColor),
       ]),
     );
   }
@@ -434,7 +439,7 @@ class _RecruitmentsTabState extends State<_RecruitmentsTab> {
               for (final p in const [('all', '전체 기간'), ('week', '7일 이내'), ('month', '한 달 이내')])
                 FilterPill(p.$2, selected: _period == p.$1, onTap: () => setState(() => _period = p.$1)),
               const SizedBox(width: 8),
-              FilterPill('모든 포지션', selected: _position == null, onTap: () => setState(() => _position = null)),
+              FilterPill('모든 직무', selected: _position == null, onTap: () => setState(() => _position = null)),
               for (final p in positions)
                 FilterPill(p, selected: _position == p, onTap: () => setState(() => _position = _position == p ? null : p)),
             ],
@@ -496,6 +501,10 @@ class _RecruitmentsTabState extends State<_RecruitmentsTab> {
                 const SizedBox(height: 3),
                 Text('${comp['venue'] ?? '-'} · ${r['position']} ${r['headcount']}명',
                     style: const TextStyle(color: Brand.muted, fontSize: 13)),
+                if ((comp['discipline'] ?? '').toString().isNotEmpty) ...[
+                  const SizedBox(height: 5),
+                  DisciplineTag(comp['discipline']),
+                ],
               ]),
             ),
             if (badge != null) StatusChip(badge, urgent ? 'selected' : 'pending'),
@@ -608,13 +617,14 @@ class _RecruitmentDetailState extends State<RecruitmentDetail> {
           ),
         const SizedBox(height: 16),
         _row('일정', '${fmtDate(comp['starts_on'])}${comp['ends_on'] != null ? ' ~ ${fmtDate(comp['ends_on'])}' : ''}'),
+        if ((comp['discipline'] ?? '').toString().isNotEmpty) _row('경기 종목', comp['discipline']),
         _row('장소', comp['venue'] ?? '-'),
         if ((comp['address'] ?? '').toString().isNotEmpty) _row('주소', comp['address']),
         const SizedBox(height: 8),
         VenueMap(venue: comp['venue'], address: comp['address']),
         _row('주최·주관', comp['host_org'] ?? '-'),
         const Divider(height: 32),
-        _row('모집 포지션', r['position']),
+        _row('모집 직무', r['position']),
         _row('모집 인원', '${r['headcount']}명'),
         _row('지원 조건', r['requirements'] ?? '-'),
         _row('마감', fmtDateTime(r['deadline'])),
@@ -891,7 +901,7 @@ class _BriefingScreenState extends State<BriefingScreen> {
       end: DateTime.tryParse(c['ends_on'] ?? ''),
       allDay: true,
       location: [c['venue'], c['address']].where((e) => (e ?? '').toString().isNotEmpty).join(' '),
-      details: _mine.isEmpty ? null : '포지션: ${_mine.first['recruitments']['position']}',
+      details: _mine.isEmpty ? null : '직무: ${_mine.first['recruitments']['position']}',
     );
   }
 

@@ -17,35 +17,39 @@ begin
   if v_admin is null or v_org is null or v_ref is null then
     raise exception '가입되지 않은 이메일이 있습니다. 관리자=%, 관계자=%, 심판=%', v_admin, v_org, v_ref;
   end if;
-  if exists (select 1 from competitions where name = '[시연] 2026 서울 유소년 축구 페스티벌') then
+  if exists (select 1 from competitions where name = '[시연] 2026 용평컵 알파인 스키대회') then
     raise notice '시연 데이터가 이미 있습니다.'; return;
   end if;
 
   update profiles set role = 'admin' where id = v_admin;
-  update profiles set org_status = 'approved', organization = coalesce(organization, '서울시축구협회') where id = v_org;
-  update profiles set region = '서울', sport = '축구', bio = 'K3리그 부심 3년, 유소년 대회 주심 다수' where id = v_ref;
+  update profiles set org_status = 'approved', organization = coalesce(organization, '평창알파인클럽') where id = v_org;
+  update profiles set region = '강원', sport = '대회전 (GS)', bio = '전국동계체전 기문심판 3년, 주니어 대회 출발심판 다수' where id = v_ref;
 
   insert into competitions (organizer_id, name, starts_on, ends_on, venue, address, host_org)
-  values (v_org, '[시연] 2026 서울 유소년 축구 페스티벌', current_date + 3, current_date + 4, '잠실 보조경기장', '서울 송파구 올림픽로 25', '서울시축구협회')
+  values (v_org, '[시연] 2026 용평컵 알파인 스키대회', current_date + 3, current_date + 4, '용평리조트 레인보우 슬로프', '강원 평창군 대관령면 올림픽로 715', '평창알파인클럽')
   returning id into c1;
   insert into competitions (organizer_id, name, starts_on, venue, host_org)
-  values (v_org, '[시연] 경기도 생활체육 축구 리그', current_date + 12, '수원 종합운동장', '경기도체육회')
+  values (v_org, '[시연] 하이원 주니어 알파인 챌린지', current_date + 12, '하이원리조트 아테나 슬로프', '정선알파인클럽')
   returning id into c2;
   insert into competitions (organizer_id, name, starts_on, venue, host_org)
-  values (v_org, '[시연] 전국 대학 풋살 챔피언십', current_date - 20, '인천 남동체육관', '대학스포츠협의회')
+  values (v_org, '[시연] 2025 무주 알파인 스키대회', current_date - 20, '무주덕유산리조트 실크로드 슬로프', '무주스키클럽')
   returning id into c3;
 
+  update competitions set discipline = '대회전 (GS), 회전 (SL)' where id = c1;
+  update competitions set discipline = '회전 (SL)' where id = c2;
+  update competitions set discipline = '슈퍼대회전 (SG)' where id = c3;
+
   insert into recruitments (competition_id, position, headcount, requirements, deadline, preparation)
-  values (c1, '주심', 4, '3급 이상 자격 보유', now() + interval '2 days', '심판복·호루라기 지참, 08:30 집결')
+  values (c1, '기문심판', 4, '알파인 심판 3급 이상', now() + interval '2 days', '스키복·헬멧·무전기 지참, 07:30 레이스 오피스 집결')
   returning id into r1;
   insert into recruitments (competition_id, position, headcount, requirements, deadline, preparation)
-  values (c1, '부심', 8, '4급 이상 자격 보유', now() + interval '2 days', '심판복·깃발 지참')
+  values (c1, '출발심판', 8, '알파인 심판 자격 보유', now() + interval '2 days', '스키복·헬멧 지참, 출발 구역 근무')
   returning id into r2;
   insert into recruitments (competition_id, position, headcount, requirements, deadline)
-  values (c2, '주심', 6, '3급 이상', now() + interval '9 days')
+  values (c2, '기문심판', 6, '알파인 심판 3급 이상', now() + interval '9 days')
   returning id into r3;
   insert into recruitments (competition_id, position, headcount, is_open)
-  values (c3, '주심', 2, false)
+  values (c3, '기문심판', 2, false)
   returning id into r4;
 
   -- 심판: 지난 대회 활동완료 1건, 이번 대회 선발 1건
@@ -54,13 +58,13 @@ begin
   insert into applications (recruitment_id, user_id, status) values (r1, v_ref, 'selected');
 
   insert into briefings (competition_id, title, body)
-  values (c1, '경기 일정 및 배정표', '08:30 본부석 집결 → 09:00 1경기 킥오프. 배정표는 현장 배포.');
+  values (c1, '경기 일정 및 배정표', '07:30 레이스 오피스 집결 → 08:00 코스 점검 → 09:00 1차 레이스 출발. 기문 배정표는 현장 배포.');
 
   insert into qualifications (user_id, name, grade, acquired_on, expires_on, refresher_done, status)
-  values (v_ref, '대한축구협회 심판', '3급', current_date - 700, current_date + 60, false, 'approved');
+  values (v_ref, '대한스키협회 알파인 심판', '3급', current_date - 700, current_date + 60, false, 'approved');
 
   insert into courses (title, description, location, starts_at, ends_at, apply_deadline, capacity, is_refresher) values
-    ('[시연] 3급 심판 양성과정', '경기규칙 이론 + 실기 평가', 'WINREF 교육장', now() + interval '14 days', now() + interval '15 days', now() + interval '7 days', 30, false),
+    ('[시연] 알파인 심판 3급 양성과정', 'FIS 알파인 경기규칙 이론 + 기문심판 실기 평가', 'WINREF 교육장', now() + interval '14 days', now() + interval '15 days', now() + interval '7 days', 30, false),
     ('[시연] 2026 하반기 보수교육', '자격 유지를 위한 필수 보수교육', '온라인(줌)', now() + interval '20 days', now() + interval '20 days 3 hours', now() + interval '10 days', 100, true);
 
   insert into notices (title, body) values

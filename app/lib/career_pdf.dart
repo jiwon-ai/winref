@@ -100,7 +100,7 @@ Future<Uint8List> buildCareerPdf({
         pw.Text('완료된 활동이 없습니다.', style: const pw.TextStyle(color: muted))
       else
         pw.TableHelper.fromTextArray(
-          headers: ['No', '대회명', '기간', '장소', '포지션'],
+          headers: ['No', '대회명', '기간', '장소', '직무'],
           data: [
             for (var i = 0; i < history.length; i++)
               [

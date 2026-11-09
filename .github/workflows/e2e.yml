@@ -69,7 +69,7 @@ jobs:
               -d "{\"email\":\"$1\",\"password\":\"Test1234!\",\"email_confirm\":true,\"user_metadata\":$2}" > /dev/null
           }
           mk admin@test.kr '{"name":"관리자"}'
-          mk org@test.kr '{"name":"박관계","role":"organizer","organization":"서울시축구협회"}'
+          mk org@test.kr '{"name":"박관계","role":"organizer","organization":"평창알파인클럽"}'
           mk ref2@test.kr '{"name":"이심판"}'
           mk ref3@test.kr '{"name":"박심판"}'
           mk social@test.kr '{"full_name":"최소셜"}'
