@@ -80,13 +80,21 @@ def main():
     store.mkdir(exist_ok=True)
     icon(mask, 512, 0.0).convert("RGB").save(store / "icon-512.png")
     fg = Image.new("RGB", (1024, 500), BLUE)
+    # 설산 능선 (알파인 스키)
+    ridge = Image.new("RGBA", (1024, 500), (0, 0, 0, 0))
+    rd = ImageDraw.Draw(ridge)
+    rd.polygon([(0, 430), (150, 350), (260, 400), (430, 300), (600, 395), (760, 330), (900, 380), (1024, 340), (1024, 500), (0, 500)],
+               fill=(255, 255, 255, 46))
+    rd.polygon([(0, 470), (120, 425), (240, 460), (380, 410), (560, 465), (700, 430), (860, 462), (1024, 440), (1024, 500), (0, 500)],
+               fill=(255, 255, 255, 80))
+    fg.paste(ridge, (0, 0), ridge)
     flake = colored(mask, WHITE, 230)
     fg.paste(flake, (95, (500 - flake.height) // 2 - 10), flake)
     wm = wordmark.copy()
     wm.thumbnail((590, 200), Image.LANCZOS)
     fg.paste(wm, (380, 150), wm)
     d = ImageDraw.Draw(fg)
-    d.text((384, 150 + wm.height + 22), "스포츠 인재은행 · 교육 · 대회 · 심판 활동이력", font=ImageFont.truetype(KR, 30), fill=WHITE)
+    d.text((384, 150 + wm.height + 22), "알파인 스키 심판 인재은행 · 교육 · 대회", font=ImageFont.truetype(KR, 30), fill=WHITE)
     d.text((1024 - 24, 500 - 22), "사회적기업 창업지원사업", font=ImageFont.truetype(KR_REG, 18),
            fill=(225, 238, 252), anchor="rs")
     fg.save(store / "feature-graphic-1024x500.png")
