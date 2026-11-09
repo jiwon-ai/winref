@@ -411,6 +411,8 @@ try {
 
   await check('관리자: 대시보드·통계', async () => {
     await page.setViewportSize({ width: 1280, height: 800 });
+    await page.waitForTimeout(800);
+    await shot('login-pc');  // PC: 로그인은 휴대폰 폭으로 가운데
     await login('admin@test.kr');
     await see('대시보드');
     await see('활동완료 누적');

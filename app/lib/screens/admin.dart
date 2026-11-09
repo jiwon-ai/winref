@@ -14,6 +14,18 @@ class AdminHome extends StatefulWidget {
 }
 
 class _AdminHomeState extends State<AdminHome> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => fullWidth.value = true);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.addPostFrameCallback((_) => fullWidth.value = false);
+    super.dispose();
+  }
+
   int _i = 0;
   static const _menu = <(IconData, String)>[
     (Icons.insights_outlined, '대시보드'),

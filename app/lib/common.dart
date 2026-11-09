@@ -45,6 +45,9 @@ String authMessage(AuthException e) {
 final messengerKey = GlobalKey<ScaffoldMessengerState>();
 
 /// 로그아웃: 이전 사용자 화면의 안내 메시지를 지우고 세션 종료
+/// true 면 PC 에서도 전체 폭(관리자 화면). 기본은 휴대폰 폭으로 가운데 표시.
+final fullWidth = ValueNotifier<bool>(false);
+
 Future<void> signOut() async {
   messengerKey.currentState?.clearSnackBars();
   // 같은 휴대폰으로 다른 사람이 로그인해도 이전 회원의 푸시가 오지 않게 기기 토큰 해제

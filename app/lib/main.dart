@@ -46,7 +46,37 @@ class WinrefApp extends StatelessWidget {
       // 휴대폰 글자 크기 설정은 반영하되, 화면이 깨질 만큼 커지지 않게 상한(1.2배)을 둔다.
       builder: (context, child) {
         final mq = MediaQuery.of(context);
-        return MediaQuery(data: mq.copyWith(textScaler: mq.textScaler.clamp(maxScaleFactor: 1.2)), child: child!);
+        final scaled = mq.copyWith(textScaler: mq.textScaler.clamp(maxScaleFactor: 1.2));
+        // PC 브라우저에서는 심판·대회관계자 화면을 휴대폰 폭으로 가운데 표시(관리자 화면만 전체 폭)
+        return ValueListenableBuilder<bool>(
+          valueListenable: fullWidth,
+          builder: (context, full, _) {
+            // 위젯 구조를 항상 같게 유지해 폭이 바뀌어도 화면 상태가 초기화되지 않게 한다
+            final narrow = !full && mq.size.width > 600;
+            const w = 440.0;
+            return ColoredBox(
+              color: const Color(0xFFE3EAF3),
+              child: Align(
+                alignment: Alignment.topCenter,
+                child: SizedBox(
+                  width: narrow ? w : mq.size.width,
+                  height: mq.size.height,
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      boxShadow: narrow
+                          ? const [BoxShadow(color: Color(0x22000000), blurRadius: 24, offset: Offset(0, 6))]
+                          : const [],
+                    ),
+                    child: ClipRect(
+                      child: MediaQuery(
+                          data: narrow ? scaled.copyWith(size: Size(w, mq.size.height)) : scaled, child: child!),
+                    ),
+                  ),
+                ),
+              ),
+            );
+          },
+        );
       },
       home: const AuthGate(),
     );
