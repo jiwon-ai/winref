@@ -32,7 +32,7 @@ class _OrganizerHomeState extends State<OrganizerHome> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('내 대회'), actions: commonActions(context, _profile)),
+      appBar: AppBar(title: const BrandTitle('내 대회'), actions: commonActions(context, _profile)),
       floatingActionButton: _approved
           ? FloatingActionButton.extended(onPressed: _create, icon: const Icon(Icons.add), label: const Text('대회 등록'))
           : null,

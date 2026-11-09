@@ -32,7 +32,7 @@ void main() {
     final bytes = await buildCareerPdf(
       profile: {'id': '1234abcd-0000-0000-0000-000000000000', 'name': '김심판', 'region': '서울', 'sport': '축구', 'birth_date': '1990-05-01'},
       history: history,
-      quals: [{'name': '대한축구협회 심판', 'grade': '3급', 'acquired_on': '2024-03-01', 'expires_on': '2027-02-28'}],
+      quals: [{'name': '대한축구협회 심판', 'grade': '3급', 'cert_no': 'KFA-2024-01234', 'acquired_on': '2024-03-01', 'expires_on': '2027-02-28'}],
       regular: regular,
       bold: bold,
       issuedAt: DateTime(2026, 11, 8),

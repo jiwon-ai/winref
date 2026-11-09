@@ -222,6 +222,7 @@ try {
     await tap('자격 등록', 'button');
     await type('자격명', '대한축구협회 심판');
     await type('등급', '3급');
+    await type('자격번호', 'KFA-2024-01234');
     const [chooser] = await Promise.all([
       page.waitForEvent('filechooser', { timeout: 15000 }),
       page.getByRole('textbox', { name: '자격증 사본', exact: false }).first().click(),
@@ -230,6 +231,8 @@ try {
     await page.waitForTimeout(2500);  // 업로드
     await tap('저장', 'button');
     await see('관리자 확인 후 승인됩니다');
+    if (sql(`select cert_no from qualifications q join profiles p on p.id=q.user_id where p.name='김심판'`) !== 'KFA-2024-01234')
+      throw new Error('자격번호 저장 안 됨');
     const fp = sql(`select file_path from qualifications q join profiles p on p.id=q.user_id where p.name='김심판'`);
     if (!fp.startsWith('quals/')) throw new Error('사본 경로: ' + fp);
     if (sql(`select count(*) from notifications n join profiles p on p.id=n.user_id where p.role='admin' and n.kind='qual_request'`) !== '1')

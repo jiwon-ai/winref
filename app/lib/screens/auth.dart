@@ -214,17 +214,17 @@ class SupportProgramMark extends StatelessWidget {
   const SupportProgramMark({super.key});
   @override
   Widget build(BuildContext context) {
-    const gray = Color(0xFF9AA5B4);
-    return const Padding(
-      padding: EdgeInsets.symmetric(horizontal: 24),
-      child: Row(mainAxisSize: MainAxisSize.min, children: [
-        SizedBox(width: 20, child: Divider(color: Color(0xFFD5DCE6), thickness: 1)),
-        SizedBox(width: 10),
-        Text('사회적기업 창업지원사업',
-            style: TextStyle(color: gray, fontSize: 11.5, fontWeight: FontWeight.w500, letterSpacing: 1.2)),
-        SizedBox(width: 10),
-        SizedBox(width: 20, child: Divider(color: Color(0xFFD5DCE6), thickness: 1)),
-      ]),
+    // 결과보고용: 잘 보이게 크게 (추후 작게 바꾸려면 fontSize 만 조정)
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 24),
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 9),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: Brand.navy.withValues(alpha: 0.35)),
+      ),
+      child: const Text('사회적기업 창업지원사업',
+          style: TextStyle(color: Brand.navy, fontSize: 16, fontWeight: FontWeight.w700, letterSpacing: 0.5)),
     );
   }
 }

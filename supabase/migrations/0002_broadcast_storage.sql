@@ -1,5 +1,5 @@
 -- 관리자 알림 일괄 발송: 대상 회원 수 반환 (p_role null = 전체)
-create function admin_broadcast(p_title text, p_body text, p_role user_role default null)
+create or replace function admin_broadcast(p_title text, p_body text, p_role user_role default null)
 returns int language plpgsql security definer set search_path = public as $$
 declare n int;
 begin
@@ -11,7 +11,7 @@ begin
 end $$;
 
 -- 브리핑 첨부(briefings/<대회id>/...)는 선발 심판·해당 관계자·관리자만 열람
-drop policy p_files_read on storage.objects;
+drop policy if exists p_files_read on storage.objects;
 create policy p_files_read on storage.objects for select using (
   bucket_id = 'files' and auth.uid() is not null and (
     name not like 'briefings/%'

@@ -81,8 +81,11 @@ Future<Uint8List> buildCareerPdf({
         pw.Text('확인된 자격이 없습니다.', style: const pw.TextStyle(color: muted))
       else
         pw.TableHelper.fromTextArray(
-          headers: ['자격명', '등급', '취득일', '유효기간'],
-          data: [for (final q in quals) [q['name'], q['grade'] ?? '-', d(q['acquired_on']), d(q['expires_on'])]],
+          headers: ['자격명', '등급', '자격번호', '취득일', '유효기간'],
+          data: [
+            for (final q in quals)
+              [q['name'], q['grade'] ?? '-', q['cert_no'] ?? '-', d(q['acquired_on']), d(q['expires_on'])]
+          ],
           headerStyle: pw.TextStyle(font: bold, fontSize: 9, color: PdfColors.white),
           headerDecoration: const pw.BoxDecoration(color: blue),
           cellStyle: const pw.TextStyle(fontSize: 9),

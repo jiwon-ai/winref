@@ -199,7 +199,12 @@ class Field {
   final FieldType type;
   final bool required;
   final String? initial;
-  const Field(this.key, this.label, {this.type = FieldType.text, this.required = false, this.initial});
+  final String? helper; // 입력칸 아래 안내
+  /// 날짜 자동 채움: [autoFrom] 날짜를 고르면 그 날짜 + [autoYears]년으로 채운다(직접 고치면 그 값 유지)
+  final String? autoFrom;
+  final int autoYears;
+  const Field(this.key, this.label,
+      {this.type = FieldType.text, this.required = false, this.initial, this.helper, this.autoFrom, this.autoYears = 0});
 }
 
 /// 필드 목록으로 입력 화면을 띄우고, 저장 시 key→값(빈 값은 null) 맵을 돌려준다.
@@ -226,6 +231,7 @@ class _FormScreenState extends State<_FormScreen> {
     for (final f in widget.fields) f.key: TextEditingController(text: f.initial ?? ''),
   };
   final Map<String, dynamic> _values = {};
+  final Set<String> _manual = {}; // 사용자가 직접 고른 날짜(자동 채움 대상에서 제외)
 
   @override
   void initState() {
@@ -233,8 +239,10 @@ class _FormScreenState extends State<_FormScreen> {
     for (final f in widget.fields) {
       if (f.initial != null && f.initial!.isNotEmpty) {
         _values[f.key] = f.initial;
+        _manual.add(f.key);
         if (f.type == FieldType.date) _c[f.key]!.text = fmtDate(f.initial);
         if (f.type == FieldType.datetime) _c[f.key]!.text = fmtDateTime(f.initial);
+        if (f.type == FieldType.file) _c[f.key]!.text = f.initial!.split('/').last;
       }
     }
   }
@@ -255,16 +263,27 @@ class _FormScreenState extends State<_FormScreen> {
     }
     final now = DateTime.now();
     final init = DateTime.tryParse(_values[f.key]?.toString() ?? '')?.toLocal() ?? now;
-    final d = await showDatePicker(context: context, initialDate: init, firstDate: DateTime(1950), lastDate: DateTime(now.year + 5));
+    final d = await showDatePicker(context: context, initialDate: init, firstDate: DateTime(1950), lastDate: DateTime(now.year + 30));
     if (d == null || !mounted) return;
     if (f.type == FieldType.date) {
-      setState(() { _values[f.key] = DateFormat('yyyy-MM-dd').format(d); _c[f.key]!.text = fmtDate(d.toIso8601String()); });
+      setState(() {
+        _setDate(f.key, d);
+        _manual.add(f.key);
+        for (final g in widget.fields.where((g) => g.autoFrom == f.key && !_manual.contains(g.key))) {
+          _setDate(g.key, DateTime(d.year + g.autoYears, d.month, d.day));
+        }
+      });
       return;
     }
     final t = await showTimePicker(context: context, initialTime: TimeOfDay.fromDateTime(init));
     if (t == null) return;
     final dt = DateTime(d.year, d.month, d.day, t.hour, t.minute);
     setState(() { _values[f.key] = dt.toUtc().toIso8601String(); _c[f.key]!.text = fmtDateTime(dt.toIso8601String()); });
+  }
+
+  void _setDate(String key, DateTime d) {
+    _values[key] = DateFormat('yyyy-MM-dd').format(d);
+    _c[key]!.text = fmtDate(d.toIso8601String());
   }
 
   void _save() {
@@ -307,6 +326,7 @@ class _FormScreenState extends State<_FormScreen> {
                   maxLines: f.type == FieldType.multiline ? 5 : 1,
                   decoration: InputDecoration(
                     labelText: f.required ? '${f.label} *' : f.label,
+                    helperText: f.helper,
                     border: const OutlineInputBorder(),
                     suffixIcon: switch (f.type) {
                       FieldType.date || FieldType.datetime => const Icon(Icons.calendar_today),
@@ -689,3 +709,45 @@ String qualPeriod(Map q) => [
 
 /// 선발 후 참석 응답 표시
 String attendanceText(dynamic a) => switch (a) { 'attending' => '참석 확정', 'absent' => '불참', _ => '참석 미응답' };
+
+/// 앱바 제목 앞 회사 CI(눈꽃 로고)
+class BrandTitle extends StatelessWidget {
+  final String text;
+  const BrandTitle(this.text, {super.key});
+  @override
+  Widget build(BuildContext context) => Row(mainAxisSize: MainAxisSize.min, children: [
+        Image.asset('assets/brand/snowflake_white.png', width: 24, height: 24, semanticLabel: 'WINREF 로고'),
+        const SizedBox(width: 8),
+        Flexible(child: Text(text, overflow: TextOverflow.ellipsis)),
+      ]);
+}
+
+/// 자격 입력 항목 (등록·수정 공용). 만료일은 취득일 기준 2년으로 자동 입력.
+List<Field> qualFields([Map? q]) => [
+      Field('name', '자격명', required: true, initial: q?['name']),
+      Field('grade', '등급', initial: q?['grade']),
+      Field('cert_no', '자격번호', initial: q?['cert_no']),
+      Field('acquired_on', '취득일', type: FieldType.date, initial: q?['acquired_on']),
+      Field('expires_on', '유효기간(만료일)',
+          type: FieldType.date,
+          initial: q?['expires_on'],
+          helper: '취득일을 고르면 2년 뒤 날짜가 자동 입력됩니다',
+          autoFrom: 'acquired_on',
+          autoYears: 2),
+      Field('file_path', '자격증 사본 (사진/PDF) — 관리자 확인용', type: FieldType.file, initial: q?['file_path']),
+    ];
+
+/// 삭제 전 확인
+Future<bool> confirm(BuildContext context, String title, String body, {String ok = '삭제'}) async =>
+    await showDialog<bool>(
+      context: context,
+      builder: (d) => AlertDialog(
+        title: Text(title),
+        content: Text(body),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('취소')),
+          FilledButton(onPressed: () => Navigator.pop(d, true), child: Text(ok)),
+        ],
+      ),
+    ) ==
+    true;

@@ -24,7 +24,7 @@ begin
 end $$;
 
 -- 심판이 직접 참석/불참을 응답하면 대회관계자에게 알림
-create function notify_attendance() returns trigger
+create or replace function notify_attendance() returns trigger
 language plpgsql security definer set search_path = public as $$
 begin
   if new.attendance is distinct from old.attendance and auth.uid() = new.user_id then
@@ -37,12 +37,12 @@ begin
   end if;
   return new;
 end $$;
-create trigger applications_attendance_notify after update on applications
+create or replace trigger applications_attendance_notify after update on applications
   for each row execute function notify_attendance();
 
 -- ===== 일정 겹침 =====
 -- 이 대회 지원자 중, 기간이 겹치는 다른 대회에 이미 선발된 사람 (대회관계자·관리자용)
-create function selection_conflicts(p_competition bigint)
+create or replace function selection_conflicts(p_competition bigint)
 returns table (user_id uuid, competition_name text, starts_on date)
 language plpgsql stable security definer set search_path = public as $$
 begin

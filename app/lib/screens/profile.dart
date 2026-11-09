@@ -178,6 +178,8 @@ class _QualBadge extends StatelessWidget {
           Text('${q['name']}${q['grade'] != null ? ' ${q['grade']}' : ''}',
               style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
         ]),
+        if (q['cert_no'] != null)
+          Text('No. ${q['cert_no']}', style: const TextStyle(fontSize: 11, color: Brand.muted)),
         Text(
           expired ? '만료됨' : (approved ? '~${fmtDate(q['expires_on'])}' : label(q['status'])),
           style: TextStyle(fontSize: 11, color: expired ? const Color(0xFF9B2C2C) : Brand.muted),

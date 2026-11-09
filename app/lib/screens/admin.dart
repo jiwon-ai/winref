@@ -37,7 +37,7 @@ class _AdminHomeState extends State<AdminHome> {
   Widget build(BuildContext context) {
     final wide = MediaQuery.sizeOf(context).width >= 900;
     final appBar = AppBar(
-      title: Text(wide ? 'WINREF 관리자 · ${_menu[_i].$2}' : _menu[_i].$2),
+      title: BrandTitle(wide ? 'WINREF 관리자 · ${_menu[_i].$2}' : _menu[_i].$2),
       actions: commonActions(context, widget.profile),
     );
     if (wide) {
@@ -357,7 +357,7 @@ class _Qualifications extends StatelessWidget {
       empty: '등록된 자격정보가 없습니다.',
       item: (c, q, reload) => ListTile(
         title: Text('${q['profiles']['name']} · ${q['name']} ${q['grade'] ?? ''}'),
-        subtitle: Text('${qualPeriod(q).isEmpty ? '' : '${qualPeriod(q)} · '}'
+        subtitle: Text('${q['cert_no'] != null ? 'No.${q['cert_no']} · ' : ''}${qualPeriod(q).isEmpty ? '' : '${qualPeriod(q)} · '}'
             '보수교육 ${q['refresher_done'] == true ? '이수' : '미이수'}'
             '${q['file_path'] != null ? ' · 사본 첨부' : ''}'),
         trailing: StatusChip(label(q['status']), q['status']),
@@ -378,17 +378,42 @@ class _Qualifications extends StatelessWidget {
                     title: Text('첨부된 사본 없음'),
                     enabled: false,
                   ),
-                ListTile(title: const Text('승인'), onTap: () => Navigator.pop(s, {'status': 'approved'})),
-                ListTile(title: const Text('반려'), onTap: () => Navigator.pop(s, {'status': 'rejected'})),
                 ListTile(
+                    leading: const Icon(Icons.check_circle_outline),
+                    title: const Text('승인'),
+                    onTap: () => Navigator.pop(s, {'status': 'approved'})),
+                ListTile(
+                    leading: const Icon(Icons.block),
+                    title: const Text('반려'),
+                    onTap: () => Navigator.pop(s, {'status': 'rejected'})),
+                ListTile(
+                  leading: const Icon(Icons.school_outlined),
                   title: Text(q['refresher_done'] == true ? '보수교육 미이수로 변경' : '보수교육 이수 처리'),
                   onTap: () => Navigator.pop(s, {'refresher_done': q['refresher_done'] != true}),
                 ),
+                ListTile(
+                    leading: const Icon(Icons.edit_outlined),
+                    title: const Text('정보 수정'),
+                    onTap: () => Navigator.pop(s, {'_edit': true})),
+                ListTile(
+                    leading: const Icon(Icons.delete_outline),
+                    title: const Text('삭제'),
+                    onTap: () => Navigator.pop(s, {'_delete': true})),
               ]),
             ),
           );
           if (v == null || !c.mounted) return;
-          await run(c, () => db.from('qualifications').update(v).eq('id', q['id']), done: '저장했습니다.');
+          if (v['_delete'] == true) {
+            if (!await confirm(c, '자격 삭제', '${q['profiles']['name']}님의 ${q['name']} 자격을 삭제할까요?')) return;
+            if (!c.mounted) return;
+            await run(c, () => db.from('qualifications').delete().eq('id', q['id']), done: '삭제했습니다.');
+          } else if (v['_edit'] == true) {
+            final e = await showForm(c, '자격 정보 수정', qualFields(q), fileFolder: 'quals/${q['user_id']}');
+            if (e == null || !c.mounted) return;
+            await run(c, () => db.from('qualifications').update(e).eq('id', q['id']), done: '수정했습니다.');
+          } else {
+            await run(c, () => db.from('qualifications').update(v).eq('id', q['id']), done: '저장했습니다.');
+          }
           reload();
         },
       ),

@@ -21,6 +21,7 @@ jobs:
           cat supabase/migrations/*.sql > /tmp/all.sql
           cd supabase/tests && npm init -y > /dev/null && npm i @electric-sql/pglite > /dev/null
           node policies.test.mjs /tmp/all.sql
+          node catchup.test.mjs   # 운영 DB 따라잡기(재실행 안전) 검증
 
   e2e:
     runs-on: ubuntu-latest

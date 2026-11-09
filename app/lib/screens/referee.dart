@@ -24,7 +24,7 @@ class _RefereeHomeState extends State<RefereeHome> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text(_titles[_tab]), actions: commonActions(context, widget.profile)),
+      appBar: AppBar(title: BrandTitle(_titles[_tab]), actions: commonActions(context, widget.profile)),
       body: IndexedStack(index: _tab, children: [
         _DashboardTab(profile: widget.profile, goTab: _go, active: _tab == 0),
         _RecruitmentsTab(active: _tab == 1),
@@ -970,17 +970,50 @@ class _QualificationsTabState extends State<_QualificationsTab> {
   final _key = GlobalKey<AsyncListState>();
 
   Future<void> _add() async {
-    final v = await showForm(context, '자격 등록', const [
-      Field('name', '자격명', required: true),
-      Field('grade', '등급'),
-      Field('acquired_on', '취득일', type: FieldType.date),
-      Field('expires_on', '유효기간(만료일)', type: FieldType.date),
-      Field('file_path', '자격증 사본 (사진/PDF) — 관리자 확인용', type: FieldType.file),
-    ], fileFolder: 'quals/$uid');
+    final v = await showForm(context, '자격 등록', qualFields(), fileFolder: 'quals/$uid');
     if (v == null || !mounted) return;
     await run(context, () => db.from('qualifications').insert({...v, 'user_id': uid}),
         done: '등록했습니다. 관리자 확인 후 승인됩니다.');
     _key.currentState?.reload();
+  }
+
+  /// 자격 눌렀을 때: 사본 보기 / (승인 전) 수정·삭제
+  Future<void> _open(BuildContext c, Map q, VoidCallback reload) async {
+    final editable = q['status'] != 'approved';
+    final act = await showModalBottomSheet<String>(
+      context: c,
+      builder: (s) => SafeArea(
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          if (q['file_path'] != null)
+            ListTile(leading: const Icon(Icons.attach_file), title: const Text('자격증 사본 보기'), onTap: () => Navigator.pop(s, 'file')),
+          if (editable) ...[
+            ListTile(leading: const Icon(Icons.edit_outlined), title: const Text('수정'), onTap: () => Navigator.pop(s, 'edit')),
+            ListTile(leading: const Icon(Icons.delete_outline), title: const Text('삭제'), onTap: () => Navigator.pop(s, 'delete')),
+          ] else
+            const ListTile(
+              leading: Icon(Icons.verified_outlined),
+              title: Text('승인된 자격입니다'),
+              subtitle: Text('내용 변경은 관리자에게 요청해 주세요.'),
+            ),
+        ]),
+      ),
+    );
+    if (!c.mounted) return;
+    switch (act) {
+      case 'file':
+        await openFile(c, q['file_path']);
+      case 'edit':
+        final v = await showForm(c, '자격 수정', qualFields(q), fileFolder: 'quals/$uid');
+        if (v == null || !c.mounted) return;
+        await run(c, () => db.from('qualifications').update({...v, 'status': 'pending'}).eq('id', q['id']),
+            done: '수정했습니다. 관리자 확인 후 승인됩니다.');
+        reload();
+      case 'delete':
+        if (!await confirm(c, '자격 삭제', '${q['name']} 자격을 삭제할까요?')) return;
+        if (!c.mounted) return;
+        await run(c, () => db.from('qualifications').delete().eq('id', q['id']), done: '삭제했습니다.');
+        reload();
+    }
   }
 
   @override
@@ -996,18 +1029,13 @@ class _QualificationsTabState extends State<_QualificationsTab> {
           final soon = exp != null && exp.difference(DateTime.now()).inDays <= 90;
           return ListTile(
             title: Text('${q['name']}${q['grade'] != null ? ' · ${q['grade']}' : ''}'),
-            subtitle: Text('${qualPeriod(q).isEmpty ? '기간 정보 없음' : qualPeriod(q)}'
+            subtitle: Text('${q['cert_no'] != null ? '자격번호 ${q['cert_no']}\n' : ''}'
+                '${qualPeriod(q).isEmpty ? '기간 정보 없음' : qualPeriod(q)}'
                 '${soon ? ' (보수교육 필요)' : ''}\n보수교육 ${q['refresher_done'] == true ? '이수' : '미이수'}'
                 '${q['file_path'] != null ? ' · 사본 첨부됨' : ''}'),
             isThreeLine: true,
             trailing: StatusChip(label(q['status']), q['status']),
-            onTap: q['file_path'] == null ? null : () => openFile(c, q['file_path']),
-            onLongPress: q['status'] != 'pending'
-                ? null
-                : () async {
-                    await run(c, () => db.from('qualifications').delete().eq('id', q['id']), done: '삭제했습니다.');
-                    reload();
-                  },
+            onTap: () => _open(c, q, reload),
           );
         },
       ),

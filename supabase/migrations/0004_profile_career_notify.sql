@@ -1,12 +1,12 @@
 -- 심판 프로필 확장
 alter table profiles
-  add column region text,        -- 활동 지역
-  add column sport text,         -- 주 종목
-  add column bio text,           -- 소개·경력 요약
-  add column avatar_path text;   -- storage: avatars/<uid>/...
+  add column if not exists region text,        -- 활동 지역
+  add column if not exists sport text,         -- 주 종목
+  add column if not exists bio text,           -- 소개·경력 요약
+  add column if not exists avatar_path text;   -- storage: avatars/<uid>/...
 
 -- 심판 경력 요약: 본인 / 관리자 / 그 심판이 지원한 공고의 대회관계자만 조회
-create function referee_summary(p_user uuid) returns json
+create or replace function referee_summary(p_user uuid) returns json
 language plpgsql stable security definer set search_path = public as $$
 begin
   if not (p_user = auth.uid() or is_admin()
@@ -32,13 +32,15 @@ revoke all on function referee_summary(uuid) from public, anon;
 grant execute on function referee_summary(uuid) to authenticated;
 
 -- 프로필 사진: 본인 폴더(avatars/<uid>/)에만 업로드·삭제
+drop policy if exists p_files_avatar_insert on storage.objects;
 create policy p_files_avatar_insert on storage.objects for insert with check (
   bucket_id = 'files' and name like 'avatars/' || auth.uid()::text || '/%');
+drop policy if exists p_files_avatar_delete on storage.objects;
 create policy p_files_avatar_delete on storage.objects for delete using (
   bucket_id = 'files' and name like 'avatars/' || auth.uid()::text || '/%');
 
 -- 선발 결과 알림 (선발 / 예비 / 미선발로 바뀔 때)
-create function notify_application_change() returns trigger
+create or replace function notify_application_change() returns trigger
 language plpgsql security definer set search_path = public as $$
 declare cname text; pos text;
 begin
@@ -56,11 +58,11 @@ begin
       else '이번 대회에는 선발되지 않았습니다.' end);
   return new;
 end $$;
-create trigger applications_notify after update on applications
+create or replace trigger applications_notify after update on applications
   for each row execute function notify_application_change();
 
 -- 자격 승인·반려 알림
-create function notify_qualification_change() returns trigger
+create or replace function notify_qualification_change() returns trigger
 language plpgsql security definer set search_path = public as $$
 begin
   if new.status is distinct from old.status and new.status in ('approved', 'rejected') then
@@ -72,11 +74,11 @@ begin
   end if;
   return new;
 end $$;
-create trigger qualifications_notify after update on qualifications
+create or replace trigger qualifications_notify after update on qualifications
   for each row execute function notify_qualification_change();
 
 -- 브리핑 자료 등록 시 선발된 심판에게 알림
-create function notify_briefing() returns trigger
+create or replace function notify_briefing() returns trigger
 language plpgsql security definer set search_path = public as $$
 begin
   insert into notifications (user_id, kind, title, body)
@@ -86,5 +88,5 @@ begin
   where r.competition_id = new.competition_id and a.status = 'selected';
   return new;
 end $$;
-create trigger briefings_notify after insert on briefings
+create or replace trigger briefings_notify after insert on briefings
   for each row execute function notify_briefing();

@@ -1,7 +1,7 @@
 -- 구글·카카오 가입: 첫 로그인 때 회원 유형·연락처·개인정보 동의를 받는다.
 alter table profiles
-  add column onboarded boolean not null default true,  -- 가입 정보 입력 완료 (이메일 가입은 가입 화면에서 입력)
-  add column agreed_at timestamptz;                    -- 개인정보 수집·이용 동의 시각
+  add column if not exists onboarded boolean not null default true,  -- 가입 정보 입력 완료 (이메일 가입은 가입 화면에서 입력)
+  add column if not exists agreed_at timestamptz;                    -- 개인정보 수집·이용 동의 시각
 
 create or replace function handle_new_user() returns trigger
 language plpgsql security definer set search_path = public as $$
