@@ -170,3 +170,6 @@ class StatusChip extends StatelessWidget {
     );
   }
 }
+
+/// 대화상자 버튼: 기본 버튼의 꽉 찬 폭 대신 내용 폭 (취소·확인이 한 줄에)
+final dialogAction = FilledButton.styleFrom(minimumSize: const Size(88, 44), padding: const EdgeInsets.symmetric(horizontal: 20));

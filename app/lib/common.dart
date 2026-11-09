@@ -749,7 +749,7 @@ Future<bool> confirm(BuildContext context, String title, String body, {String ok
         content: Text(body),
         actions: [
           TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('취소')),
-          FilledButton(onPressed: () => Navigator.pop(d, true), child: Text(ok)),
+          FilledButton(style: dialogAction, onPressed: () => Navigator.pop(d, true), child: Text(ok)),
         ],
       ),
     ) ==

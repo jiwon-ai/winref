@@ -561,7 +561,7 @@ class _RecruitmentDetailState extends State<RecruitmentDetail> {
         actions: [
           TextButton(onPressed: openPrivacy, child: const Text('방침 보기')),
           TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('취소')),
-          FilledButton(onPressed: () => Navigator.pop(d, true), child: const Text('동의하고 지원')),
+          FilledButton(style: dialogAction, onPressed: () => Navigator.pop(d, true), child: const Text('동의하고 지원')),
         ],
       ),
     );
