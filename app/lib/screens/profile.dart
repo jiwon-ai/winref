@@ -5,6 +5,7 @@ import 'package:printing/printing.dart';
 import '../career_pdf.dart';
 import '../common.dart';
 import '../theme.dart';
+import 'id_card.dart';
 
 /// 심판 경력 카드: 활동 통계 · 포지션별 활동 · 보유 자격 · 최근 활동 · 소개
 /// 본인 프로필 화면과 대회관계자의 지원자 상세에서 함께 쓴다.
@@ -274,12 +275,26 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
               Padding(
                 padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
-                child: OutlinedButton.icon(
-                  style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(46)),
-                  onPressed: () => _exportPdf(p),
-                  icon: const Icon(Icons.picture_as_pdf_outlined),
-                  label: const Text('활동 이력 PDF (저장·인쇄)'),
-                ),
+                child: Row(children: [
+                  Expanded(
+                    child: FilledButton.icon(
+                      style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(46)),
+                      onPressed: () => Navigator.push(
+                          context, MaterialPageRoute(builder: (_) => RefereeCardScreen(profile: p))),
+                      icon: const Icon(Icons.badge_outlined),
+                      label: const Text('디지털 심판증'),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(46)),
+                      onPressed: () => _exportPdf(p),
+                      icon: const Icon(Icons.picture_as_pdf_outlined),
+                      label: const Text('활동 이력 PDF'),
+                    ),
+                  ),
+                ]),
               ),
               Padding(
                 padding: const EdgeInsets.all(20),

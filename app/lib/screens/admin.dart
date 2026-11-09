@@ -37,7 +37,7 @@ class _AdminHomeState extends State<AdminHome> {
   ];
 
   Widget _page() => switch (_i) {
-        0 => const _Dashboard(),
+        0 => _Dashboard(onGo: (i) => setState(() => _i = i)),
         1 => const _Members(),
         2 => const _Qualifications(),
         3 => const _Courses(),
@@ -106,45 +106,81 @@ class _AdminHomeState extends State<AdminHome> {
 // ---------- 대시보드 (기본 통계) ----------
 
 class _Dashboard extends StatefulWidget {
-  const _Dashboard();
+  final ValueChanged<int> onGo; // 처리할 일 → 해당 메뉴로 이동
+  const _Dashboard({required this.onGo});
   @override
   State<_Dashboard> createState() => _DashboardState();
 }
 
 class _DashboardState extends State<_Dashboard> {
   late Future<dynamic> _f = db.rpc('admin_stats');
+  void _reload() => setState(() => _f = db.rpc('admin_stats'));
+  int _n(dynamic v) => (v as num?)?.toInt() ?? 0;
 
   @override
   Widget build(BuildContext context) {
     return FutureBuilder<dynamic>(
       future: _f,
       builder: (context, snap) {
-        if (snap.hasError) return ErrorView(error: snap.error, onRetry: () => setState(() => _f = db.rpc('admin_stats')));
+        if (snap.hasError) return ErrorView(error: snap.error, onRetry: _reload);
         if (!snap.hasData) return const Center(child: CircularProgressIndicator());
         final s = snap.data as Map<String, dynamic>;
         final roles = (s['members_by_role'] as Map).cast<String, dynamic>();
         final total = roles.values.fold<int>(0, (a, b) => a + (b as num).toInt());
+        final todos = [
+          ( Icons.badge_outlined, '자격 승인 대기', _n(s['pending_quals']), 2),
+          ( Icons.apartment_outlined, '기관 승인 대기', _n(s['pending_orgs']), 1),
+          ( Icons.event_outlined, '14일 내 대회', _n(s['upcoming_14d']), 4),
+          ( Icons.school_outlined, '7일 내 교육 마감', _n(s['courses_closing_7d']), 3),
+        ];
+        final waiting = _n(s['pending_quals']) + _n(s['pending_orgs']);
         return RefreshIndicator(
-          onRefresh: () async => setState(() => _f = db.rpc('admin_stats')),
+          onRefresh: () async => _reload(),
           child: ListView(padding: const EdgeInsets.all(16), children: [
+            Text(waiting == 0 ? '승인 대기 중인 요청이 없습니다.' : '처리할 요청이 $waiting건 있습니다.',
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(color: waiting == 0 ? Brand.muted : Brand.ink)),
+            const SizedBox(height: 10),
             Wrap(spacing: 12, runSpacing: 12, children: [
-              _Kpi('전체 회원', '$total'),
-              _Kpi('심판·교육신청자', '${roles['referee'] ?? 0}'),
-              _Kpi('대회관계자', '${roles['organizer'] ?? 0}'),
-              _Kpi('신규 회원 (30일)', '${s['new_members_30d']}'),
-              _Kpi('등록 대회', '${s['competitions']}'),
-              _Kpi('모집 중 공고', '${s['open_recruitments']}'),
-              _Kpi('활동완료 누적', '${s['completed_activities']}'),
-              _Kpi('자격 만료 예정 (90일)', '${s['expiring_90d']}', alert: (s['expiring_90d'] as num) > 0),
+              for (final t in todos) _Todo(icon: t.$1, label: t.$2, count: t.$3, urgent: t.$4 <= 2, onTap: () => widget.onGo(t.$4)),
             ]),
             const SizedBox(height: 24),
-            _section(context, '교육과정별 신청인원', [
-              for (final c in s['course_applicants'] as List) _bar(c['title'], c['applicants'] as int, null),
+            Text('운영 현황', style: Theme.of(context).textTheme.titleMedium),
+            const SizedBox(height: 10),
+            Wrap(spacing: 12, runSpacing: 12, children: [
+              _Kpi('전체 회원', '$total', icon: Icons.groups_outlined),
+              _Kpi('심판·교육신청자', '${roles['referee'] ?? 0}', icon: Icons.sports_outlined),
+              _Kpi('대회관계자', '${roles['organizer'] ?? 0}', icon: Icons.apartment_outlined),
+              _Kpi('신규 회원 (30일)', '${s['new_members_30d']}', icon: Icons.person_add_alt_outlined),
+              _Kpi('등록 대회', '${s['competitions']}', icon: Icons.emoji_events_outlined),
+              _Kpi('모집 중 공고', '${s['open_recruitments']}', icon: Icons.campaign_outlined),
+              _Kpi('활동완료 누적', '${s['completed_activities']}', icon: Icons.task_alt),
+              _Kpi('자격 만료 예정 (90일)', '${s['expiring_90d']}',
+                  icon: Icons.hourglass_bottom, alert: _n(s['expiring_90d']) > 0),
             ]),
-            _section(context, '대회별 지원·선발 인원', [
-              for (final c in s['competition_applications'] as List)
-                _bar(c['name'], c['applied'] as int, c['selected'] as int),
-            ]),
+            const SizedBox(height: 24),
+            LayoutBuilder(builder: (context, c) {
+              final cards = [
+                _section(context, '월별 신규 가입 (최근 6개월)', [_MonthlyChart(s['monthly_signups'] as List? ?? const [])]),
+                _section(context, '교육과정 신청 현황', [
+                  for (final c in s['course_applicants'] as List)
+                    _progress(c['title'], _n(c['applicants']), c['capacity'] == null ? null : _n(c['capacity']), '명'),
+                ]),
+                _section(context, '대회별 선발 현황', [
+                  for (final c in s['competition_applications'] as List)
+                    _progress('${c['name']}', _n(c['selected']), _n(c['headcount']) == 0 ? null : _n(c['headcount']), '명 선발',
+                        extra: '지원 ${_n(c['applied'])}'),
+                ]),
+              ];
+              if (c.maxWidth < 760) return Column(children: cards);
+              return Column(children: [
+                cards[0],
+                Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Expanded(child: cards[1]),
+                  const SizedBox(width: 12),
+                  Expanded(child: cards[2]),
+                ]),
+              ]);
+            }),
           ]),
         );
       },
@@ -152,6 +188,7 @@ class _DashboardState extends State<_Dashboard> {
   }
 
   Widget _section(BuildContext context, String title, List<Widget> rows) => Card(
+        margin: const EdgeInsets.only(bottom: 12),
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -162,39 +199,143 @@ class _DashboardState extends State<_Dashboard> {
         ),
       );
 
-  Widget _bar(String name, int value, int? selected) => Padding(
-        padding: const EdgeInsets.symmetric(vertical: 4),
-        child: Row(children: [
-          Expanded(child: Text(name, overflow: TextOverflow.ellipsis)),
-          Text(selected == null ? '$value명' : '지원 $value · 선발 $selected',
-              style: const TextStyle(fontWeight: FontWeight.w600, color: Brand.navy)),
+  /// 이름 + 진행 막대 (정원·모집인원 대비)
+  Widget _progress(String name, int value, int? max, String unit, {String? extra}) => Padding(
+        padding: const EdgeInsets.symmetric(vertical: 6),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Row(children: [
+            Expanded(child: Text(name, overflow: TextOverflow.ellipsis)),
+            Text('${extra != null ? '$extra · ' : ''}$value${max != null ? '/$max' : ''}$unit',
+                style: const TextStyle(fontWeight: FontWeight.w600, color: Brand.navy, fontSize: 13)),
+          ]),
+          if (max != null) ...[
+            const SizedBox(height: 6),
+            ExcludeSemantics(
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(4),
+                child: LinearProgressIndicator(
+                  value: max == 0 ? 0 : (value / max).clamp(0, 1).toDouble(),
+                  minHeight: 6,
+                  backgroundColor: Brand.ivoryDeep,
+                  color: value >= max ? const Color(0xFF2E7D5B) : Brand.gold,
+                ),
+              ),
+            ),
+          ],
         ]),
       );
+}
+
+/// 처리할 일 카드 (누르면 해당 메뉴로)
+class _Todo extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final int count;
+  final bool urgent;
+  final VoidCallback onTap;
+  const _Todo({required this.icon, required this.label, required this.count, required this.urgent, required this.onTap});
+  @override
+  Widget build(BuildContext context) {
+    final hot = urgent && count > 0;
+    final color = hot ? Brand.warn : Brand.navy;
+    return Material(
+      color: hot ? const Color(0xFFFFF4E8) : Colors.white,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(color: hot ? const Color(0xFFF2C79B) : const Color(0xFFDCE5F0)),
+      ),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: onTap,
+        child: SizedBox(
+          width: 200,
+          child: Padding(
+            padding: const EdgeInsets.all(14),
+            child: Row(children: [
+              Icon(icon, color: color),
+              const SizedBox(width: 10),
+              Expanded(child: Text(label, style: const TextStyle(fontSize: 13, color: Brand.ink))),
+              Text('$count', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: color)),
+              const Icon(Icons.chevron_right, size: 18, color: Brand.muted),
+            ]),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// 월별 막대그래프 (외부 라이브러리 없이)
+class _MonthlyChart extends StatelessWidget {
+  final List data;
+  const _MonthlyChart(this.data);
+  @override
+  Widget build(BuildContext context) {
+    final values = [for (final d in data) (d['n'] as num).toInt()];
+    final top = values.fold<int>(1, (a, b) => b > a ? b : a);
+    return Semantics(
+      label: '월별 신규 가입 ${[for (final d in data) '${int.parse('${d['month']}'.substring(5))}월 ${d['n']}명'].join(', ')}',
+      child: ExcludeSemantics(
+        child: SizedBox(
+          height: 150,
+          child: Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
+            for (var i = 0; i < data.length; i++)
+              Expanded(
+                child: Column(mainAxisAlignment: MainAxisAlignment.end, children: [
+                  Text('${values[i]}', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Brand.navy)),
+                  const SizedBox(height: 4),
+                  Container(
+                    height: 100 * values[i] / top + 2,
+                    margin: const EdgeInsets.symmetric(horizontal: 10),
+                    decoration: BoxDecoration(
+                      color: i == data.length - 1 ? Brand.navy : Brand.gold.withValues(alpha: 0.55),
+                      borderRadius: const BorderRadius.vertical(top: Radius.circular(4)),
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text('${int.parse('${data[i]['month']}'.substring(5))}월',
+                      style: const TextStyle(fontSize: 12, color: Brand.muted)),
+                ]),
+              ),
+          ]),
+        ),
+      ),
+    );
+  }
 }
 
 class _Kpi extends StatelessWidget {
   final String label;
   final String value;
+  final IconData icon;
   final bool alert;
-  const _Kpi(this.label, this.value, {this.alert = false});
+  const _Kpi(this.label, this.value, {required this.icon, this.alert = false});
   @override
   Widget build(BuildContext context) {
+    final color = alert ? Brand.warn : Brand.navy;
     return Container(
       width: 200,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
-        border: Border(
-          left: BorderSide(color: alert ? Brand.warn : Brand.navy, width: 3),
-          top: const BorderSide(color: Color(0xFFDCE5F0)),
-          right: const BorderSide(color: Color(0xFFDCE5F0)),
-          bottom: const BorderSide(color: Color(0xFFDCE5F0)),
-        ),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFDCE5F0)),
       ),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text(label, style: const TextStyle(color: Brand.muted, fontSize: 13)),
-        const SizedBox(height: 6),
-        Text(value, style: const TextStyle(color: Brand.navy, fontSize: 26, fontWeight: FontWeight.w700)),
+      child: Row(children: [
+        Container(
+          width: 40,
+          height: 40,
+          decoration: BoxDecoration(color: color.withValues(alpha: 0.09), borderRadius: BorderRadius.circular(10)),
+          child: Icon(icon, color: color, size: 22),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(label, style: const TextStyle(color: Brand.muted, fontSize: 12.5), overflow: TextOverflow.ellipsis),
+            const SizedBox(height: 2),
+            Text(value, style: TextStyle(color: color, fontSize: 24, fontWeight: FontWeight.w800)),
+          ]),
+        ),
       ]),
     );
   }
@@ -302,7 +443,7 @@ class _MembersState extends State<_Members> {
           key: _key,
           load: _load,
           empty: '회원이 없습니다.',
-          item: (c, p, _) {
+          item: (c, p, reload) {
             final org = p['role'] == 'organizer';
             return ListTile(
               title: Text('${p['name']}  ${org ? '· ${p['organization'] ?? ''}' : ''}'),
@@ -320,29 +461,18 @@ class _MembersState extends State<_Members> {
                         ])
                       : StatusChip(label(p['org_status']), p['org_status'] ?? 'pending'),
               leading: Avatar(path: p['avatar_path'], name: p['name'] ?? '', size: 40),
-              onTap: p['role'] != 'referee'
-                  ? null
-                  : () => showModalBottomSheet(
-                        context: c,
-                        isScrollControlled: true,
-                        builder: (_) => DraggableScrollableSheet(
-                          expand: false,
-                          initialChildSize: 0.85,
-                          builder: (_, sc) => SingleChildScrollView(
-                            controller: sc,
-                            padding: const EdgeInsets.all(20),
-                            child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-                              Row(children: [
-                                Avatar(path: p['avatar_path'], name: p['name'] ?? '', size: 56),
-                                const SizedBox(width: 14),
-                                Text(p['name'], style: Theme.of(c).textTheme.titleLarge),
-                              ]),
-                              const SizedBox(height: 20),
-                              CareerView(profile: p, showContact: true),
-                            ]),
-                          ),
-                        ),
-                      ),
+              onTap: () async {
+                final changed = await showModalBottomSheet<bool>(
+                  context: c,
+                  isScrollControlled: true,
+                  builder: (_) => DraggableScrollableSheet(
+                    expand: false,
+                    initialChildSize: p['role'] == 'referee' ? 0.85 : 0.5,
+                    builder: (_, sc) => _MemberSheet(member: p, controller: sc),
+                  ),
+                );
+                if (changed == true) reload();
+              },
               onLongPress: org && p['org_status'] != 'pending'
                   ? () => _setOrg(c, p, p['org_status'] == 'approved' ? 'rejected' : 'approved')
                   : null,
@@ -351,6 +481,74 @@ class _MembersState extends State<_Members> {
         ),
       ),
     ]);
+  }
+}
+
+/// 회원 상세: 연락처·회원 유형 변경(관리자 지정 포함)·심판 경력
+class _MemberSheet extends StatelessWidget {
+  final Map<String, dynamic> member;
+  final ScrollController controller;
+  const _MemberSheet({required this.member, required this.controller});
+
+  static const _roles = {'referee': '심판·교육신청자', 'organizer': '대회관계자', 'admin': '관리자'};
+
+  Future<void> _setRole(BuildContext context, String role) async {
+    final p = member;
+    final ok = await confirm(context, '회원 유형 변경',
+        '${p['name']}님을 \'${_roles[role]}\'(으)로 변경할까요?'
+        '${role == 'admin' ? '\n관리자는 모든 회원 정보와 관리 기능에 접근할 수 있습니다.' : ''}',
+        ok: '변경');
+    if (!ok || !context.mounted) return;
+    final done = await run(
+      context,
+      () => db.from('profiles').update({'role': role, 'org_status': role == 'organizer' ? 'approved' : null}).eq('id', p['id']),
+      done: '${_roles[role]}(으)로 변경했습니다.',
+    );
+    if (done && context.mounted) Navigator.pop(context, true);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final p = member;
+    final me = p['id'] == uid;
+    return SingleChildScrollView(
+      controller: controller,
+      padding: const EdgeInsets.all(20),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        Row(children: [
+          Avatar(path: p['avatar_path'], name: p['name'] ?? '', size: 56),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(p['name'] ?? '', style: Theme.of(context).textTheme.titleLarge),
+              Text([
+                _roles[p['role']] ?? '',
+                if (p['organization'] != null) p['organization'],
+                if (p['phone'] != null) p['phone'],
+              ].join(' · '), style: const TextStyle(color: Brand.muted)),
+            ]),
+          ),
+        ]),
+        const SizedBox(height: 20),
+        const Text('회원 유형', style: TextStyle(fontWeight: FontWeight.w700)),
+        const SizedBox(height: 8),
+        SegmentedButton<String>(
+          segments: [for (final e in _roles.entries) ButtonSegment(value: e.key, label: Text(e.value))],
+          selected: {p['role'] as String},
+          showSelectedIcon: false,
+          onSelectionChanged: me ? null : (v) => _setRole(context, v.first),
+        ),
+        if (me)
+          const Padding(
+            padding: EdgeInsets.only(top: 6),
+            child: Text('본인 계정의 유형은 바꿀 수 없습니다.', style: TextStyle(color: Brand.muted, fontSize: 12)),
+          ),
+        if (p['role'] == 'referee') ...[
+          const SizedBox(height: 24),
+          CareerView(profile: p, showContact: true),
+        ],
+      ]),
+    );
   }
 }
 

@@ -368,6 +368,11 @@ try {
     await see('활동 이력 PDF');
     await see('1회');
     await shot('career'); await store('career');
+    await tap('디지털 심판증', 'button');
+    await see('REFEREE');
+    await see('활동 완료 1회');
+    await shot('id-card'); await store('id-card');
+    await back();
     await back();
     await logout();
   });
@@ -440,6 +445,21 @@ try {
     if (csv.charCodeAt(0) !== 0xfeff) throw new Error('BOM 없음 (엑셀 한글 깨짐)');
     if (!csv.includes('박관계') || csv.includes('김심판')) throw new Error('검색 결과와 내보낸 내용 불일치');
     await shot('admin-members');
+  });
+
+  await check('관리자: 회원 유형 변경(관리자 지정·해제)', async () => {
+    await tap('박관계');
+    await see('회원 유형');
+    await tap('관리자', 'any!');
+    await tap('변경', 'button!');
+    await see('관리자(으)로 변경했습니다');
+    if (sql(`select role from profiles where name='박관계'`) !== 'admin') throw new Error('관리자 지정 안 됨');
+    await tap('박관계');
+    await tap('대회관계자', 'any!');
+    await shot('admin-member-role');
+    await tap('변경', 'button!');
+    const r = sql(`select role||','||org_status from profiles where name='박관계'`);
+    if (r !== 'organizer,approved') throw new Error('원복 실패: ' + r);
   });
 
   await check('관리자: 알림 일괄 발송', async () => {
