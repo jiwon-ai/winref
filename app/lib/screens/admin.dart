@@ -536,7 +536,7 @@ class _MemberSheet extends StatelessWidget {
           Icon(icon, size: 18, color: Brand.muted),
           const SizedBox(width: 10),
           SizedBox(width: 92, child: Text(label, style: const TextStyle(color: Brand.muted))),
-          Expanded(child: SelectableText((value ?? '').isEmpty ? '-' : value!)),
+          Expanded(child: Text((value ?? '').isEmpty ? '-' : value!)),
         ]),
       );
 
