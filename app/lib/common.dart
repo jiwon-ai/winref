@@ -32,6 +32,8 @@ String authMessage(AuthException e) {
   if (m.contains('email not confirmed')) return '이메일 인증이 필요합니다. 받은 메일의 링크를 눌러주세요.';
   if (m.contains('already registered') || m.contains('already been registered')) return '이미 가입된 이메일입니다. 로그인해 주세요.';
   if (m.contains('password should be') || m.contains('weak')) return '비밀번호가 너무 짧거나 쉽습니다. 8자 이상으로 정해주세요.';
+  if (m.contains('email rate limit')) return '메일 발송 한도를 넘었습니다. 1시간쯤 뒤에 다시 시도해 주세요.';
+  if (m.contains('security purposes') || m.contains('seconds')) return '방금 메일을 보냈습니다. 1분 뒤에 다시 시도해 주세요.';
   if (m.contains('rate limit') || m.contains('too many')) return '요청이 많습니다. 잠시 후 다시 시도해 주세요.';
   if (m.contains('invalid email') || m.contains('unable to validate email')) return '이메일 형식이 올바르지 않습니다.';
   if (m.contains('same') && m.contains('password')) return '이전과 다른 비밀번호를 입력해 주세요.';
