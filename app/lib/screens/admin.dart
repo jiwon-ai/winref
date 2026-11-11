@@ -688,6 +688,14 @@ class _MemberSheet extends StatelessWidget {
               Text(_roles[p['role']] ?? '', style: const TextStyle(color: Brand.muted)),
             ]),
           ),
+          if (me)
+            TextButton.icon(
+              onPressed: () async {
+                if (await changeAvatar(context) && context.mounted) Navigator.pop(context, true);
+              },
+              icon: const Icon(Icons.photo_camera_outlined, size: 18),
+              label: const Text('사진 변경'),
+            ),
         ]),
         const SizedBox(height: 16),
         Card(

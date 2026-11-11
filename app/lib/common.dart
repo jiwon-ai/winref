@@ -430,6 +430,7 @@ class AsyncListState extends State<AsyncList> {
           child: rows.isEmpty
               ? ListView(children: [EmptyView(widget.empty)])
               : ListView.separated(
+                  padding: const EdgeInsets.only(bottom: 96), // 맨 아래 항목이 + 버튼에 가리지 않게
                   itemCount: rows.length,
                   separatorBuilder: (_, __) => const Divider(height: 1),
                   itemBuilder: (c, i) => widget.item(c, rows[i], reload),
@@ -702,7 +703,36 @@ List<Widget> commonActions(BuildContext context, Map<String, dynamic> profile) =
               if (profile['role'] == 'referee') {
                 Navigator.push(context, MaterialPageRoute(builder: (_) => const ProfileScreen()));
               } else {
-                editProfile(context, profile);
+                // 관리자·대회관계자: 사진 변경 / 정보 수정
+                showModalBottomSheet(
+                  context: context,
+                  builder: (s) => SafeArea(
+                    child: Column(mainAxisSize: MainAxisSize.min, children: [
+                      ListTile(
+                        leading: Avatar(path: profile['avatar_path'], name: profile['name'] ?? '', size: 40),
+                        title: Text(profile['name'] ?? '', style: const TextStyle(fontWeight: FontWeight.w700)),
+                        subtitle: Text(db.auth.currentUser?.email ?? ''),
+                      ),
+                      const Divider(height: 1),
+                      ListTile(
+                        leading: const Icon(Icons.photo_camera_outlined),
+                        title: const Text('프로필 사진 변경'),
+                        onTap: () {
+                          Navigator.pop(s);
+                          changeAvatar(context);
+                        },
+                      ),
+                      ListTile(
+                        leading: const Icon(Icons.edit_outlined),
+                        title: const Text('내 정보 수정'),
+                        onTap: () {
+                          Navigator.pop(s);
+                          editProfile(context, profile);
+                        },
+                      ),
+                    ]),
+                  ),
+                );
               }
             case 'logout':
               signOut();

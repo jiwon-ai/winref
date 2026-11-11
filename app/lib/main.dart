@@ -69,7 +69,13 @@ class WinrefApp extends StatelessWidget {
                     ),
                     child: ClipRect(
                       child: MediaQuery(
-                          data: narrow ? scaled.copyWith(size: Size(w, mq.size.height)) : scaled, child: child!),
+                        data: narrow ? scaled.copyWith(size: Size(w, mq.size.height)) : scaled,
+                        // 갤럭시 하단 내비게이션·제스처 바에 맨 아래 버튼·목록이 가려지지 않게 모든 화면을 그 위까지만 사용
+                        child: ColoredBox(
+                          color: Colors.white,
+                          child: SafeArea(top: false, left: false, right: false, child: child!),
+                        ),
+                      ),
                     ),
                   ),
                 ),
