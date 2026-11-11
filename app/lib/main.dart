@@ -95,6 +95,25 @@ class _AuthGateState extends State<AuthGate> {
   int _profileVersion = 0; // 가입 정보 입력 후 프로필 다시 읽기
 
   @override
+  void initState() {
+    super.initState();
+    // 메일 링크가 만료됐거나 다른 기기·브라우저에서 열려 로그인에 실패한 경우 빈 화면 대신 안내
+    final u = Uri.base;
+    final failed = '${u.query}&${u.fragment}'.contains('error_code=') ||
+        (u.queryParameters.containsKey('code') && db.auth.currentSession == null);
+    if (failed) {
+      Future.delayed(const Duration(seconds: 2), () {
+        if (db.auth.currentSession != null) return;
+        messengerKey.currentState?.showSnackBar(const SnackBar(
+          duration: Duration(seconds: 10),
+          content: Text('메일 링크가 만료되었거나 다른 기기에서 열렸습니다. 로그인 화면의 \'비밀번호 재설정\'에서 '
+              '메일로 받은 인증코드를 입력해 주세요.'),
+        ));
+      });
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     return StreamBuilder<AuthState>(
       stream: db.auth.onAuthStateChange,
