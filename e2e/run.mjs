@@ -504,10 +504,10 @@ try {
   });
 
   await check('관리자: 회원 상세(이메일)·탈퇴 처리', async () => {
-    // 메뉴를 다시 열어 검색칸을 비운 뒤 이메일로 검색
+    // 메뉴를 다시 열면 검색어가 비워져 전체 회원 목록
     await tap('대시보드', 'any!');
     await tap('회원', 'any!');
-    await type('이름·이메일', 'reset@test');
+    await see('reset@test.kr');   // 목록에 이메일(아이디) 표시
     await tap('정재설');
     await see('이메일(아이디)');
     await see('reset@test.kr');
