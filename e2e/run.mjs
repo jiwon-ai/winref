@@ -453,6 +453,15 @@ try {
     await see('대시보드');
     await see('활동완료 누적');
     await shot('admin-dashboard');
+    // 운영 현황 카드를 누르면 상세 목록
+    await tap('활동완료 누적', 'button');
+    await see('김심판 · 기문심판');
+    await shot('admin-kpi-detail');
+    await page.keyboard.press('Escape');
+    await page.waitForTimeout(600);
+    await tap('심판·교육신청자', 'button');   // 회원 메뉴로 이동(심판 필터)
+    await see('이름·이메일');
+    await tap('대시보드', 'any!');
   });
 
   await check('관리자: 자격 확인(사본)·승인', async () => {

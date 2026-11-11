@@ -27,6 +27,7 @@ class _AdminHomeState extends State<AdminHome> {
   }
 
   int _i = 0;
+  String? _memberRole; // 대시보드에서 회원 유형을 골라 들어온 경우
   static const _menu = <(IconData, String)>[
     (Icons.insights_outlined, '대시보드'),
     (Icons.people_outline, '회원'),
@@ -37,8 +38,14 @@ class _AdminHomeState extends State<AdminHome> {
   ];
 
   Widget _page() => switch (_i) {
-        0 => _Dashboard(onGo: (i) => setState(() => _i = i)),
-        1 => const _Members(),
+        0 => _Dashboard(
+            onGo: (i) => setState(() => _i = i),
+            onMembers: (role) => setState(() {
+              _memberRole = role;
+              _i = 1;
+            }),
+          ),
+        1 => _Members(key: ValueKey(_memberRole), initialRole: _memberRole),
         2 => const _Qualifications(),
         3 => const _Courses(),
         4 => const _Competitions(),
@@ -58,7 +65,10 @@ class _AdminHomeState extends State<AdminHome> {
         body: Row(children: [
           NavigationRail(
             selectedIndex: _i,
-            onDestinationSelected: (i) => setState(() => _i = i),
+            onDestinationSelected: (i) => setState(() {
+              _i = i;
+              _memberRole = null;
+            }),
             labelType: NavigationRailLabelType.all,
             destinations: [
               for (final m in _menu) NavigationRailDestination(icon: Icon(m.$1), label: Text(m.$2)),
@@ -92,7 +102,10 @@ class _AdminHomeState extends State<AdminHome> {
               title: Text(_menu[k].$2),
               selected: k == _i,
               onTap: () {
-                setState(() => _i = k);
+                setState(() {
+                  _i = k;
+                  _memberRole = null;
+                });
                 Navigator.pop(context);
               },
             ),
@@ -107,7 +120,8 @@ class _AdminHomeState extends State<AdminHome> {
 
 class _Dashboard extends StatefulWidget {
   final ValueChanged<int> onGo; // 처리할 일 → 해당 메뉴로 이동
-  const _Dashboard({required this.onGo});
+  final ValueChanged<String?> onMembers; // 회원 카드 → 회원 메뉴(유형 필터)
+  const _Dashboard({required this.onGo, required this.onMembers});
   @override
   State<_Dashboard> createState() => _DashboardState();
 }
@@ -147,15 +161,22 @@ class _DashboardState extends State<_Dashboard> {
             Text('운영 현황', style: Theme.of(context).textTheme.titleMedium),
             const SizedBox(height: 10),
             Wrap(spacing: 12, runSpacing: 12, children: [
-              _Kpi('전체 회원', '$total', icon: Icons.groups_outlined),
-              _Kpi('심판·교육신청자', '${roles['referee'] ?? 0}', icon: Icons.person_outline),
-              _Kpi('대회관계자', '${roles['organizer'] ?? 0}', icon: Icons.apartment_outlined),
-              _Kpi('신규 회원 (30일)', '${s['new_members_30d']}', icon: Icons.person_add_alt_outlined),
-              _Kpi('등록 대회', '${s['competitions']}', icon: Icons.emoji_events_outlined),
-              _Kpi('모집 중 공고', '${s['open_recruitments']}', icon: Icons.campaign_outlined),
-              _Kpi('활동완료 누적', '${s['completed_activities']}', icon: Icons.task_alt),
+              _Kpi('전체 회원', '$total', icon: Icons.groups_outlined, onTap: () => widget.onMembers(null)),
+              _Kpi('심판·교육신청자', '${roles['referee'] ?? 0}',
+                  icon: Icons.person_outline, onTap: () => widget.onMembers('referee')),
+              _Kpi('대회관계자', '${roles['organizer'] ?? 0}',
+                  icon: Icons.apartment_outlined, onTap: () => widget.onMembers('organizer')),
+              _Kpi('신규 회원 (30일)', '${s['new_members_30d']}',
+                  icon: Icons.person_add_alt_outlined, onTap: () => _detail(context, _newMembers)),
+              _Kpi('등록 대회', '${s['competitions']}', icon: Icons.emoji_events_outlined, onTap: () => widget.onGo(4)),
+              _Kpi('모집 중 공고', '${s['open_recruitments']}',
+                  icon: Icons.campaign_outlined, onTap: () => _detail(context, _openRecruitments)),
+              _Kpi('활동완료 누적', '${s['completed_activities']}',
+                  icon: Icons.task_alt, onTap: () => _detail(context, _completed)),
               _Kpi('자격 만료 예정 (90일)', '${s['expiring_90d']}',
-                  icon: Icons.hourglass_bottom, alert: _n(s['expiring_90d']) > 0),
+                  icon: Icons.hourglass_bottom,
+                  alert: _n(s['expiring_90d']) > 0,
+                  onTap: () => _detail(context, _expiring)),
             ]),
             const SizedBox(height: 24),
             LayoutBuilder(builder: (context, c) {
@@ -184,6 +205,107 @@ class _DashboardState extends State<_Dashboard> {
           ]),
         );
       },
+    );
+  }
+
+  // ---- 운영 현황 카드 → 상세 목록 ----
+  Future<void> _detail(BuildContext context, Future<(String, List<(String, String, String)>)> Function() load) =>
+      showModalBottomSheet(
+        context: context,
+        isScrollControlled: true,
+        builder: (_) => DraggableScrollableSheet(
+          expand: false,
+          initialChildSize: 0.75,
+          builder: (_, sc) => FutureBuilder<(String, List<(String, String, String)>)>(
+            future: load(),
+            builder: (c, snap) {
+              if (snap.hasError) return ErrorView(error: snap.error, onRetry: () => Navigator.pop(c));
+              if (!snap.hasData) return const Center(child: CircularProgressIndicator());
+              final (title, rows) = snap.data!;
+              return ListView(controller: sc, padding: const EdgeInsets.fromLTRB(8, 16, 8, 24), children: [
+                ListTile(
+                  title: Text(title, style: Theme.of(c).textTheme.titleLarge),
+                  trailing: Text('${rows.length}건', style: const TextStyle(color: Brand.navy, fontWeight: FontWeight.w700)),
+                ),
+                const Divider(),
+                if (rows.isEmpty) const EmptyView('해당 내역이 없습니다.'),
+                for (final r in rows)
+                  ListTile(
+                    title: Text(r.$1),
+                    subtitle: r.$2.isEmpty ? null : Text(r.$2),
+                    trailing: Text(r.$3, style: const TextStyle(color: Brand.muted, fontSize: 13)),
+                  ),
+              ]);
+            },
+          ),
+        ),
+      );
+
+  Future<(String, List<(String, String, String)>)> _newMembers() async {
+    final since = DateTime.now().subtract(const Duration(days: 30)).toUtc().toIso8601String();
+    final rows = await db.from('profiles').select().gte('created_at', since).order('created_at', ascending: false);
+    const roles = {'admin': '관리자', 'organizer': '대회관계자', 'referee': '심판·교육신청자'};
+    return (
+      '신규 회원 (최근 30일)',
+      [for (final p in rows) ('${p['name']}', [roles[p['role']], p['email']].whereType<String>().join(' · '), fmtDate(p['created_at']))]
+    );
+  }
+
+  Future<(String, List<(String, String, String)>)> _openRecruitments() async {
+    final rows = await db
+        .from('recruitments')
+        .select('*, competitions(name, starts_on, venue)')
+        .eq('is_open', true)
+        .order('deadline', ascending: true, nullsFirst: false);
+    final now = DateTime.now();
+    final open = rows.where((r) => DateTime.tryParse(r['deadline'] ?? '')?.isAfter(now) ?? true);
+    return (
+      '모집 중 공고',
+      [
+        for (final r in open)
+          (
+            '${r['competitions']?['name'] ?? ''} · ${r['position']}',
+            '${r['headcount']}명 · ${r['competitions']?['venue'] ?? ''} · 대회 ${fmtDate(r['competitions']?['starts_on'])}',
+            r['deadline'] == null ? '상시' : '마감 ${fmtDateTime(r['deadline'])}',
+          )
+      ]
+    );
+  }
+
+  Future<(String, List<(String, String, String)>)> _completed() async {
+    final rows = await db.from('activity_history').select().order('starts_on', ascending: false);
+    final names = {
+      for (final p in await db.from('profiles').select('id, name')) p['id']: p['name'],
+    };
+    return (
+      '활동완료 누적',
+      [
+        for (final a in rows)
+          ('${names[a['user_id']] ?? '탈퇴 회원'} · ${a['position'] ?? ''}', '${a['competition_name'] ?? ''}', fmtDate(a['starts_on']))
+      ]
+    );
+  }
+
+  Future<(String, List<(String, String, String)>)> _expiring() async {
+    final today = DateTime.now();
+    final until = today.add(const Duration(days: 90));
+    final rows = await db
+        .from('qualifications')
+        .select('*, profiles(name, phone)')
+        .eq('status', 'approved')
+        .gte('expires_on', today.toIso8601String().substring(0, 10))
+        .lte('expires_on', until.toIso8601String().substring(0, 10))
+        .order('expires_on');
+    return (
+      '자격 만료 예정 (90일 이내)',
+      [
+        for (final q in rows)
+          (
+            '${q['profiles']?['name'] ?? ''} · ${q['name']} ${q['grade'] ?? ''}',
+            '${q['cert_no'] != null ? 'No.${q['cert_no']} · ' : ''}${q['profiles']?['phone'] ?? ''}',
+            '만료 ${fmtDate(q['expires_on'])}',
+          )
+      ]
     );
   }
 
@@ -309,18 +431,23 @@ class _Kpi extends StatelessWidget {
   final String value;
   final IconData icon;
   final bool alert;
-  const _Kpi(this.label, this.value, {required this.icon, this.alert = false});
+  final VoidCallback? onTap;
+  const _Kpi(this.label, this.value, {required this.icon, this.alert = false, this.onTap});
   @override
   Widget build(BuildContext context) {
     final color = alert ? Brand.warn : Brand.navy;
-    return Container(
+    return Material(
+      color: Colors.white,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: const BorderSide(color: Color(0xFFDCE5F0)),
+      ),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: onTap,
+        child: Container(
       width: 200,
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFDCE5F0)),
-      ),
       child: Row(children: [
         Container(
           width: 40,
@@ -336,7 +463,10 @@ class _Kpi extends StatelessWidget {
             Text(value, style: TextStyle(color: color, fontSize: 24, fontWeight: FontWeight.w800)),
           ]),
         ),
+        if (onTap != null) const Icon(Icons.chevron_right, size: 18, color: Brand.muted),
       ]),
+        ),
+      ),
     );
   }
 }
@@ -344,13 +474,14 @@ class _Kpi extends StatelessWidget {
 // ---------- 회원 관리 / 대회관계자 기관 승인 ----------
 
 class _Members extends StatefulWidget {
-  const _Members();
+  final String? initialRole;
+  const _Members({super.key, this.initialRole});
   @override
   State<_Members> createState() => _MembersState();
 }
 
 class _MembersState extends State<_Members> {
-  String? _role; // null = 전체
+  late String? _role = widget.initialRole; // null = 전체
   String _q = '';
   final _key = GlobalKey<AsyncListState>();
   List<Map<String, dynamic>> _shown = [];
