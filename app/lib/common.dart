@@ -518,7 +518,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       appBar: AppBar(title: const Text('알림'), actions: [
         TextButton(
           onPressed: _readAll,
-          child: const Text('모두 읽음', style: TextStyle(color: Brand.ivory)),
+          child: const Text('모두 읽음'),
         ),
       ]),
       body: AsyncList(
