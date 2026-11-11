@@ -16,6 +16,7 @@ const browser = await chromium.launch();
 // 405x720 @8/3 = 1080x1920 (9:16) → Play 스토어 휴대전화 스크린샷 권장 규격
 const page = await browser.newPage({ viewport: { width: 405, height: 720 }, deviceScaleFactor: 8 / 3, locale: 'ko-KR' });
 page.on('console', (m) => { if (m.type() === 'error') console.log('[console]', m.text()); });
+page.on('response', async (r) => { if (r.status() >= 400 && r.url().includes('/auth/v1/')) console.log('[auth]', r.status(), r.url().split('?')[0], (await r.text().catch(() => '')).slice(0, 300)); });
 
 async function shot(name) {
   step++;
