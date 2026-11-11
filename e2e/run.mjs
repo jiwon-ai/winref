@@ -147,8 +147,13 @@ try {
     await retype('비밀번호', otp);
     await tap('로그인', 'button');
     await see('임시 비밀번호로 로그인했습니다');   // 새 비밀번호 설정 화면이 바로 뜸
-    await type('새 비밀번호 (8자 이상)', 'NewPass123!');
-    await type('새 비밀번호 확인', 'NewPass123!');
+    // 이전과 같은 비밀번호면 '짧다'가 아니라 '같은 비밀번호' 안내
+    await type('새 비밀번호 (8자 이상)', 'Test1234!');
+    await type('새 비밀번호 확인', 'Test1234!');
+    await tap('변경하기', 'button');
+    await see('이전과 같은 비밀번호입니다');
+    await retype('새 비밀번호 (8자 이상)', 'NewPass123!');
+    await retype('새 비밀번호 확인', 'NewPass123!');
     await shot('new-password');
     await tap('변경하기', 'button');
     await see('비밀번호를 변경했습니다');
