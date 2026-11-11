@@ -161,6 +161,16 @@ ok(conf.rows?.length === 1 && conf.rows[0].user_id === REF2 && conf.rows[0].comp
 ok((await as(ORG, `select * from selection_conflicts(${c2})`)).rows?.length === 0, '일정 겹침 없음');
 ok((await as(REF, `select * from selection_conflicts(${c2})`)).err, '일정 겹침 조회는 관계자·관리자만');
 
+// 이메일(아이디) 동기화·보호, 관리자 탈퇴 처리
+await db.exec(`update auth.users set email='ref2@x.kr' where id='${REF2}'`);
+ok((await db.query(`select email from profiles where id='${REF2}'`)).rows[0].email === 'ref2@x.kr', '가입 이메일이 프로필에 동기화');
+await as(REF2, `update profiles set email='fake@x.kr' where id=$1`, [REF2]);
+ok((await db.query(`select email from profiles where id='${REF2}'`)).rows[0].email === 'ref2@x.kr', '본인이 이메일 칸 임의 변경 불가');
+ok((await as(REF, `select admin_delete_user($1)`, [REF2])).err, '일반 회원은 다른 회원 탈퇴 불가');
+ok((await as(ADMIN, `select admin_delete_user($1)`, [ADMIN])).err, '관리자 본인 탈퇴 처리 불가');
+ok(!(await as(ADMIN, `select admin_delete_user($1)`, [REF2])).err, '관리자가 회원 탈퇴 처리');
+ok((await db.query(`select count(*)::int n from profiles where id='${REF2}'`)).rows[0].n === 0, '탈퇴 처리 후 프로필 삭제');
+
 ok((await as(ADMIN, `select delete_my_account()`)).err, '관리자 탈퇴 차단');
 ok(!(await as(REF, `select delete_my_account()`)).err, '심판 탈퇴');
 ok((await db.query(`select count(*)::int n from applications where user_id='${REF}'`)).rows[0].n === 0, '탈퇴 시 지원·이력 삭제');

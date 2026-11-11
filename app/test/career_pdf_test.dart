@@ -32,7 +32,7 @@ void main() {
     final bytes = await buildCareerPdf(
       profile: {'id': '1234abcd-0000-0000-0000-000000000000', 'name': '김심판', 'region': '강원', 'sport': '대회전 (GS)', 'birth_date': '1990-05-01'},
       history: history,
-      quals: [{'name': '대한스키협회 알파인 심판', 'grade': '3급', 'cert_no': 'KSA-AL-2024-0123', 'acquired_on': '2024-03-01', 'expires_on': '2027-02-28'}],
+      quals: [{'name': '알파인스키 국내심판', 'grade': '2급 신규', 'cert_no': 'KSA-AL-2024-0123', 'acquired_on': '2024-03-01', 'expires_on': '2027-02-28'}],
       regular: regular,
       bold: bold,
       issuedAt: DateTime(2026, 11, 8),

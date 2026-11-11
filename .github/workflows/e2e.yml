@@ -73,6 +73,7 @@ jobs:
           mk ref2@test.kr '{"name":"이심판"}'
           mk ref3@test.kr '{"name":"박심판"}'
           mk social@test.kr '{"full_name":"최소셜"}'
+          mk reset@test.kr '{"name":"정재설"}'
           psql "$DB_URL" -v ON_ERROR_STOP=1 -q -f e2e/seed.sql
           psql "$DB_URL" -c "select role, name, org_status from profiles"
 
@@ -92,7 +93,7 @@ jobs:
           npm init -y > /dev/null
           npm i playwright@1 > /dev/null
           npx playwright install --with-deps chromium > /dev/null
-          APP_URL=http://127.0.0.1:8080 DB_URL="$DB_URL" node run.mjs
+          APP_URL=http://127.0.0.1:8080 DB_URL="$DB_URL" API_URL="$API_URL" SERVICE_ROLE_KEY="$SERVICE_ROLE_KEY" node run.mjs
 
       - name: Publish screenshots to e2e-shots branch
         if: always()

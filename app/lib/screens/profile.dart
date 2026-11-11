@@ -52,6 +52,7 @@ class _CareerViewState extends State<CareerView> {
           if (showContact) ...[
             const SizedBox(height: 16),
             _Info(Icons.phone_outlined, profile['phone'] ?? '-'),
+            if (profile['email'] != null) _Info(Icons.alternate_email, profile['email']),
           ],
           if ((profile['region'] ?? '').toString().isNotEmpty || (profile['sport'] ?? '').toString().isNotEmpty) ...[
             const SizedBox(height: 8),
@@ -258,6 +259,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         [p['region'], p['sport']].where((e) => (e ?? '').toString().isNotEmpty).join(' · ').ifEmpty('지역·종목을 등록하세요'),
                         style: const TextStyle(color: Color(0xFFC9DCF5)),
                       ),
+                      if (db.auth.currentUser?.email != null)
+                        Text(db.auth.currentUser!.email!,
+                            style: const TextStyle(color: Color(0xFFC9DCF5), fontSize: 12.5)),
                     ]),
                   ),
                   OutlinedButton(

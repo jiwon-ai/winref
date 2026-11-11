@@ -99,7 +99,7 @@ class _AuthGateState extends State<AuthGate> {
     return StreamBuilder<AuthState>(
       stream: db.auth.onAuthStateChange,
       builder: (context, snap) {
-        if (snap.data?.event == AuthChangeEvent.passwordRecovery) _recovery = true;
+        if (snap.data?.event == AuthChangeEvent.passwordRecovery && !otpRecovery) _recovery = true;
         final user = db.auth.currentUser;
         if (user == null) return const LoginScreen();
         if (_recovery) return NewPasswordScreen(onDone: () => setState(() => _recovery = false));

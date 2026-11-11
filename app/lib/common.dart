@@ -45,6 +45,9 @@ String authMessage(AuthException e) {
 final messengerKey = GlobalKey<ScaffoldMessengerState>();
 
 /// 로그아웃: 이전 사용자 화면의 안내 메시지를 지우고 세션 종료
+/// 인증코드로 비밀번호 재설정 중 (재설정 링크용 화면을 띄우지 않음)
+bool otpRecovery = false;
+
 /// true 면 PC 에서도 전체 폭(관리자 화면). 기본은 휴대폰 폭으로 가운데 표시.
 final fullWidth = ValueNotifier<bool>(false);
 
@@ -204,6 +207,7 @@ class Field {
   final String? initial;
   final String? helper; // 입력칸 아래 안내
   final List<String>? options; // 목록에서 고르기(직접 입력도 가능)
+  final bool optionsOnly; // true 면 목록에서만 선택
   /// 날짜 자동 채움: [autoFrom] 날짜를 고르면 그 날짜 + [autoYears]년으로 채운다(직접 고치면 그 값 유지)
   final String? autoFrom;
   final int autoYears;
@@ -214,7 +218,8 @@ class Field {
       this.helper,
       this.autoFrom,
       this.autoYears = 0,
-      this.options});
+      this.options,
+      this.optionsOnly = false});
 }
 
 /// 필드 목록으로 입력 화면을 띄우고, 저장 시 key→값(빈 값은 null) 맵을 돌려준다.
@@ -350,10 +355,15 @@ class _FormScreenState extends State<_FormScreen> {
                 padding: const EdgeInsets.only(bottom: 12),
                 child: TextFormField(
                   controller: _c[f.key],
-                  readOnly: f.type == FieldType.date || f.type == FieldType.datetime || f.type == FieldType.file,
-                  onTap: f.type == FieldType.date || f.type == FieldType.datetime || f.type == FieldType.file
-                      ? () => _pick(f)
-                      : null,
+                  readOnly: f.optionsOnly ||
+                      f.type == FieldType.date ||
+                      f.type == FieldType.datetime ||
+                      f.type == FieldType.file,
+                  onTap: f.optionsOnly
+                      ? () => _choose(f)
+                      : f.type == FieldType.date || f.type == FieldType.datetime || f.type == FieldType.file
+                          ? () => _pick(f)
+                          : null,
                   keyboardType: f.type == FieldType.number ? TextInputType.number : null,
                   maxLines: f.type == FieldType.multiline ? 5 : 1,
                   decoration: InputDecoration(
@@ -363,6 +373,7 @@ class _FormScreenState extends State<_FormScreen> {
                     suffixIcon: switch (f.type) {
                       FieldType.date || FieldType.datetime => const Icon(Icons.calendar_today),
                       FieldType.file => const Icon(Icons.upload_file),
+                      _ when f.optionsOnly => const Icon(Icons.arrow_drop_down),
                       _ when f.options != null => IconButton(
                           tooltip: '${f.label} 목록에서 선택',
                           icon: const Icon(Icons.arrow_drop_down_circle_outlined),
@@ -761,8 +772,8 @@ class BrandTitle extends StatelessWidget {
 
 /// 자격 입력 항목 (등록·수정 공용). 만료일은 취득일 기준 2년으로 자동 입력.
 List<Field> qualFields([Map? q]) => [
-      Field('name', '자격명', required: true, initial: q?['name']),
-      Field('grade', '등급', initial: q?['grade']),
+      Field('name', '자격명', required: true, initial: q?['name'], options: qualNames, optionsOnly: true),
+      Field('grade', '등급', initial: q?['grade'], options: qualGrades, optionsOnly: true),
       Field('cert_no', '자격번호', initial: q?['cert_no']),
       Field('acquired_on', '취득일', type: FieldType.date, initial: q?['acquired_on']),
       Field('expires_on', '유효기간(만료일)',
@@ -824,7 +835,7 @@ class DisciplineTag extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
         decoration: BoxDecoration(color: Brand.ice, borderRadius: BorderRadius.circular(6)),
         child: Row(mainAxisSize: MainAxisSize.min, children: [
-          const Icon(Icons.downhill_skiing, size: 14, color: Brand.navy),
+          const Icon(Icons.flag, size: 14, color: Brand.navy),
           const SizedBox(width: 4),
           Flexible(
             child: Text(text,
@@ -881,3 +892,7 @@ class _RidgePainter extends CustomPainter {
   @override
   bool shouldRepaint(_RidgePainter old) => old.color != color;
 }
+
+/// 자격명·등급 (윈렙아카데미 지정 목록)
+const qualNames = ['알파인스키 국내심판', '클린심판아카데미'];
+const qualGrades = ['1급 신규', '1급 보수', '2급 신규', '2급 보수', '3급 신규', '3급 보수', '양성과정', '심화과정'];

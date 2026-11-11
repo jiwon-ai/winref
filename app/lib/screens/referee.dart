@@ -37,7 +37,7 @@ class _RefereeHomeState extends State<RefereeHome> {
         onDestinationSelected: _go,
         destinations: const [
           NavigationDestination(icon: Icon(Icons.home_outlined), selectedIcon: Icon(Icons.home), label: '홈'),
-          NavigationDestination(icon: Icon(Icons.downhill_skiing), label: '대회'),
+          NavigationDestination(icon: Icon(Icons.flag_outlined), selectedIcon: Icon(Icons.flag), label: '대회'),
           NavigationDestination(icon: Icon(Icons.school_outlined), label: '교육'),
           NavigationDestination(icon: Icon(Icons.assignment_outlined), label: '내 활동'),
           NavigationDestination(icon: Icon(Icons.badge_outlined), label: '자격'),
@@ -557,7 +557,18 @@ class _RecruitmentDetailState extends State<RecruitmentDetail> {
     if (mounted) setState(() { _mine = rows.isEmpty ? null : rows.first; _loaded = true; _clash = clash.toList(); });
   }
 
+  /// 마감 시각이 지났거나 모집을 닫은 공고
+  bool get _closed {
+    final d = DateTime.tryParse(widget.recruitment['deadline'] ?? '');
+    return widget.recruitment['is_open'] == false || (d != null && d.isBefore(DateTime.now()));
+  }
+
   Future<void> _apply() async {
+    if (_closed) {
+      toast(context, '모집이 마감되어 지원할 수 없습니다.');
+      setState(() {});
+      return;
+    }
     final host = (widget.recruitment['competitions'] as Map)['host_org'] ?? '대회 주최 측';
     final go = await showDialog<bool>(
       context: context,
@@ -633,6 +644,8 @@ class _RecruitmentDetailState extends State<RecruitmentDetail> {
         const SizedBox(height: 24),
         if (!_loaded)
           const Center(child: CircularProgressIndicator())
+        else if ((status == null || status == 'cancelled') && _closed)
+          const FilledButton(onPressed: null, child: Text('모집이 마감되었습니다'))
         else if (status == null || status == 'cancelled')
           FilledButton(onPressed: _apply, child: Text(status == 'cancelled' ? '다시 지원하기' : '심판 지원하기'))
         else ...[

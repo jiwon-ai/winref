@@ -128,6 +128,34 @@ try {
     await see('이메일 또는 비밀번호가 올바르지 않습니다');
   });
 
+  await check('비밀번호 재설정(메일 인증코드)', async () => {
+    await tap('비밀번호 재설정', 'button');
+    await type('이메일', 'reset@test.kr');
+    await tap('인증코드 받기', 'button');
+    await see('인증코드를 메일로 보냈습니다');
+    // 메일 대신 관리자 API 로 같은 종류의 복구 코드를 발급받아 입력
+    const r = await fetch(`${process.env.API_URL}/auth/v1/admin/generate_link`, {
+      method: 'POST',
+      headers: { apikey: process.env.SERVICE_ROLE_KEY, Authorization: `Bearer ${process.env.SERVICE_ROLE_KEY}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ type: 'recovery', email: 'reset@test.kr' }),
+    }).then((x) => x.json());
+    const otp = r.email_otp ?? r.properties?.email_otp;
+    if (!otp) throw new Error('복구 코드 발급 실패: ' + JSON.stringify(r).slice(0, 200));
+    await type('인증코드', otp);
+    await type('새 비밀번호 (8자 이상)', 'NewPass123!');
+    await type('새 비밀번호 확인', 'NewPass123!');
+    await shot('reset-password');
+    await tap('비밀번호 변경', 'button');
+    await see('비밀번호를 변경했습니다');
+    await see('정재설');           // 새 비밀번호로 로그인된 상태
+    await logout();
+    await type('이메일', 'reset@test.kr');
+    await type('비밀번호', 'NewPass123!');
+    await tap('로그인', 'button');
+    await see('정재설');
+    await logout();
+  });
+
   await check('회원가입(심판·교육신청자)', async () => {
     await tap('회원가입', 'button');
     await type('이름', '김심판');
@@ -220,8 +248,10 @@ try {
   await check('자격 등록·자격증 사본 업로드', async () => {
     await goTab('자격');
     await tap('자격 등록', 'button');
-    await type('자격명', '대한스키협회 알파인 심판');
-    await type('등급', '3급');
+    await tap('자격명', 'textbox');
+    await tap('알파인스키 국내심판');
+    await tap('등급', 'textbox');
+    await tap('2급 신규');
     await type('자격번호', 'KSA-AL-2024-0123');
     const [chooser] = await Promise.all([
       page.waitForEvent('filechooser', { timeout: 15000 }),
@@ -426,17 +456,17 @@ try {
 
   await check('관리자: 자격 확인(사본)·승인', async () => {
     await tap('자격 승인', 'any!');
-    await tap('대한스키협회 알파인 심판');
+    await tap('알파인스키 국내심판');
     await see('자격증 사본 보기');
     await shot('admin-qualification');
     await tap('승인', 'exact');
     await page.waitForTimeout(800);
-    if (sql(`select status from qualifications where name='대한스키협회 알파인 심판'`) !== 'approved') throw new Error('승인 저장 안 됨');
+    if (sql(`select status from qualifications where name='알파인스키 국내심판'`) !== 'approved') throw new Error('승인 저장 안 됨');
   });
 
   await check('관리자: 회원 검색·엑셀 내보내기', async () => {
     await tap('회원', 'any!');
-    await type('이름·연락처', '박관계');
+    await type('이름·이메일', '박관계');
     await see('평창알파인클럽');
     const [dl] = await Promise.all([page.waitForEvent('download', { timeout: 15000 }), tap('엑셀 내보내기', 'button')]);
     const name = dl.suggestedFilename();
@@ -444,6 +474,7 @@ try {
     if (!name.startsWith('회원목록_') || !name.endsWith('.csv')) throw new Error('파일명 ' + name);
     if (csv.charCodeAt(0) !== 0xfeff) throw new Error('BOM 없음 (엑셀 한글 깨짐)');
     if (!csv.includes('박관계') || csv.includes('김심판')) throw new Error('검색 결과와 내보낸 내용 불일치');
+    if (!csv.includes('org@test.kr')) throw new Error('엑셀에 이메일(아이디) 없음');
     await shot('admin-members');
   });
 
@@ -460,6 +491,18 @@ try {
     await tap('변경', 'button!');
     const r = sql(`select role||','||org_status from profiles where name='박관계'`);
     if (r !== 'organizer,approved') throw new Error('원복 실패: ' + r);
+  });
+
+  await check('관리자: 회원 상세(이메일)·탈퇴 처리', async () => {
+    await type('이름·이메일', 'reset@test');   // 이메일로 검색
+    await tap('정재설');
+    await see('이메일(아이디)');
+    await see('reset@test.kr');
+    await shot('admin-member-detail');
+    await tap('회원 탈퇴 처리', 'button');
+    await tap('탈퇴 처리', 'button!');
+    await see('탈퇴 처리했습니다');
+    if (sql(`select count(*) from auth.users where email='reset@test.kr'`) !== '0') throw new Error('탈퇴 처리 안 됨');
   });
 
   await check('관리자: 알림 일괄 발송', async () => {

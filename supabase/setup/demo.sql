@@ -61,7 +61,7 @@ begin
   values (c1, '경기 일정 및 배정표', '07:30 레이스 오피스 집결 → 08:00 코스 점검 → 09:00 1차 레이스 출발. 기문 배정표는 현장 배포.');
 
   insert into qualifications (user_id, name, grade, acquired_on, expires_on, refresher_done, status)
-  values (v_ref, '대한스키협회 알파인 심판', '3급', current_date - 700, current_date + 60, false, 'approved');
+  values (v_ref, '알파인스키 국내심판', '2급 신규', current_date - 700, current_date + 60, false, 'approved');
 
   insert into courses (title, description, location, starts_at, ends_at, apply_deadline, capacity, is_refresher) values
     ('[시연] 알파인 심판 3급 양성과정', 'FIS 알파인 경기규칙 이론 + 기문심판 실기 평가', 'WINREF 교육장', now() + interval '14 days', now() + interval '15 days', now() + interval '7 days', 30, false),

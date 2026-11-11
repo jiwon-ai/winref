@@ -32,7 +32,7 @@ class _AdminHomeState extends State<AdminHome> {
     (Icons.people_outline, '회원'),
     (Icons.badge_outlined, '자격 승인'),
     (Icons.school_outlined, '교육'),
-    (Icons.downhill_skiing, '대회'),
+    (Icons.flag_outlined, '대회'),
     (Icons.campaign_outlined, '공지·알림'),
   ];
 
@@ -148,7 +148,7 @@ class _DashboardState extends State<_Dashboard> {
             const SizedBox(height: 10),
             Wrap(spacing: 12, runSpacing: 12, children: [
               _Kpi('전체 회원', '$total', icon: Icons.groups_outlined),
-              _Kpi('심판·교육신청자', '${roles['referee'] ?? 0}', icon: Icons.downhill_skiing),
+              _Kpi('심판·교육신청자', '${roles['referee'] ?? 0}', icon: Icons.person_outline),
               _Kpi('대회관계자', '${roles['organizer'] ?? 0}', icon: Icons.apartment_outlined),
               _Kpi('신규 회원 (30일)', '${s['new_members_30d']}', icon: Icons.person_add_alt_outlined),
               _Kpi('등록 대회', '${s['competitions']}', icon: Icons.emoji_events_outlined),
@@ -363,7 +363,7 @@ class _MembersState extends State<_Members> {
     _shown = k.isEmpty
         ? rows
         : rows
-            .where((p) => '${p['name']} ${p['phone'] ?? ''} ${p['organization'] ?? ''} ${p['region'] ?? ''}'
+            .where((p) => '${p['name']} ${p['email'] ?? ''} ${p['phone'] ?? ''} ${p['organization'] ?? ''} ${p['region'] ?? ''}'
                 .toLowerCase()
                 .contains(k))
             .toList();
@@ -373,15 +373,17 @@ class _MembersState extends State<_Members> {
   Future<void> _export() => exportCsv(
         context,
         '회원목록',
-        ['이름', '유형', '소속기관', '기관승인', '연락처', '지역', '종목', '가입일'],
+        ['이름', '이메일(아이디)', '유형', '소속기관', '기관승인', '연락처', '생년월일', '지역', '종목', '가입일'],
         [
           for (final p in _shown)
             [
               p['name'],
+              p['email'],
               switch (p['role']) { 'admin' => '관리자', 'organizer' => '대회관계자', _ => '심판·교육신청자' },
               p['organization'],
               p['role'] == 'organizer' ? label(p['org_status']) : '',
               phoneCell(p['phone']),
+              p['birth_date'],
               p['region'],
               p['sport'],
               fmtDate(p['created_at']),
@@ -404,7 +406,7 @@ class _MembersState extends State<_Members> {
           Expanded(
             child: TextField(
               decoration: const InputDecoration(
-                hintText: '이름·연락처·소속·지역 검색',
+                hintText: '이름·이메일·연락처·소속·지역 검색',
                 prefixIcon: Icon(Icons.search),
                 isDense: true,
               ),
@@ -447,7 +449,8 @@ class _MembersState extends State<_Members> {
             final org = p['role'] == 'organizer';
             return ListTile(
               title: Text('${p['name']}  ${org ? '· ${p['organization'] ?? ''}' : ''}'),
-              subtitle: Text('${p['phone'] ?? '-'} · 가입 ${fmtDate(p['created_at'])}'),
+              subtitle: Text('${p['email'] ?? '-'}\n${p['phone'] ?? '-'} · 가입 ${fmtDate(p['created_at'])}'),
+              isThreeLine: true,
               trailing: !org
                   ? Text(p['role'] == 'admin' ? '관리자' : '심판·교육')
                   : p['org_status'] == 'pending'
@@ -467,7 +470,7 @@ class _MembersState extends State<_Members> {
                   isScrollControlled: true,
                   builder: (_) => DraggableScrollableSheet(
                     expand: false,
-                    initialChildSize: p['role'] == 'referee' ? 0.85 : 0.5,
+                    initialChildSize: p['role'] == 'referee' ? 0.9 : 0.7,
                     builder: (_, sc) => _MemberSheet(member: p, controller: sc),
                   ),
                 );
@@ -507,6 +510,36 @@ class _MemberSheet extends StatelessWidget {
     if (done && context.mounted) Navigator.pop(context, true);
   }
 
+  /// 관리자 탈퇴 처리: 파일 삭제 → 계정·개인 데이터 삭제
+  Future<void> _delete(BuildContext context) async {
+    final p = member;
+    final ok = await confirm(context, '회원 탈퇴 처리',
+        '${p['name']}(${p['email'] ?? '이메일 없음'}) 회원을 탈퇴 처리할까요?\n'
+        '계정과 프로필·자격·교육 신청·대회 지원 기록이 모두 삭제되며 되돌릴 수 없습니다.',
+        ok: '탈퇴 처리');
+    if (!ok || !context.mounted) return;
+    final done = await run(context, () async {
+      for (final folder in ['avatars/${p['id']}', 'quals/${p['id']}']) {
+        try {
+          final files = await db.storage.from('files').list(path: folder);
+          if (files.isNotEmpty) await db.storage.from('files').remove([for (final f in files) '$folder/${f.name}']);
+        } catch (_) {}
+      }
+      await db.rpc('admin_delete_user', params: {'p_user': p['id']});
+    }, done: '${p['name']} 회원을 탈퇴 처리했습니다.');
+    if (done && context.mounted) Navigator.pop(context, true);
+  }
+
+  Widget _info(IconData icon, String label, String? value) => Padding(
+        padding: const EdgeInsets.symmetric(vertical: 5),
+        child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Icon(icon, size: 18, color: Brand.muted),
+          const SizedBox(width: 10),
+          SizedBox(width: 92, child: Text(label, style: const TextStyle(color: Brand.muted))),
+          Expanded(child: SelectableText((value ?? '').isEmpty ? '-' : value!)),
+        ]),
+      );
+
   @override
   Widget build(BuildContext context) {
     final p = member;
@@ -521,14 +554,30 @@ class _MemberSheet extends StatelessWidget {
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text(p['name'] ?? '', style: Theme.of(context).textTheme.titleLarge),
-              Text([
-                _roles[p['role']] ?? '',
-                if (p['organization'] != null) p['organization'],
-                if (p['phone'] != null) p['phone'],
-              ].join(' · '), style: const TextStyle(color: Brand.muted)),
+              Text(_roles[p['role']] ?? '', style: const TextStyle(color: Brand.muted)),
             ]),
           ),
         ]),
+        const SizedBox(height: 16),
+        Card(
+          margin: EdgeInsets.zero,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            child: Column(children: [
+              _info(Icons.alternate_email, '이메일(아이디)', p['email']),
+              _info(Icons.phone_outlined, '연락처', p['phone']),
+              _info(Icons.cake_outlined, '생년월일', p['birth_date'] == null ? null : fmtDate(p['birth_date'])),
+              _info(Icons.place_outlined, '활동 지역', p['region']),
+              _info(Icons.flag_outlined, '전문 종목', p['sport']),
+              if (p['role'] == 'organizer') ...[
+                _info(Icons.apartment_outlined, '소속 기관', p['organization']),
+                _info(Icons.verified_outlined, '기관 승인', label(p['org_status'])),
+              ],
+              _info(Icons.event_outlined, '가입일', fmtDate(p['created_at'])),
+              _info(Icons.notes_outlined, '소개', p['bio']),
+            ]),
+          ),
+        ),
         const SizedBox(height: 20),
         const Text('회원 유형', style: TextStyle(fontWeight: FontWeight.w700)),
         const SizedBox(height: 8),
@@ -543,9 +592,22 @@ class _MemberSheet extends StatelessWidget {
             padding: EdgeInsets.only(top: 6),
             child: Text('본인 계정의 유형은 바꿀 수 없습니다.', style: TextStyle(color: Brand.muted, fontSize: 12)),
           ),
+        if (!me && p['role'] != 'admin') ...[
+          const SizedBox(height: 16),
+          OutlinedButton.icon(
+            style: OutlinedButton.styleFrom(
+              foregroundColor: const Color(0xFFC62828),
+              side: const BorderSide(color: Color(0xFFE6A3A3)),
+              minimumSize: const Size.fromHeight(46),
+            ),
+            onPressed: () => _delete(context),
+            icon: const Icon(Icons.person_remove_outlined),
+            label: const Text('회원 탈퇴 처리'),
+          ),
+        ],
         if (p['role'] == 'referee') ...[
           const SizedBox(height: 24),
-          CareerView(profile: p, showContact: true),
+          CareerView(profile: p, showContact: false),
         ],
       ]),
     );
