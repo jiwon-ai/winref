@@ -124,10 +124,19 @@ class _AuthGateState extends State<AuthGate> {
     return StreamBuilder<AuthState>(
       stream: db.auth.onAuthStateChange,
       builder: (context, snap) {
-        if (snap.data?.event == AuthChangeEvent.passwordRecovery && !otpRecovery) _recovery = true;
+        if (snap.data?.event == AuthChangeEvent.passwordRecovery || tempPasswordLogin) _recovery = true;
         final user = db.auth.currentUser;
-        if (user == null) return const LoginScreen();
-        if (_recovery) return NewPasswordScreen(onDone: () => setState(() => _recovery = false));
+        if (user == null) {
+          _recovery = false; // 로그아웃하면 임시 비밀번호 상태 해제
+          tempPasswordLogin = false;
+          return const LoginScreen();
+        }
+        if (_recovery) {
+          return NewPasswordScreen(onDone: () => setState(() {
+                _recovery = false;
+                tempPasswordLogin = false;
+              }));
+        }
         return FutureBuilder<Map<String, dynamic>>(
           key: ValueKey('${user.id}-$_profileVersion'),
           future: db.from('profiles').select().eq('id', user.id).single(),

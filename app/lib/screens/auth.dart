@@ -26,19 +26,35 @@ class _LoginScreenState extends State<LoginScreen> {
 
   Future<void> _login() async {
     setState(() => _busy = true);
+    final email = _email.text.trim();
+    final pw = _pw.text.trim();
     try {
-      await db.auth.signInWithPassword(email: _email.text.trim(), password: _pw.text);
+      await db.auth.signInWithPassword(email: email, password: _pw.text);
     } on AuthException catch (e) {
       if (!mounted) return;
       if (e.message.toLowerCase().contains('email not confirmed')) {
         _offerResend();
-      } else {
+      } else if (RegExp(r'^\d{6,10}$').hasMatch(pw) && await _loginWithTemp(email, pw)) {
+        // 메일로 받은 임시 비밀번호로 로그인 → 바로 새 비밀번호 설정 화면
+      } else if (mounted) {
         toast(context, authMessage(e));
       }
     } catch (e) {
       if (mounted) toast(context, '서버에 연결할 수 없습니다. 인터넷 연결을 확인해 주세요.');
     }
     if (mounted) setState(() => _busy = false);
+  }
+
+  /// 임시 비밀번호(메일의 6자리 숫자)로 로그인. 성공하면 새 비밀번호 설정 화면으로.
+  Future<bool> _loginWithTemp(String email, String code) async {
+    try {
+      tempPasswordLogin = true;
+      await db.auth.verifyOTP(email: email, token: code, type: OtpType.recovery);
+      return true;
+    } catch (_) {
+      tempPasswordLogin = false;
+      return false;
+    }
   }
 
   /// 구글·카카오 로그인 (처음이면 자동 가입 → 가입 정보 입력 화면)
@@ -73,8 +89,14 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  Future<void> _reset() => Navigator.push(
-      context, MaterialPageRoute(builder: (_) => ResetPasswordScreen(email: _email.text.trim())));
+  Future<void> _reset() async {
+    final email = await Navigator.push<String>(
+        context, MaterialPageRoute(builder: (_) => ResetPasswordScreen(email: _email.text.trim())));
+    if (email != null && mounted) {
+      _email.text = email;
+      _pw.clear();
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -130,7 +152,7 @@ class _LoginScreenState extends State<LoginScreen> {
                               : const Text('로그인'),
                         ),
                         Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-                          TextButton(onPressed: _reset, child: const Text('비밀번호 재설정')),
+                          TextButton(onPressed: _reset, child: const Text('비밀번호 찾기')),
                           TextButton(
                             onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SignupScreen())),
                             child: const Text('회원가입'),
@@ -347,7 +369,7 @@ class _SignupScreenState extends State<SignupScreen> {
 }
 
 /// 비밀번호 재설정 메일의 링크로 들어왔을 때 새 비밀번호 입력
-/// 비밀번호 재설정: 메일로 받은 인증코드를 앱에 입력 (메일 링크가 만료·차단돼도 동작)
+/// 비밀번호 찾기: 가입 이메일로 6자리 임시 비밀번호를 보냄 → 로그인 → 바로 새 비밀번호 설정
 class ResetPasswordScreen extends StatefulWidget {
   final String email;
   const ResetPasswordScreen({super.key, this.email = ''});
@@ -356,19 +378,13 @@ class ResetPasswordScreen extends StatefulWidget {
 }
 
 class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
-  final _form = GlobalKey<FormState>();
   late final _email = TextEditingController(text: widget.email);
-  final _code = TextEditingController();
-  final _pw = TextEditingController();
-  final _pw2 = TextEditingController();
   bool _sent = false;
   bool _busy = false;
 
   @override
   void dispose() {
-    for (final c in [_email, _code, _pw, _pw2]) {
-      c.dispose();
-    }
+    _email.dispose();
     super.dispose();
   }
 
@@ -382,7 +398,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
     final ok = await run(
       context,
       () => db.auth.resetPasswordForEmail(email, redirectTo: kIsWeb ? appUrl : mobileAuthCallback),
-      done: '인증코드를 메일로 보냈습니다. 메일함(스팸함 포함)을 확인하세요.',
+      done: '임시 비밀번호를 메일로 보냈습니다.',
     );
     if (!mounted) return;
     setState(() {
@@ -391,69 +407,43 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
     });
   }
 
-  Future<void> _change() async {
-    if (!_form.currentState!.validate()) return;
-    setState(() => _busy = true);
-    otpRecovery = true; // 인증 직후 '새 비밀번호' 화면이 한 번 더 뜨지 않게
-    final ok = await run(context, () async {
-      await db.auth.verifyOTP(email: _email.text.trim(), token: _code.text.trim(), type: OtpType.recovery);
-      await db.auth.updateUser(UserAttributes(password: _pw.text));
-    }, done: '비밀번호를 변경했습니다.');
-    otpRecovery = false;
-    if (!mounted) return;
-    setState(() => _busy = false);
-    if (ok) Navigator.of(context).popUntil((r) => r.isFirst);
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('비밀번호 재설정')),
+      appBar: AppBar(title: const Text('비밀번호 찾기')),
       body: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 420),
-          child: Form(
-            key: _form,
-            child: ListView(padding: const EdgeInsets.all(24), shrinkWrap: true, children: [
-              Text(_sent ? '메일로 받은 인증코드와 새 비밀번호를 입력하세요.' : '가입한 이메일로 인증코드를 보내드립니다.',
-                  style: const TextStyle(color: Brand.muted)),
+          child: ListView(padding: const EdgeInsets.all(24), shrinkWrap: true, children: [
+            if (!_sent) ...[
+              const Text('가입한 이메일로 6자리 임시 비밀번호를 보내드립니다.\n임시 비밀번호로 로그인한 뒤 바로 새 비밀번호로 바꾸게 됩니다.',
+                  style: TextStyle(color: Brand.muted, height: 1.5)),
               const SizedBox(height: 16),
-              TextFormField(
+              TextField(
                 controller: _email,
-                enabled: !_sent,
                 keyboardType: TextInputType.emailAddress,
                 decoration: const InputDecoration(labelText: '이메일', prefixIcon: Icon(Icons.mail_outline)),
+                onSubmitted: (_) => _send(),
               ),
+              const SizedBox(height: 16),
+              FilledButton(onPressed: _busy ? null : _send, child: const Text('임시 비밀번호 받기')),
+            ] else ...[
+              const Icon(Icons.mark_email_read_outlined, size: 48, color: Brand.navy),
               const SizedBox(height: 12),
-              if (!_sent)
-                FilledButton(onPressed: _busy ? null : _send, child: const Text('인증코드 받기'))
-              else ...[
-                TextFormField(
-                  controller: _code,
-                  keyboardType: TextInputType.number,
-                  decoration: const InputDecoration(labelText: '인증코드', prefixIcon: Icon(Icons.pin_outlined)),
-                  validator: (v) => RegExp(r'^\d{6,10}$').hasMatch((v ?? '').trim()) ? null : '메일에 적힌 숫자 코드를 입력하세요',
-                ),
-                const SizedBox(height: 12),
-                TextFormField(
-                  controller: _pw,
-                  obscureText: true,
-                  decoration: const InputDecoration(labelText: '새 비밀번호 (8자 이상)', prefixIcon: Icon(Icons.lock_outline)),
-                  validator: (v) => (v ?? '').length >= 8 ? null : '8자 이상 입력',
-                ),
-                const SizedBox(height: 12),
-                TextFormField(
-                  controller: _pw2,
-                  obscureText: true,
-                  decoration: const InputDecoration(labelText: '새 비밀번호 확인', prefixIcon: Icon(Icons.lock_outline)),
-                  validator: (v) => v == _pw.text ? null : '비밀번호가 일치하지 않습니다',
-                ),
-                const SizedBox(height: 20),
-                FilledButton(onPressed: _busy ? null : _change, child: const Text('비밀번호 변경')),
-                TextButton(onPressed: _busy ? null : () => setState(() => _sent = false), child: const Text('코드 다시 받기')),
-              ],
-            ]),
-          ),
+              Text('${_email.text.trim()} 으로\n임시 비밀번호를 보냈습니다.',
+                  textAlign: TextAlign.center, style: Theme.of(context).textTheme.titleMedium),
+              const SizedBox(height: 10),
+              const Text('메일함(스팸함 포함)에서 6자리 숫자를 확인한 뒤, 로그인 화면에서 비밀번호 칸에 입력하세요. '
+                  '임시 비밀번호는 1시간 동안 한 번만 쓸 수 있습니다.',
+                  textAlign: TextAlign.center, style: TextStyle(color: Brand.muted, height: 1.5)),
+              const SizedBox(height: 20),
+              FilledButton(
+                onPressed: () => Navigator.pop(context, _email.text.trim()),
+                child: const Text('로그인하러 가기'),
+              ),
+              TextButton(onPressed: _busy ? null : _send, child: const Text('메일 다시 받기')),
+            ],
+          ]),
         ),
       ),
     );
@@ -493,13 +483,20 @@ class _NewPasswordScreenState extends State<NewPasswordScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('새 비밀번호 설정'), automaticallyImplyLeading: false),
+      appBar: AppBar(
+        title: const Text('새 비밀번호 설정'),
+        automaticallyImplyLeading: false,
+        actions: [TextButton(onPressed: signOut, child: const Text('로그아웃'))],
+      ),
       body: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 420),
           child: Form(
             key: _form,
             child: ListView(padding: const EdgeInsets.all(24), shrinkWrap: true, children: [
+              const Text('임시 비밀번호로 로그인했습니다.\n앞으로 사용할 새 비밀번호를 설정해 주세요.',
+                  style: TextStyle(color: Brand.muted, height: 1.5)),
+              const SizedBox(height: 16),
               TextFormField(
                 controller: _pw,
                 obscureText: true,

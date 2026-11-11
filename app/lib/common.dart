@@ -45,8 +45,8 @@ String authMessage(AuthException e) {
 final messengerKey = GlobalKey<ScaffoldMessengerState>();
 
 /// 로그아웃: 이전 사용자 화면의 안내 메시지를 지우고 세션 종료
-/// 인증코드로 비밀번호 재설정 중 (재설정 링크용 화면을 띄우지 않음)
-bool otpRecovery = false;
+/// 임시 비밀번호로 로그인함 → 새 비밀번호 설정 화면을 반드시 거치게
+bool tempPasswordLogin = false;
 
 /// true 면 PC 에서도 전체 폭(관리자 화면). 기본은 휴대폰 폭으로 가운데 표시.
 final fullWidth = ValueNotifier<bool>(false);

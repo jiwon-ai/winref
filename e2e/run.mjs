@@ -129,26 +129,30 @@ try {
     await see('이메일 또는 비밀번호가 올바르지 않습니다');
   });
 
-  await check('비밀번호 재설정(메일 인증코드)', async () => {
-    await tap('비밀번호 재설정', 'button');
+  await check('비밀번호 찾기(6자리 임시 비밀번호 → 로그인 → 새 비밀번호)', async () => {
+    await tap('비밀번호 찾기', 'button');
     await retype('이메일', 'reset@test.kr');   // 로그인 화면에 쓰던 이메일이 미리 채워져 있음
-    await tap('인증코드 받기', 'button');
-    await see('인증코드를 메일로 보냈습니다');
-    // 메일 대신 관리자 API 로 같은 종류의 복구 코드를 발급받아 입력
+    await tap('임시 비밀번호 받기', 'button');
+    await see('임시 비밀번호를 보냈습니다');
+    // 메일 대신 관리자 API 로 같은 종류의 임시 코드(복구 OTP)를 발급받아 사용
     const r = await fetch(`${process.env.API_URL}/auth/v1/admin/generate_link`, {
       method: 'POST',
       headers: { apikey: process.env.SERVICE_ROLE_KEY, Authorization: `Bearer ${process.env.SERVICE_ROLE_KEY}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({ type: 'recovery', email: 'reset@test.kr' }),
     }).then((x) => x.json());
     const otp = r.email_otp ?? r.properties?.email_otp;
-    if (!otp) throw new Error('복구 코드 발급 실패: ' + JSON.stringify(r).slice(0, 200));
-    await type('인증코드', otp);
+    if (!otp) throw new Error('임시 코드 발급 실패: ' + JSON.stringify(r).slice(0, 200));
+    await shot('reset-password');
+    await tap('로그인하러 가기', 'button');
+    await retype('비밀번호', otp);
+    await tap('로그인', 'button');
+    await see('임시 비밀번호로 로그인했습니다');   // 새 비밀번호 설정 화면이 바로 뜸
     await type('새 비밀번호 (8자 이상)', 'NewPass123!');
     await type('새 비밀번호 확인', 'NewPass123!');
-    await shot('reset-password');
-    await tap('비밀번호 변경', 'button');
+    await shot('new-password');
+    await tap('변경하기', 'button');
     await see('비밀번호를 변경했습니다');
-    await see('정재설');           // 새 비밀번호로 로그인된 상태
+    await see('정재설');           // 홈으로 이동
     await logout();
     await type('이메일', 'reset@test.kr');
     await type('비밀번호', 'NewPass123!');
