@@ -548,6 +548,7 @@ class _ApplicantsManageState extends State<_ApplicantsManage> {
       isThreeLine: clash != null,
       onTap: () async {
         await showModalBottomSheet(
+          useSafeArea: true, // 상태바·하단바에 가리지 않게
           context: c,
           isScrollControlled: true,
           builder: (_) => DraggableScrollableSheet(

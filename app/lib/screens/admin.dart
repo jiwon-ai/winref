@@ -214,6 +214,7 @@ class _DashboardState extends State<_Dashboard> {
   // ---- 운영 현황 카드 → 상세 목록 ----
   Future<void> _detail(BuildContext context, Future<(String, List<(String, String, String)>)> Function() load) =>
       showModalBottomSheet(
+        useSafeArea: true, // 상태바·하단바에 가리지 않게
         context: context,
         isScrollControlled: true,
         builder: (_) => DraggableScrollableSheet(
@@ -599,6 +600,7 @@ class _MembersState extends State<_Members> {
             final org = p['role'] == 'organizer';
             Future<void> open() async {
               final changed = await showModalBottomSheet<bool>(
+                useSafeArea: true, // 상태바·하단바에 가리지 않게
                 context: c,
                 isScrollControlled: true,
                 builder: (_) => DraggableScrollableSheet(
@@ -830,6 +832,7 @@ class _Qualifications extends StatelessWidget {
         trailing: StatusChip(label(q['status']), q['status']),
         onTap: () async {
           final v = await showModalBottomSheet<Map<String, dynamic>>(
+            useSafeArea: true, // 상태바·하단바에 가리지 않게
             context: c,
             builder: (s) => SafeArea(
               child: Column(mainAxisSize: MainAxisSize.min, children: [

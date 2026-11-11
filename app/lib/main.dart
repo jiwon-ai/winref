@@ -44,46 +44,7 @@ class WinrefApp extends StatelessWidget {
       supportedLocales: const [Locale('ko')],
       localizationsDelegates: GlobalMaterialLocalizations.delegates,
       // 휴대폰 글자 크기 설정은 반영하되, 화면이 깨질 만큼 커지지 않게 상한(1.2배)을 둔다.
-      builder: (context, child) {
-        final mq = MediaQuery.of(context);
-        final scaled = mq.copyWith(textScaler: mq.textScaler.clamp(maxScaleFactor: 1.2));
-        // PC 브라우저에서는 심판·대회관계자 화면을 휴대폰 폭으로 가운데 표시(관리자 화면만 전체 폭)
-        return ValueListenableBuilder<bool>(
-          valueListenable: fullWidth,
-          builder: (context, full, _) {
-            // 위젯 구조를 항상 같게 유지해 폭이 바뀌어도 화면 상태가 초기화되지 않게 한다
-            final narrow = !full && mq.size.width > 600;
-            const w = 440.0;
-            return ColoredBox(
-              color: const Color(0xFFE3EAF3),
-              child: Align(
-                alignment: Alignment.topCenter,
-                child: SizedBox(
-                  width: narrow ? w : mq.size.width,
-                  height: mq.size.height,
-                  child: DecoratedBox(
-                    decoration: BoxDecoration(
-                      boxShadow: narrow
-                          ? const [BoxShadow(color: Color(0x22000000), blurRadius: 24, offset: Offset(0, 6))]
-                          : const [],
-                    ),
-                    child: ClipRect(
-                      child: MediaQuery(
-                        data: narrow ? scaled.copyWith(size: Size(w, mq.size.height)) : scaled,
-                        // 갤럭시 하단 내비게이션·제스처 바에 맨 아래 버튼·목록이 가려지지 않게 모든 화면을 그 위까지만 사용
-                        child: ColoredBox(
-                          color: Colors.white,
-                          child: SafeArea(top: false, left: false, right: false, child: child!),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            );
-          },
-        );
-      },
+      builder: appFrame,
       home: const AuthGate(),
     );
   }
@@ -170,4 +131,45 @@ class _AuthGateState extends State<AuthGate> {
       },
     );
   }
+}
+
+/// 앱 전체 틀: 글자 크기 상한(1.2배), PC 에선 휴대폰 폭 가운데 표시(관리자 제외),
+/// 휴대폰 하단 내비게이션·제스처 바 위까지만 화면을 사용(갤럭시에서 맨 아래가 가리지 않게).
+Widget appFrame(BuildContext context, Widget? child) {
+  final mq = MediaQuery.of(context);
+  final scaled = mq.copyWith(textScaler: mq.textScaler.clamp(maxScaleFactor: 1.2));
+  return ValueListenableBuilder<bool>(
+    valueListenable: fullWidth,
+    builder: (context, full, _) {
+      // 위젯 구조를 항상 같게 유지해 폭이 바뀌어도 화면 상태가 초기화되지 않게 한다
+      final narrow = !full && mq.size.width > 600;
+      const w = 440.0;
+      return ColoredBox(
+        color: const Color(0xFFE3EAF3),
+        child: Align(
+          alignment: Alignment.topCenter,
+          child: SizedBox(
+            width: narrow ? w : mq.size.width,
+            height: mq.size.height,
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                boxShadow: narrow
+                    ? const [BoxShadow(color: Color(0x22000000), blurRadius: 24, offset: Offset(0, 6))]
+                    : const [],
+              ),
+              child: ClipRect(
+                child: MediaQuery(
+                  data: narrow ? scaled.copyWith(size: Size(w, mq.size.height)) : scaled,
+                  child: ColoredBox(
+                    color: Colors.white,
+                    child: SafeArea(top: false, left: false, right: false, child: child ?? const SizedBox()),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+    },
+  );
 }

@@ -300,6 +300,7 @@ class _FormScreenState extends State<_FormScreen> {
 
   Future<void> _choose(Field f) async {
     final v = await showModalBottomSheet<String>(
+      useSafeArea: true, // 상태바·하단바에 가리지 않게
       context: context,
       isScrollControlled: true,
       builder: (s) => SafeArea(
@@ -721,6 +722,7 @@ List<Widget> commonActions(BuildContext context, Map<String, dynamic> profile) =
               } else {
                 // 관리자·대회관계자: 사진 변경 / 정보 수정
                 showModalBottomSheet(
+                  useSafeArea: true, // 상태바·하단바에 가리지 않게
                   context: context,
                   builder: (s) => SafeArea(
                     child: Column(mainAxisSize: MainAxisSize.min, children: [

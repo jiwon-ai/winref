@@ -1047,6 +1047,7 @@ class _QualificationsTabState extends State<_QualificationsTab> {
   Future<void> _open(BuildContext c, Map q, VoidCallback reload) async {
     final editable = q['status'] != 'approved';
     final act = await showModalBottomSheet<String>(
+      useSafeArea: true, // 상태바·하단바에 가리지 않게
       context: c,
       builder: (s) => SafeArea(
         child: Column(mainAxisSize: MainAxisSize.min, children: [
