@@ -853,7 +853,7 @@ class _MyActivityTab extends StatelessWidget {
       length: 2,
       child: Column(children: [
         Container(
-          color: Brand.navy,
+          color: Colors.white,
           child: const TabBar(tabs: [Tab(text: '지원 현황'), Tab(text: '활동 이력')]),
         ),
         Expanded(
