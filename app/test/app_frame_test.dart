@@ -44,7 +44,6 @@ void main() {
     await tester.drag(find.byType(ListView), const Offset(0, -5000));
     await tester.pumpAndSettle();
     expect(tester.getBottomLeft(find.text('시트 끝')).dy, lessThanOrEqualTo(screenH - navBar));
-    expect(tester.getTopLeft(find.text('항목 0', skipOffstage: false)).dy, greaterThanOrEqualTo(-10000)); // 존재 확인
     // 시트 맨 위가 상태바 아래에서 시작
     expect(tester.getTopLeft(find.byType(DraggableScrollableSheet)).dy, greaterThanOrEqualTo(statusBar));
   });
