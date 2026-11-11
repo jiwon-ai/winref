@@ -495,7 +495,12 @@ try {
   });
 
   await check('관리자: 회원 상세(이메일)·탈퇴 처리', async () => {
-    await type('이름·이메일', 'reset@test');   // 이메일로 검색
+    // 검색칸에 이전 검색어가 있어 안내 문구(이름)가 사라진 상태 → 첫 입력칸을 비우고 이메일로 검색
+    const box = page.getByRole('textbox').first();
+    await box.click();
+    await page.waitForTimeout(400);
+    await page.keyboard.press('Control+A');
+    await page.keyboard.type('reset@test', { delay: 20 });
     await tap('정재설');
     await see('이메일(아이디)');
     await see('reset@test.kr');
