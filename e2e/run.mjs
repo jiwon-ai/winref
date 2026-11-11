@@ -131,7 +131,7 @@ try {
 
   await check('비밀번호 재설정(메일 인증코드)', async () => {
     await tap('비밀번호 재설정', 'button');
-    await type('이메일', 'reset@test.kr');
+    await retype('이메일', 'reset@test.kr');   // 로그인 화면에 쓰던 이메일이 미리 채워져 있음
     await tap('인증코드 받기', 'button');
     await see('인증코드를 메일로 보냈습니다');
     // 메일 대신 관리자 API 로 같은 종류의 복구 코드를 발급받아 입력
