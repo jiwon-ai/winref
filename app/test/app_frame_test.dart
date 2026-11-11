@@ -37,14 +37,34 @@ void main() {
     ));
 
     const screenH = 780.0, navBar = 48.0, statusBar = 24.0;
-    expect(tester.getBottomLeft(find.text('맨 아래 버튼')).dy, lessThanOrEqualTo(screenH - navBar));
+    const room = 12.0; // 바 위 여유
+    expect(tester.getBottomLeft(find.text('맨 아래 버튼')).dy, lessThanOrEqualTo(screenH - navBar - room));
 
     await tester.tap(find.text('맨 아래 버튼'));
     await tester.pumpAndSettle();
     await tester.drag(find.byType(ListView), const Offset(0, -5000));
     await tester.pumpAndSettle();
-    expect(tester.getBottomLeft(find.text('시트 끝')).dy, lessThanOrEqualTo(screenH - navBar));
+    expect(tester.getBottomLeft(find.text('시트 끝')).dy, lessThanOrEqualTo(screenH - navBar - room));
     // 시트 맨 위가 상태바 아래에서 시작
     expect(tester.getTopLeft(find.byType(DraggableScrollableSheet)).dy, greaterThanOrEqualTo(statusBar));
+  });
+
+  testWidgets('제스처 내비게이션: 제스처 영역 + 여유만큼 올리고, 키보드가 올라오면 여백 없음', (tester) async {
+    tester.view.devicePixelRatio = 3;
+    tester.view.physicalSize = const Size(1080, 2340);
+    tester.view.padding = const FakeViewPadding(bottom: 48); // 제스처 바 16dp
+    tester.view.viewPadding = const FakeViewPadding(bottom: 48);
+    tester.view.systemGestureInsets = const FakeViewPadding(bottom: 96); // 제스처 영역 32dp
+    addTearDown(tester.view.reset);
+    await tester.pumpWidget(MaterialApp(
+      builder: appFrame,
+      home: const Scaffold(bottomNavigationBar: Text('맨 아래')),
+    ));
+    expect(tester.getBottomLeft(find.text('맨 아래')).dy, lessThanOrEqualTo(780 - 32 - 12));
+
+    tester.view.viewInsets = const FakeViewPadding(bottom: 900); // 키보드
+    tester.view.padding = FakeViewPadding.zero;
+    await tester.pump();
+    expect(bottomGap(MediaQueryData.fromView(tester.view)), 0);
   });
 }

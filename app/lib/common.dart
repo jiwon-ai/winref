@@ -765,7 +765,7 @@ List<Widget> commonActions(BuildContext context, Map<String, dynamic> profile) =
               showAboutDialog(
                 context: context,
                 applicationName: 'WINREF 인재은행',
-                applicationVersion: '1.0.0',
+                applicationVersion: const String.fromEnvironment('BUILD').isEmpty ? '1.0.0' : '1.0.0 (빌드 ${const String.fromEnvironment('BUILD')})',
                 applicationIcon: Image.asset('assets/brand/snowflake_blue.png', width: 48, height: 48),
                 applicationLegalese: '운영 윈렙아카데미 · 개발 빠드빠닉',
                 children: [

@@ -133,6 +133,14 @@ class _AuthGateState extends State<AuthGate> {
   }
 }
 
+/// 휴대폰 맨 아래 여백: 내비게이션 바(버튼식) 또는 제스처 영역 중 큰 쪽 + 여유 12dp.
+/// 키보드가 올라와 있으면 0 (키보드 위로 빈칸이 생기지 않게). 웹·PC 는 시스템 바가 없어 0.
+double bottomGap(MediaQueryData mq) {
+  if (mq.viewInsets.bottom > 0) return 0;
+  final bar = mq.viewPadding.bottom > mq.systemGestureInsets.bottom ? mq.viewPadding.bottom : mq.systemGestureInsets.bottom;
+  return bar > 0 ? bar + 12 : 0;
+}
+
 /// 앱 전체 틀: 글자 크기 상한(1.2배), PC 에선 휴대폰 폭 가운데 표시(관리자 제외),
 /// 휴대폰 하단 내비게이션·제스처 바 위까지만 화면을 사용(갤럭시에서 맨 아래가 가리지 않게).
 Widget appFrame(BuildContext context, Widget? child) {
@@ -162,7 +170,13 @@ Widget appFrame(BuildContext context, Widget? child) {
                   data: narrow ? scaled.copyWith(size: Size(w, mq.size.height)) : scaled,
                   child: ColoredBox(
                     color: Colors.white,
-                    child: SafeArea(top: false, left: false, right: false, child: child ?? const SizedBox()),
+                    child: SafeArea(
+                      top: false,
+                      left: false,
+                      right: false,
+                      minimum: EdgeInsets.only(bottom: bottomGap(mq)),
+                      child: child ?? const SizedBox(),
+                    ),
                   ),
                 ),
               ),
