@@ -31,3 +31,12 @@ flutter:
   uses-material-design: true
   assets:
     - assets/brand/
+  # Pretendard (SIL OFL 1.1, assets/fonts/Pretendard-LICENSE.txt) — KS X 1001 한글 2350자 서브셋
+  fonts:
+    - family: Pretendard
+      fonts:
+        - asset: assets/fonts/Pretendard-Regular.otf
+        - asset: assets/fonts/Pretendard-SemiBold.otf
+          weight: 600
+        - asset: assets/fonts/Pretendard-Bold.otf
+          weight: 700

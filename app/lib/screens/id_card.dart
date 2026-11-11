@@ -25,7 +25,14 @@ class _RefereeCardScreenState extends State<RefereeCardScreen> {
     final p = widget.profile;
     return Scaffold(
       backgroundColor: const Color(0xFF0F2547),
-      appBar: AppBar(title: const Text('디지털 심판증'), backgroundColor: const Color(0xFF0F2547)),
+      appBar: AppBar(
+        title: const Text('디지털 심판증'),
+        backgroundColor: const Color(0xFF0F2547),
+        foregroundColor: Colors.white,
+        iconTheme: const IconThemeData(color: Colors.white),
+        titleTextStyle: const TextStyle(fontFamily: 'Pretendard', color: Colors.white, fontSize: 18, fontWeight: FontWeight.w700),
+        shape: const Border(),
+      ),
       body: FutureBuilder<(List, int)>(
         future: _f,
         builder: (context, snap) {

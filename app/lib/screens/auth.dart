@@ -614,7 +614,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('가입 정보 입력'), actions: [
-        TextButton(onPressed: signOut, child: const Text('취소', style: TextStyle(color: Brand.ivory))),
+        TextButton(onPressed: signOut, child: const Text('취소')),
       ]),
       body: Form(
         key: _form,

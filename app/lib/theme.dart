@@ -4,73 +4,85 @@ import 'package:flutter/material.dart';
 /// WINREF ACADEMY 로고 색(#4A90E2) 기반 팔레트
 /// 이름은 기존 코드 호환을 위해 유지: navy=주색(진한 파랑), gold=강조(로고 파랑), ivory=배경
 class Brand {
-  static const navy = Color(0xFF2560AC);      // 앱바·버튼·헤더 (흰 글자 대비 확보한 진한 로고 파랑)
+  static const navy = Color(0xFF2560AC);      // 주색: 버튼·선택·강조 (로고 파랑의 진한 톤)
   static const navyLight = Color(0xFF3B7BCB); // 헤더 안 박스
-  static const gold = Color(0xFF4A90E2);      // 로고 파랑: 밝은 배경 위 강조 (FAB·점·테두리)
-  static const ice = Color(0xFFD6E8FF);       // 진한 파랑 배경 위 강조 글자
+  static const gold = Color(0xFF4A90E2);      // 로고 파랑: 밝은 강조
+  static const ice = Color(0xFFD6E8FF);       // 진한 파랑 위 강조 글자
   static const warn = Color(0xFFD9822B);      // 경고 (자격 만료 임박 등)
-  static const ivory = Color(0xFFF5F8FC);     // 화면 배경
-  static const ivoryDeep = Color(0xFFE6EEF8); // 칩·옅은 면
-  static const ink = Color(0xFF1B2A41);
-  static const muted = Color(0xFF5D6B7E);
+  static const ivory = Color(0xFFF4F6F9);     // 화면 배경 (차분한 회백색)
+  static const ivoryDeep = Color(0xFFE8F0FB); // 선택·칩 옅은 파랑
+  static const ink = Color(0xFF191F28);       // 본문
+  static const muted = Color(0xFF6B7684);     // 보조 글자
+  static const line = Color(0xFFE5E8EB);      // 구분선·테두리
 }
 
 ThemeData buildTheme() {
   const scheme = ColorScheme(
     brightness: Brightness.light,
     primary: Brand.navy,
-    onPrimary: Brand.ivory,
+    onPrimary: Colors.white,
     primaryContainer: Brand.ivoryDeep,
     onPrimaryContainer: Brand.navy,
     secondary: Brand.gold,
     onSecondary: Colors.white,
-    secondaryContainer: Color(0xFFE3EFFC),
+    secondaryContainer: Brand.ivoryDeep,
     onSecondaryContainer: Brand.navy,
-    surface: Brand.ivory,
+    surface: Colors.white,
     onSurface: Brand.ink,
-    surfaceContainerHighest: Brand.ivoryDeep,
+    surfaceContainerHighest: Color(0xFFF2F4F6),
     onSurfaceVariant: Brand.muted,
-    outline: Color(0xFFC3D0E0),
-    outlineVariant: Color(0xFFDCE5F0),
-    error: Color(0xFF9B2C2C),
+    outline: Color(0xFFD1D6DB),
+    outlineVariant: Brand.line,
+    error: Color(0xFFD22030),
     onError: Colors.white,
   );
 
-  final base = ThemeData(useMaterial3: true, colorScheme: scheme);
-  final text = base.textTheme.apply(bodyColor: Brand.ink, displayColor: Brand.navy);
+  final base = ThemeData(useMaterial3: true, colorScheme: scheme, fontFamily: 'Pretendard');
+  final text = base.textTheme.apply(bodyColor: Brand.ink, displayColor: Brand.ink, fontFamily: 'Pretendard');
 
   return base.copyWith(
     scaffoldBackgroundColor: Brand.ivory,
     textTheme: text.copyWith(
-      titleLarge: text.titleLarge?.copyWith(fontWeight: FontWeight.w700, letterSpacing: -0.2),
-      titleMedium: text.titleMedium?.copyWith(fontWeight: FontWeight.w600, color: Brand.navy),
+      titleLarge: text.titleLarge?.copyWith(fontWeight: FontWeight.w700, letterSpacing: -0.4),
+      titleMedium: text.titleMedium?.copyWith(fontWeight: FontWeight.w700, color: Brand.ink, letterSpacing: -0.2),
+      bodyLarge: text.bodyLarge?.copyWith(letterSpacing: -0.2),
+      bodyMedium: text.bodyMedium?.copyWith(letterSpacing: -0.1, height: 1.45),
     ),
+    // 흰 상단바 + 왼쪽 정렬 굵은 제목 (요즘 국내 앱 기본형)
     appBarTheme: const AppBarTheme(
-      backgroundColor: Brand.navy,
-      foregroundColor: Brand.ivory,
+      backgroundColor: Colors.white,
+      foregroundColor: Brand.ink,
       elevation: 0,
-      centerTitle: true,
-      titleTextStyle: TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.w700, letterSpacing: -0.2),
+      scrolledUnderElevation: 0,
+      surfaceTintColor: Colors.transparent,
+      centerTitle: false,
+      shape: Border(bottom: BorderSide(color: Brand.line)),
+      titleTextStyle: TextStyle(
+          fontFamily: 'Pretendard', color: Brand.ink, fontSize: 18, fontWeight: FontWeight.w700, letterSpacing: -0.4),
+      iconTheme: IconThemeData(color: Brand.ink),
     ),
     navigationBarTheme: NavigationBarThemeData(
       backgroundColor: Colors.white,
-      indicatorColor: Brand.ivoryDeep,
+      indicatorColor: Colors.transparent,
       elevation: 0,
+      height: 64,
       surfaceTintColor: Colors.transparent,
       iconTheme: WidgetStateProperty.resolveWith((s) =>
-          IconThemeData(color: s.contains(WidgetState.selected) ? Brand.navy : Brand.muted)),
+          IconThemeData(color: s.contains(WidgetState.selected) ? Brand.navy : const Color(0xFFB0B8C1))),
       labelTextStyle: WidgetStateProperty.resolveWith((s) => TextStyle(
+          fontFamily: 'Pretendard',
           fontSize: 12,
-          fontWeight: s.contains(WidgetState.selected) ? FontWeight.w700 : FontWeight.w500,
-          color: s.contains(WidgetState.selected) ? Brand.navy : Brand.muted)),
+          fontWeight: s.contains(WidgetState.selected) ? FontWeight.w700 : FontWeight.w600,
+          color: s.contains(WidgetState.selected) ? Brand.navy : const Color(0xFF8B95A1))),
     ),
+    // 관리자 웹 사이드바: 흰 바탕
     navigationRailTheme: const NavigationRailThemeData(
-      backgroundColor: Brand.navy,
-      indicatorColor: Brand.navyLight,
-      selectedIconTheme: IconThemeData(color: Colors.white),
-      unselectedIconTheme: IconThemeData(color: Color(0xFFC9DCF5)),
-      selectedLabelTextStyle: TextStyle(color: Brand.ivory, fontWeight: FontWeight.w700),
-      unselectedLabelTextStyle: TextStyle(color: Color(0xFFC9DCF5)),
+      backgroundColor: Colors.white,
+      indicatorColor: Brand.ivoryDeep,
+      selectedIconTheme: IconThemeData(color: Brand.navy),
+      unselectedIconTheme: IconThemeData(color: Color(0xFF8B95A1)),
+      selectedLabelTextStyle: TextStyle(fontFamily: 'Pretendard', color: Brand.navy, fontWeight: FontWeight.w700),
+      unselectedLabelTextStyle: TextStyle(fontFamily: 'Pretendard', color: Color(0xFF6B7684), fontWeight: FontWeight.w600),
     ),
     cardTheme: CardThemeData(
       color: Colors.white,
@@ -78,75 +90,118 @@ ThemeData buildTheme() {
       surfaceTintColor: Colors.transparent,
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: const BorderSide(color: Color(0xFFDCE5F0)),
+        borderRadius: BorderRadius.circular(16),
+        side: const BorderSide(color: Brand.line),
       ),
     ),
-    listTileTheme: const ListTileThemeData(tileColor: Colors.white, iconColor: Brand.navy),
-    dividerTheme: const DividerThemeData(color: Color(0xFFDCE5F0), space: 1),
+    listTileTheme: const ListTileThemeData(
+      tileColor: Colors.transparent,
+      iconColor: Brand.navy,
+      contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 2),
+      titleTextStyle: TextStyle(fontFamily: 'Pretendard', fontSize: 15.5, fontWeight: FontWeight.w600, color: Brand.ink, letterSpacing: -0.3),
+      subtitleTextStyle: TextStyle(fontFamily: 'Pretendard', fontSize: 13, color: Brand.muted, height: 1.45),
+    ),
+    dividerTheme: const DividerThemeData(color: Brand.line, space: 1, thickness: 1),
     filledButtonTheme: FilledButtonThemeData(
       style: FilledButton.styleFrom(
         backgroundColor: Brand.navy,
-        foregroundColor: Brand.ivory,
-        minimumSize: const Size.fromHeight(50),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-        textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+        foregroundColor: Colors.white,
+        disabledBackgroundColor: const Color(0xFFE5E8EB),
+        disabledForegroundColor: const Color(0xFF8B95A1),
+        minimumSize: const Size.fromHeight(52),
+        elevation: 0,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        textStyle: const TextStyle(fontFamily: 'Pretendard', fontSize: 16, fontWeight: FontWeight.w700, letterSpacing: -0.2),
       ),
     ),
     outlinedButtonTheme: OutlinedButtonThemeData(
       style: OutlinedButton.styleFrom(
-        foregroundColor: Brand.navy,
-        side: const BorderSide(color: Brand.navy),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        foregroundColor: Brand.ink,
+        side: const BorderSide(color: Color(0xFFD1D6DB)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        textStyle: const TextStyle(fontFamily: 'Pretendard', fontWeight: FontWeight.w600),
       ),
     ),
-    textButtonTheme: TextButtonThemeData(style: TextButton.styleFrom(foregroundColor: Brand.navy)),
+    textButtonTheme: TextButtonThemeData(
+      style: TextButton.styleFrom(
+        foregroundColor: Brand.navy,
+        textStyle: const TextStyle(fontFamily: 'Pretendard', fontWeight: FontWeight.w600),
+      ),
+    ),
     floatingActionButtonTheme: const FloatingActionButtonThemeData(
-      backgroundColor: Brand.gold,
+      backgroundColor: Brand.navy,
       foregroundColor: Colors.white,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(16))),
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(18))),
     ),
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
       fillColor: Colors.white,
-      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
       enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(10),
-        borderSide: const BorderSide(color: Color(0xFFC3D0E0)),
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: Color(0xFFD1D6DB)),
       ),
       focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(10),
-        borderSide: const BorderSide(color: Brand.navy, width: 1.5),
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: Brand.navy, width: 1.6),
       ),
+      labelStyle: const TextStyle(color: Brand.muted),
+      hintStyle: const TextStyle(color: Color(0xFF8B95A1)),
     ),
     chipTheme: base.chipTheme.copyWith(
-      backgroundColor: Brand.ivoryDeep,
-      side: BorderSide.none,
-      labelStyle: const TextStyle(color: Brand.navy, fontSize: 12, fontWeight: FontWeight.w600),
+      backgroundColor: Colors.white,
+      selectedColor: Brand.ivoryDeep,
+      side: const BorderSide(color: Brand.line),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      labelStyle: const TextStyle(fontFamily: 'Pretendard', color: Brand.ink, fontSize: 13, fontWeight: FontWeight.w600),
+    ),
+    segmentedButtonTheme: SegmentedButtonThemeData(
+      style: SegmentedButton.styleFrom(
+        backgroundColor: Colors.white,
+        selectedBackgroundColor: Brand.ivoryDeep,
+        selectedForegroundColor: Brand.navy,
+        foregroundColor: Brand.muted,
+        side: const BorderSide(color: Color(0xFFD1D6DB)),
+        textStyle: const TextStyle(fontFamily: 'Pretendard', fontWeight: FontWeight.w600),
+      ),
     ),
     tabBarTheme: const TabBarThemeData(
-      labelColor: Brand.ivory,
-      unselectedLabelColor: Color(0xFFC9DCF5),
-      indicatorColor: Colors.white,
+      labelColor: Brand.navy,
+      unselectedLabelColor: Color(0xFF8B95A1),
+      indicatorColor: Brand.navy,
+      indicatorSize: TabBarIndicatorSize.tab,
+      dividerColor: Brand.line,
+      labelStyle: TextStyle(fontFamily: 'Pretendard', fontWeight: FontWeight.w700, fontSize: 15),
+      unselectedLabelStyle: TextStyle(fontFamily: 'Pretendard', fontWeight: FontWeight.w600, fontSize: 15),
     ),
     snackBarTheme: SnackBarThemeData(
-      backgroundColor: Brand.ink,
-      contentTextStyle: const TextStyle(color: Colors.white, fontSize: 14),
+      backgroundColor: const Color(0xFF333D4B),
+      contentTextStyle: const TextStyle(fontFamily: 'Pretendard', color: Colors.white, fontSize: 14),
       behavior: SnackBarBehavior.floating, // 하단 버튼·FAB 를 가리지 않게 떠 있는 알림
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       actionTextColor: Brand.ice,
     ),
     dialogTheme: DialogThemeData(
       backgroundColor: Colors.white,
       surfaceTintColor: Colors.transparent,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      titleTextStyle: const TextStyle(fontFamily: 'Pretendard', fontSize: 19, fontWeight: FontWeight.w700, color: Brand.ink),
     ),
-    bottomSheetTheme: const BottomSheetThemeData(backgroundColor: Colors.white, surfaceTintColor: Colors.transparent),
+    bottomSheetTheme: const BottomSheetThemeData(
+      backgroundColor: Colors.white,
+      surfaceTintColor: Colors.transparent,
+      showDragHandle: true,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+    ),
     popupMenuTheme: PopupMenuThemeData(
       color: Colors.white,
       surfaceTintColor: Colors.transparent,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
     ),
+    expansionTileTheme: const ExpansionTileThemeData(shape: Border(), collapsedShape: Border()),
+    drawerTheme: const DrawerThemeData(backgroundColor: Colors.white, surfaceTintColor: Colors.transparent),
   );
 }
 
@@ -160,12 +215,12 @@ class StatusChip extends StatelessWidget {
   Widget build(BuildContext context) {
     final (bg, fg) = switch (status) {
       'selected' || 'approved' || 'confirmed' || 'attending' => (const Color(0xFFE3EFFC), const Color(0xFF1F5FAF)),
-      'rejected' || 'cancelled' || 'absent' => (const Color(0xFFEAE7E1), Brand.muted),
+      'rejected' || 'cancelled' || 'absent' => (const Color(0xFFF2F4F6), Brand.muted),
       _ => (Brand.ivoryDeep, Brand.navy),
     };
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-      decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(3)),
+      decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(6)),
       child: Text(text, style: TextStyle(color: fg, fontSize: 12, fontWeight: FontWeight.w600)),
     );
   }

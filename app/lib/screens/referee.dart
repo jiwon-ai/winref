@@ -607,17 +607,44 @@ class _RecruitmentDetailState extends State<RecruitmentDetail> {
     final r = widget.recruitment;
     final comp = r['competitions'] as Map<String, dynamic>;
     final status = _mine?['status'] as String?;
+    Widget section(String title, List<Widget> rows) => Container(
+          margin: const EdgeInsets.only(top: 12),
+          padding: const EdgeInsets.fromLTRB(18, 16, 18, 12),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: Brand.line),
+          ),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(title, style: Theme.of(context).textTheme.titleMedium),
+            const SizedBox(height: 8),
+            ...rows,
+          ]),
+        );
+    final badge = deadlineBadge(r['deadline']);
     return Scaffold(
       appBar: AppBar(title: const Text('대회 상세')),
-      body: ListView(padding: const EdgeInsets.all(20), children: [
-        Text(comp['name'], style: Theme.of(context).textTheme.titleLarge),
+      body: ListView(padding: const EdgeInsets.fromLTRB(16, 20, 16, 24), children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 4),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Row(children: [
+              if ((comp['discipline'] ?? '').toString().isNotEmpty) Flexible(child: DisciplineTag(comp['discipline'])),
+              if (badge != null) ...[const SizedBox(width: 6), Text(badge, style: const TextStyle(color: Brand.warn, fontWeight: FontWeight.w700, fontSize: 13))],
+            ]),
+            const SizedBox(height: 8),
+            Text(comp['name'], style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w700, letterSpacing: -0.5)),
+            const SizedBox(height: 4),
+            Text('${r['position']} ${r['headcount']}명 모집', style: const TextStyle(color: Brand.muted, fontSize: 15)),
+          ]),
+        ),
         if (_clash.isNotEmpty)
           Container(
-            margin: const EdgeInsets.only(top: 12),
-            padding: const EdgeInsets.all(12),
+            margin: const EdgeInsets.only(top: 14),
+            padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
               color: const Color(0xFFFFF4E8),
-              borderRadius: BorderRadius.circular(6),
+              borderRadius: BorderRadius.circular(12),
               border: Border.all(color: const Color(0xFFF2C08C)),
             ),
             child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -626,44 +653,60 @@ class _RecruitmentDetailState extends State<RecruitmentDetail> {
               Expanded(child: Text('같은 날 선발된 대회가 있습니다: ${_clash.join(', ')}', style: const TextStyle(fontSize: 13))),
             ]),
           ),
-        const SizedBox(height: 16),
-        _row('일정', '${fmtDate(comp['starts_on'])}${comp['ends_on'] != null ? ' ~ ${fmtDate(comp['ends_on'])}' : ''}'),
-        if ((comp['discipline'] ?? '').toString().isNotEmpty) _row('경기 종목', comp['discipline']),
-        _row('장소', comp['venue'] ?? '-'),
-        if ((comp['address'] ?? '').toString().isNotEmpty) _row('주소', comp['address']),
-        const SizedBox(height: 8),
-        VenueMap(venue: comp['venue'], address: comp['address']),
-        _row('주최·주관', comp['host_org'] ?? '-'),
-        const Divider(height: 32),
-        _row('모집 직무', r['position']),
-        _row('모집 인원', '${r['headcount']}명'),
-        _row('지원 조건', r['requirements'] ?? '-'),
-        _row('마감', fmtDateTime(r['deadline'])),
-        _row('준비사항', r['preparation'] ?? '-'),
-        if (comp['poster_path'] != null) fileButton(context, comp['poster_path'], label: '대회 포스터 보기'),
-        const SizedBox(height: 24),
-        if (!_loaded)
-          const Center(child: CircularProgressIndicator())
-        else if ((status == null || status == 'cancelled') && _closed)
-          const FilledButton(onPressed: null, child: Text('모집이 마감되었습니다'))
-        else if (status == null || status == 'cancelled')
-          FilledButton(onPressed: _apply, child: Text(status == 'cancelled' ? '다시 지원하기' : '심판 지원하기'))
-        else ...[
-          Row(children: [const Text('지원 상태  '), StatusChip(label(status), status)]),
-          if (status == 'applied') ...[
-            const SizedBox(height: 12),
-            OutlinedButton(onPressed: _cancel, child: const Text('지원 취소')),
-          ],
-        ],
+        section('대회 정보', [
+          _row('일정', '${fmtDate(comp['starts_on'])}${comp['ends_on'] != null ? ' ~ ${fmtDate(comp['ends_on'])}' : ''}'),
+          if ((comp['discipline'] ?? '').toString().isNotEmpty) _row('경기 종목', comp['discipline']),
+          _row('장소', comp['venue'] ?? '-'),
+          if ((comp['address'] ?? '').toString().isNotEmpty) _row('주소', comp['address']),
+          _row('주최·주관', comp['host_org'] ?? '-'),
+          const SizedBox(height: 8),
+          VenueMap(venue: comp['venue'], address: comp['address']),
+        ]),
+        section('모집 정보', [
+          _row('모집 직무', r['position']),
+          _row('모집 인원', '${r['headcount']}명'),
+          _row('지원 조건', r['requirements'] ?? '-'),
+          _row('마감', fmtDateTime(r['deadline'])),
+          _row('준비사항', r['preparation'] ?? '-'),
+          if (comp['poster_path'] != null) fileButton(context, comp['poster_path'], label: '대회 포스터 보기'),
+        ]),
       ]),
+      // 지원 버튼은 화면 아래에 고정 (스크롤해도 항상 보임)
+      bottomNavigationBar: Container(
+        decoration: const BoxDecoration(color: Colors.white, border: Border(top: BorderSide(color: Brand.line))),
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+        child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          if (!_loaded)
+            const Center(child: Padding(padding: EdgeInsets.all(12), child: CircularProgressIndicator()))
+          else if ((status == null || status == 'cancelled') && _closed)
+            const FilledButton(onPressed: null, child: Text('모집이 마감되었습니다'))
+          else if (status == null || status == 'cancelled')
+            FilledButton(onPressed: _apply, child: Text(status == 'cancelled' ? '다시 지원하기' : '심판 지원하기'))
+          else
+            Row(children: [
+              const Text('지원 상태  ', style: TextStyle(color: Brand.muted)),
+              StatusChip(label(status), status),
+              const Spacer(),
+              if (status == 'applied')
+                SizedBox(
+                  width: 120,
+                  child: OutlinedButton(
+                    style: OutlinedButton.styleFrom(minimumSize: const Size(0, 44)),
+                    onPressed: _cancel,
+                    child: const Text('지원 취소'),
+                  ),
+                ),
+            ]),
+        ]),
+      ),
     );
   }
 
   Widget _row(String k, String v) => Padding(
-        padding: const EdgeInsets.symmetric(vertical: 6),
+        padding: const EdgeInsets.symmetric(vertical: 7),
         child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          SizedBox(width: 90, child: Text(k, style: const TextStyle(color: Brand.muted))),
-          Expanded(child: Text(v)),
+          SizedBox(width: 84, child: Text(k, style: const TextStyle(color: Brand.muted))),
+          Expanded(child: Text(v, style: const TextStyle(fontWeight: FontWeight.w600))),
         ]),
       );
 }

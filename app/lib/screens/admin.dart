@@ -70,10 +70,13 @@ class _AdminHomeState extends State<AdminHome> {
               _memberRole = null;
             }),
             labelType: NavigationRailLabelType.all,
+            minWidth: 88,
+            groupAlignment: -0.9,
             destinations: [
               for (final m in _menu) NavigationRailDestination(icon: Icon(m.$1), label: Text(m.$2)),
             ],
           ),
+          const VerticalDivider(width: 1),
           Expanded(
             child: Align(
               alignment: Alignment.topCenter,
@@ -571,6 +574,22 @@ class _MembersState extends State<_Members> {
           },
         ),
       ),
+      // PC: 표 머리글
+      if (MediaQuery.sizeOf(context).width >= 900)
+        const Padding(
+          padding: EdgeInsets.fromLTRB(32, 4, 32, 0),
+          child: DefaultTextStyle(
+            style: TextStyle(fontFamily: 'Pretendard', color: Brand.muted, fontSize: 12.5, fontWeight: FontWeight.w600),
+            child: Row(children: [
+              SizedBox(width: 230, child: Text('이름')),
+              Expanded(child: Text('이메일(아이디)')),
+              SizedBox(width: 140, child: Text('연락처')),
+              SizedBox(width: 110, child: Text('유형')),
+              SizedBox(width: 100, child: Text('가입일')),
+              SizedBox(width: 150, child: Text('상태', textAlign: TextAlign.right)),
+            ]),
+          ),
+        ),
       Expanded(
         child: AsyncList(
           key: _key,
@@ -578,35 +597,72 @@ class _MembersState extends State<_Members> {
           empty: '회원이 없습니다.',
           item: (c, p, reload) {
             final org = p['role'] == 'organizer';
+            Future<void> open() async {
+              final changed = await showModalBottomSheet<bool>(
+                context: c,
+                isScrollControlled: true,
+                builder: (_) => DraggableScrollableSheet(
+                  expand: false,
+                  initialChildSize: p['role'] == 'referee' ? 0.9 : 0.7,
+                  builder: (_, sc) => _MemberSheet(member: p, controller: sc),
+                ),
+              );
+              if (changed == true) reload();
+            }
+
+            final status = !org
+                ? Text(p['role'] == 'admin' ? '관리자' : '심판·교육', style: const TextStyle(color: Brand.muted, fontSize: 13))
+                : p['org_status'] == 'pending'
+                    ? Wrap(spacing: 4, children: [
+                        OutlinedButton(
+                            style: OutlinedButton.styleFrom(minimumSize: const Size(56, 38)),
+                            onPressed: () => _setOrg(c, p, 'rejected'),
+                            child: const Text('거절')),
+                        FilledButton(
+                          style: FilledButton.styleFrom(minimumSize: const Size(56, 38)),
+                          onPressed: () => _setOrg(c, p, 'approved'),
+                          child: const Text('승인'),
+                        ),
+                      ])
+                    : StatusChip(label(p['org_status']), p['org_status'] ?? 'pending');
+            const roleName = {'admin': '관리자', 'organizer': '대회관계자', 'referee': '심판·교육신청자'};
+            if (MediaQuery.sizeOf(c).width >= 900) {
+              // PC: 표 형태 한 줄
+              return InkWell(
+                onTap: open,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                  child: Row(children: [
+                    SizedBox(
+                      width: 230,
+                      child: Row(children: [
+                        Avatar(path: p['avatar_path'], name: p['name'] ?? '', size: 34),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                            Text(p['name'] ?? '', style: const TextStyle(fontWeight: FontWeight.w700), overflow: TextOverflow.ellipsis),
+                            if (org && p['organization'] != null)
+                              Text(p['organization'], style: const TextStyle(color: Brand.muted, fontSize: 12), overflow: TextOverflow.ellipsis),
+                          ]),
+                        ),
+                      ]),
+                    ),
+                    Expanded(child: Text(p['email'] ?? '-', overflow: TextOverflow.ellipsis)),
+                    SizedBox(width: 140, child: Text(p['phone'] ?? '-')),
+                    SizedBox(width: 110, child: Text(roleName[p['role']] ?? '', style: const TextStyle(fontSize: 13))),
+                    SizedBox(width: 100, child: Text(fmtDate(p['created_at']), style: const TextStyle(color: Brand.muted, fontSize: 13))),
+                    SizedBox(width: 150, child: Align(alignment: Alignment.centerRight, child: status)),
+                  ]),
+                ),
+              );
+            }
             return ListTile(
               title: Text('${p['name']}  ${org ? '· ${p['organization'] ?? ''}' : ''}'),
               subtitle: Text('${p['email'] ?? '-'}\n${p['phone'] ?? '-'} · 가입 ${fmtDate(p['created_at'])}'),
               isThreeLine: true,
-              trailing: !org
-                  ? Text(p['role'] == 'admin' ? '관리자' : '심판·교육')
-                  : p['org_status'] == 'pending'
-                      ? Wrap(spacing: 4, children: [
-                          OutlinedButton(onPressed: () => _setOrg(c, p, 'rejected'), child: const Text('거절')),
-                          FilledButton(
-                            style: FilledButton.styleFrom(minimumSize: const Size(64, 40)),
-                            onPressed: () => _setOrg(c, p, 'approved'),
-                            child: const Text('승인'),
-                          ),
-                        ])
-                      : StatusChip(label(p['org_status']), p['org_status'] ?? 'pending'),
+              trailing: status,
               leading: Avatar(path: p['avatar_path'], name: p['name'] ?? '', size: 40),
-              onTap: () async {
-                final changed = await showModalBottomSheet<bool>(
-                  context: c,
-                  isScrollControlled: true,
-                  builder: (_) => DraggableScrollableSheet(
-                    expand: false,
-                    initialChildSize: p['role'] == 'referee' ? 0.9 : 0.7,
-                    builder: (_, sc) => _MemberSheet(member: p, controller: sc),
-                  ),
-                );
-                if (changed == true) reload();
-              },
+              onTap: open,
               onLongPress: org && p['org_status'] != 'pending'
                   ? () => _setOrg(c, p, p['org_status'] == 'approved' ? 'rejected' : 'approved')
                   : null,

@@ -429,11 +429,25 @@ class AsyncListState extends State<AsyncList> {
           onRefresh: () async => reload(),
           child: rows.isEmpty
               ? ListView(children: [EmptyView(widget.empty)])
-              : ListView.separated(
-                  padding: const EdgeInsets.only(bottom: 96), // 맨 아래 항목이 + 버튼에 가리지 않게
+              : ListView.builder(
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 96), // 맨 아래 항목이 + 버튼에 가리지 않게
                   itemCount: rows.length,
-                  separatorBuilder: (_, __) => const Divider(height: 1),
-                  itemBuilder: (c, i) => widget.item(c, rows[i], reload),
+                  // 항목마다 흰 카드 (둥근 모서리·옅은 테두리)
+                  itemBuilder: (c, i) => Padding(
+                    padding: const EdgeInsets.only(bottom: 10),
+                    child: Material(
+                      color: Colors.white,
+                      clipBehavior: Clip.antiAlias,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                        side: const BorderSide(color: Brand.line),
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 4),
+                        child: widget.item(c, rows[i], reload),
+                      ),
+                    ),
+                  ),
                 ),
         );
       },
@@ -794,7 +808,7 @@ class BrandTitle extends StatelessWidget {
   const BrandTitle(this.text, {super.key});
   @override
   Widget build(BuildContext context) => Row(mainAxisSize: MainAxisSize.min, children: [
-        Image.asset('assets/brand/snowflake_white.png', width: 24, height: 24, semanticLabel: 'WINREF 로고'),
+        Image.asset('assets/brand/snowflake_blue.png', width: 24, height: 24, semanticLabel: 'WINREF 로고'),
         const SizedBox(width: 8),
         Flexible(child: Text(text, overflow: TextOverflow.ellipsis)),
       ]);
