@@ -535,7 +535,7 @@ class _MemberSheet extends StatelessWidget {
         child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Icon(icon, size: 18, color: Brand.muted),
           const SizedBox(width: 10),
-          SizedBox(width: 92, child: Text(label, style: const TextStyle(color: Brand.muted))),
+          SizedBox(width: 112, child: Text(label, style: const TextStyle(color: Brand.muted))),
           Expanded(child: Text((value ?? '').isEmpty ? '-' : value!)),
         ]),
       );
