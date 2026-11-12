@@ -907,8 +907,8 @@ class _CoursesState extends State<_Courses> {
       Field('description', '내용', type: FieldType.multiline, initial: c?['description']),
       Field('location', '장소', initial: c?['location']),
       Field('starts_at', '시작', type: FieldType.datetime, initial: c?['starts_at']),
-      Field('ends_at', '종료', type: FieldType.datetime, initial: c?['ends_at']),
-      Field('apply_deadline', '신청 마감', type: FieldType.datetime, initial: c?['apply_deadline']),
+      Field('ends_at', '종료', type: FieldType.datetime, notBefore: 'starts_at', initial: c?['ends_at']),
+      Field('apply_deadline', '신청 마감', type: FieldType.datetime, notAfter: 'starts_at', initial: c?['apply_deadline']),
       Field('capacity', '정원', type: FieldType.number, initial: c?['capacity']?.toString()),
     ]);
     if (v == null || !mounted) return;

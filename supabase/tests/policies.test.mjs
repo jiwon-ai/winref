@@ -207,5 +207,12 @@ ok(!(await as(REF, `select delete_my_account()`)).err, '심판 탈퇴');
 ok((await db.query(`select count(*)::int n from applications where user_id='${REF}'`)).rows[0].n === 0, '탈퇴 시 지원·이력 삭제');
 ok(!(await as(ORG, `select delete_my_account()`)).err, '관계자 탈퇴');
 ok((await db.query(`select count(*)::int n from competitions where organizer_id is null`)).rows[0].n === 2, '관계자 탈퇴 후 대회 보존 (2개)');
+// --- 0018: 날짜 순서 ---
+ok((await as(ADMIN, `insert into competitions (name, starts_on, ends_on) values ('순서오류', '2027-01-06', '2026-12-02')`)).err?.includes('competitions_date_order'), '대회 종료일 < 시작일 차단');
+ok(!(await as(ADMIN, `insert into competitions (name, starts_on, ends_on) values ('순서정상', '2027-01-06', '2027-01-07')`)).err, '대회 정상 날짜 저장');
+ok((await as(ADMIN, `insert into courses (title, starts_at, ends_at) values ('과정', '2027-01-06 09:00+09', '2027-01-05 09:00+09')`)).err?.includes('courses_date_order'), '교육 종료 < 시작 차단');
+ok((await as(ADMIN, `insert into courses (title, starts_at, apply_deadline) values ('과정', '2027-01-06 09:00+09', '2027-01-07 09:00+09')`)).err?.includes('courses_date_order'), '교육 신청마감 > 시작 차단');
+ok((await as(REF2, `insert into qualifications (user_id,name,acquired_on,expires_on) values ($1,'알파인스키 국내심판','2026-01-01','2025-01-01')`, [REF2])).err?.includes('qualifications_date_order'), '자격 만료일 < 취득일 차단');
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

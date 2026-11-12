@@ -225,7 +225,7 @@ Future<Map<String, dynamic>?> editCompetitionForm(BuildContext context, [Map<Str
   return showForm(context, c == null ? '대회 등록' : '대회 수정', [
     Field('name', '대회명', required: true, initial: c?['name']),
     Field('starts_on', '시작일', type: FieldType.date, required: true, initial: c?['starts_on']),
-    Field('ends_on', '종료일', type: FieldType.date, initial: c?['ends_on']),
+    Field('ends_on', '종료일', type: FieldType.date, notBefore: 'starts_on', initial: c?['ends_on']),
     Field('discipline', '경기 종목', initial: c?['discipline'], options: alpineDisciplines,
         helper: '여러 종목이면 쉼표로 (예: 회전 (SL), 대회전 (GS))'),
     Field('venue', '스키장·슬로프 (예: 용평리조트 레인보우)', initial: c?['venue']),

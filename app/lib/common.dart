@@ -106,6 +106,11 @@ String friendlyError(Object e) {
         return '이미 등록된 내용입니다.';
       case '23503':
         return '연결된 정보가 있어 처리할 수 없습니다.';
+      case '23514': // 서버의 값 검사 규칙 위반
+        if (e.message.contains('competitions_date_order')) return '종료일은 시작일보다 빠를 수 없습니다.';
+        if (e.message.contains('courses_date_order')) return '날짜를 확인해 주세요. 종료는 시작 이후, 신청 마감은 시작 전이어야 합니다.';
+        if (e.message.contains('qualifications_date_order')) return '만료일은 취득일보다 빠를 수 없습니다.';
+        return '입력값을 확인해 주세요.';
       case '42501':
         return '이 작업을 할 권한이 없습니다.';
       case 'P0001': // 서버 규칙(트리거)이 보낸 안내
@@ -264,8 +269,15 @@ class Field {
   final int autoYears;
   final bool koreanName; // 이름 규칙(한글만·띄어쓰기 없음) 적용
   final bool phone; // 휴대폰 번호 규칙(숫자만·자리수) 적용
+  /// 날짜 순서: 이 날짜는 [notBefore] 필드보다 빠를 수 없고, [notAfter] 필드보다 늦을 수 없다
+  final String? notBefore;
+  final String? notAfter;
+  final bool notFuture; // 오늘 이후 날짜 불가 (생년월일·취득일)
   const Field(this.key, this.label,
       {this.type = FieldType.text,
+      this.notBefore,
+      this.notAfter,
+      this.notFuture = false,
       this.koreanName = false,
       this.phone = false,
       this.required = false,
@@ -332,8 +344,17 @@ class _FormScreenState extends State<_FormScreen> {
       return;
     }
     final now = DateTime.now();
-    final init = DateTime.tryParse(_values[f.key]?.toString() ?? '')?.toLocal() ?? now;
-    final d = await showDatePicker(context: context, initialDate: init, firstDate: DateTime(1950), lastDate: DateTime(now.year + 30));
+    // 달력에서 순서가 맞지 않는 날짜는 아예 고를 수 없게 범위를 제한
+    final lo = _dateOf(f.notBefore);
+    final hi = _dateOf(f.notAfter);
+    final first = lo == null ? DateTime(1950) : DateTime(lo.year, lo.month, lo.day);
+    var last = hi == null ? DateTime(now.year + 30) : DateTime(hi.year, hi.month, hi.day, 23, 59);
+    if (f.notFuture) last = DateTime(now.year, now.month, now.day);
+    if (last.isBefore(first)) last = first;
+    var init = DateTime.tryParse(_values[f.key]?.toString() ?? '')?.toLocal() ?? (lo ?? now);
+    if (init.isBefore(first)) init = first;
+    if (init.isAfter(last)) init = last;
+    final d = await showDatePicker(context: context, initialDate: init, firstDate: first, lastDate: last);
     if (d == null || !mounted) return;
     if (f.type == FieldType.date) {
       setState(() {
@@ -372,6 +393,23 @@ class _FormScreenState extends State<_FormScreen> {
       ),
     );
     if (v != null) setState(() => _c[f.key]!.text = v);
+  }
+
+  DateTime? _dateOf(String? key) =>
+      key == null ? null : DateTime.tryParse(_values[key]?.toString() ?? '')?.toLocal();
+
+  String _label(String key) => widget.fields.firstWhere((g) => g.key == key).label;
+
+  /// 날짜 순서·범위 검사 (달력 제한 외에 다른 날짜를 나중에 바꾼 경우까지 저장 시 다시 확인)
+  String? _dateOrderError(Field f) {
+    final v = _dateOf(f.key);
+    if (v == null) return null;
+    final lo = _dateOf(f.notBefore);
+    if (lo != null && v.isBefore(lo)) return '${_label(f.notBefore!)}보다 빠를 수 없습니다.';
+    final hi = _dateOf(f.notAfter);
+    if (hi != null && v.isAfter(hi)) return '${_label(f.notAfter!)}보다 늦을 수 없습니다.';
+    if (f.notFuture && v.isAfter(DateTime.now())) return '오늘 이후 날짜는 입력할 수 없습니다.';
+    return null;
   }
 
   void _setDate(String key, DateTime d) {
@@ -440,6 +478,10 @@ class _FormScreenState extends State<_FormScreen> {
                     },
                   ),
                   validator: (v) {
+                    if (f.type == FieldType.date || f.type == FieldType.datetime) {
+                      if (f.required && (v == null || v.trim().isEmpty)) return '필수 입력';
+                      return _dateOrderError(f);
+                    }
                     if (f.koreanName) return koreanNameError(v);
                     if (f.phone) return phoneError(v);
                     if (f.required && (v == null || v.trim().isEmpty)) return '필수 입력';
@@ -654,7 +696,7 @@ Future<bool> editProfile(BuildContext context, Map<String, dynamic> p) async {
   final v = await showForm(context, '내 정보 수정', [
     Field('name', '이름', required: true, koreanName: true, helper: '한글만, 띄어쓰기 없이', initial: p['name']),
     Field('phone', '휴대폰', required: true, phone: true, helper: '숫자만 (예: 01012345678)', initial: p['phone']),
-    Field('birth_date', '생년월일', type: FieldType.date, initial: p['birth_date']),
+    Field('birth_date', '생년월일', type: FieldType.date, notFuture: true, initial: p['birth_date']),
     if (p['role'] == 'organizer') Field('organization', '소속 기관', initial: p['organization']),
     if (referee) ...[
       Field('region', '활동 지역 (예: 서울)', initial: p['region']),
@@ -868,9 +910,10 @@ List<Field> qualFields([Map? q]) => [
       Field('name', '자격명', required: true, initial: q?['name'], options: qualNames, optionsOnly: true),
       Field('grade', '등급', initial: q?['grade'], options: qualGrades, optionsOnly: true),
       Field('cert_no', '자격번호', initial: q?['cert_no']),
-      Field('acquired_on', '취득일', type: FieldType.date, initial: q?['acquired_on']),
+      Field('acquired_on', '취득일', type: FieldType.date, notFuture: true, initial: q?['acquired_on']),
       Field('expires_on', '유효기간(만료일)',
           type: FieldType.date,
+          notBefore: 'acquired_on',
           initial: q?['expires_on'],
           helper: '취득일을 고르면 2년 뒤 날짜가 자동 입력됩니다',
           autoFrom: 'acquired_on',
