@@ -90,7 +90,7 @@ class _AuthGateState extends State<AuthGate> {
         if (user == null) {
           _recovery = false; // 로그아웃하면 임시 비밀번호 상태 해제
           tempPasswordLogin = false;
-          return const LoginScreen();
+          return const BackGuard(child: LoginScreen());
         }
         if (_recovery) {
           return NewPasswordScreen(onDone: () => setState(() {

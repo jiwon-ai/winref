@@ -53,7 +53,16 @@ class _AdminHomeState extends State<AdminHome> {
       };
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) => BackGuard(
+        atHome: _i == 0,
+        onHome: () => setState(() {
+          _i = 0;
+          _memberRole = null;
+        }),
+        child: _scaffold(context),
+      );
+
+  Widget _scaffold(BuildContext context) {
     final wide = MediaQuery.sizeOf(context).width >= 900;
     final appBar = AppBar(
       title: BrandTitle(wide ? 'WINREF 관리자 · ${_menu[_i].$2}' : _menu[_i].$2),

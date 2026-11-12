@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:file_picker/file_picker.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
@@ -949,3 +950,40 @@ class _RidgePainter extends CustomPainter {
 /// 자격명·등급 (윈렙아카데미 지정 목록)
 const qualNames = ['알파인스키 국내심판', '클린심판아카데미'];
 const qualGrades = ['1급 신규', '1급 보수', '2급 신규', '2급 보수', '3급 신규', '3급 보수', '양성과정', '심화과정'];
+
+/// 첫 화면에서 휴대폰 '뒤로' 버튼: 다른 탭이면 홈 탭으로 이동, 홈이면 안내 후
+/// 2초 안에 한 번 더 누를 때만 앱 종료 (실수로 앱이 꺼지지 않게). 웹은 브라우저 기본 동작.
+class BackGuard extends StatefulWidget {
+  final bool atHome;
+  final VoidCallback? onHome;
+  final Widget child;
+  const BackGuard({super.key, this.atHome = true, this.onHome, required this.child});
+  @override
+  State<BackGuard> createState() => _BackGuardState();
+}
+
+class _BackGuardState extends State<BackGuard> {
+  DateTime? _last;
+
+  @override
+  Widget build(BuildContext context) => PopScope(
+        canPop: kIsWeb,
+        onPopInvokedWithResult: (didPop, _) {
+          if (didPop) return;
+          if (!widget.atHome) return widget.onHome?.call();
+          final now = DateTime.now();
+          if (_last != null && now.difference(_last!) < const Duration(seconds: 2)) {
+            SystemNavigator.pop();
+            return;
+          }
+          _last = now;
+          messengerKey.currentState
+            ?..hideCurrentSnackBar()
+            ..showSnackBar(const SnackBar(
+              content: Text("'뒤로'를 한 번 더 누르면 앱이 종료됩니다."),
+              duration: Duration(seconds: 2),
+            ));
+        },
+        child: widget.child,
+      );
+}

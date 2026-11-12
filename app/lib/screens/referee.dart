@@ -23,7 +23,10 @@ class _RefereeHomeState extends State<RefereeHome> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return BackGuard(
+      atHome: _tab == 0,
+      onHome: () => _go(0),
+      child: Scaffold(
       appBar: AppBar(title: BrandTitle(_titles[_tab]), actions: commonActions(context, widget.profile)),
       body: IndexedStack(index: _tab, children: [
         _DashboardTab(profile: widget.profile, goTab: _go, active: _tab == 0),
@@ -43,7 +46,7 @@ class _RefereeHomeState extends State<RefereeHome> {
           NavigationDestination(icon: Icon(Icons.badge_outlined), label: '자격'),
         ],
       ),
-    );
+    ));
   }
 }
 
