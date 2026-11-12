@@ -231,7 +231,7 @@ class _DashboardState extends State<_Dashboard> {
               if (snap.hasError) return ErrorView(error: snap.error, onRetry: () => Navigator.pop(c));
               if (!snap.hasData) return const Center(child: CircularProgressIndicator());
               final (title, rows) = snap.data!;
-              return ListView(controller: sc, padding: const EdgeInsets.fromLTRB(8, 16, 8, 48), children: [
+              return ListView(controller: sc, shrinkWrap: true, padding: const EdgeInsets.fromLTRB(8, 16, 8, 48), children: [
                 ListTile(
                   title: Text(title, style: Theme.of(c).textTheme.titleLarge),
                   trailing: Text('${rows.length}건', style: const TextStyle(color: Brand.navy, fontWeight: FontWeight.w700)),
