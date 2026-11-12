@@ -207,6 +207,20 @@ ok(!(await as(REF, `select delete_my_account()`)).err, '심판 탈퇴');
 ok((await db.query(`select count(*)::int n from applications where user_id='${REF}'`)).rows[0].n === 0, '탈퇴 시 지원·이력 삭제');
 ok(!(await as(ORG, `select delete_my_account()`)).err, '관계자 탈퇴');
 ok((await db.query(`select count(*)::int n from competitions where organizer_id is null`)).rows[0].n === 2, '관계자 탈퇴 후 대회 보존 (2개)');
+// --- 0019: 휴대폰 번호 중복 가입 방지 ---
+const G1 = '00000000-0000-0000-0000-0000000000f1';
+await db.exec(`insert into auth.users values ('${G1}', '{"full_name":"구글중복"}', '{"provider":"google"}', 'g1@test.kr')`);
+const used = (await db.query(`select phone from profiles where onboarded and phone is not null limit 1`)).rows[0].phone;
+ok((await as(null, `select phone_in_use($1) v`, [used])).rows?.[0]?.v === true, '가입 전 확인: 사용 중인 번호');
+ok((await as(null, `select phone_in_use('01099990000') v`)).rows?.[0]?.v === false, '가입 전 확인: 새 번호');
+{ const r = await as(G1, `update profiles set name='구글중복', phone=$2, onboarded=true, agreed_at=now() where id=$1`, [G1, used]); ok(r.err?.includes('이미 가입된 휴대폰'), '구글 가입 확정 시 기존 번호 차단'); }
+ok(!(await as(G1, `update profiles set name='구글중복', phone='01099990000', onboarded=true, agreed_at=now() where id=$1`, [G1])).err, '새 번호로 가입 확정');
+ok((await as(G1, `update profiles set phone=$2 where id=$1`, [G1, used])).err?.includes('이미 가입된 휴대폰'), '내 정보에서 타인 번호로 변경 차단');
+const E2 = '00000000-0000-0000-0000-0000000000f2';
+await db.exec(`insert into auth.users values ('${E2}', '{"name":"이메일중복","phone":"01099990000"}', '{"provider":"email"}', 'e2@test.kr')`);
+const e2 = (await db.query(`select onboarded, phone from profiles where id='${E2}'`)).rows[0];
+ok(e2.onboarded === false && e2.phone === null, '이메일 가입 번호 중복 → 가입 정보 입력 화면으로, 번호 비움');
+
 // --- 0018: 날짜 순서 ---
 ok((await as(ADMIN, `insert into competitions (name, starts_on, ends_on) values ('순서오류', '2027-01-06', '2026-12-02')`)).err?.includes('competitions_date_order'), '대회 종료일 < 시작일 차단');
 ok(!(await as(ADMIN, `insert into competitions (name, starts_on, ends_on) values ('순서정상', '2027-01-06', '2027-01-07')`)).err, '대회 정상 날짜 저장');

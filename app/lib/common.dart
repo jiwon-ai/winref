@@ -28,6 +28,11 @@ Future<void> openPrivacy() =>
 const mobileAuthCallback = 'kr.co.winref.app://login-callback';
 
 /// Supabase 인증 오류를 사용자용 한국어로
+const duplicatePhone = '이미 가입된 휴대폰 번호입니다. 처음 가입한 방법(이메일·카카오·구글)으로 로그인해 주세요.';
+
+/// 다른 계정이 이미 쓰는 휴대폰 번호인가 (중복 가입 방지)
+Future<bool> phoneInUse(String phone) async => (await db.rpc('phone_in_use', params: {'p_phone': phone})) == true;
+
 const alreadyRegistered = '이미 가입된 이메일입니다. 그 이메일로 로그인하거나, 카카오·구글로 가입하셨다면 해당 버튼으로 로그인해 주세요.';
 
 String authMessage(AuthException e) {

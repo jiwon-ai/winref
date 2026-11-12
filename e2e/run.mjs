@@ -498,6 +498,12 @@ try {
     await tap('가입 완료', 'button');
     await see('휴대폰 번호를 정확히 입력해 주세요');
     if (sql(`select onboarded from profiles where name='최소셜'`) !== 'f') throw new Error('번호 미완성인데 가입 완료됨');
+    await retype('휴대폰', '01012345678');       // 이미 김심판이 이메일로 가입한 번호 → 중복 가입 차단
+    await tap('가입 완료', 'button');
+    await see('이미 가입된 휴대폰 번호');
+    await shot('duplicate-phone');
+    await tap('번호 다시 입력', 'button');
+    if (sql(`select onboarded from profiles where name='최소셜'`) !== 'f') throw new Error('중복 번호인데 가입 완료됨');
     await retype('휴대폰', '01099998888');
     await tap('가입 완료', 'button');
     await see('기관 승인 대기');

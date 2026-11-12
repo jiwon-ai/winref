@@ -291,6 +291,7 @@ class _SignupScreenState extends State<SignupScreen> {
     setState(() => _busy = true);
     bool needsConfirm = false;
     final ok = await run(context, () async {
+      if (await phoneInUse(_phone.text.trim())) throw duplicatePhone;
       final res = await db.auth.signUp(email: _email.text.trim(), password: _pw.text, emailRedirectTo: appUrl, data: {
         'role': _role,
         'name': _name.text.trim(),
@@ -605,6 +606,15 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       return;
     }
     setState(() => _busy = true);
+    // 같은 번호로 이미 가입한 계정이 있으면(이메일·카카오·구글) 새 계정을 만들지 않는다
+    bool dup = false;
+    final checked = await run(context, () async => dup = await phoneInUse(_phone.text.trim()));
+    if (!mounted) return;
+    if (!checked || dup) {
+      setState(() => _busy = false);
+      if (dup) await _duplicate();
+      return;
+    }
     final organizer = _role == 'organizer';
     final ok = await run(
       context,
@@ -622,6 +632,24 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     if (!mounted) return;
     setState(() => _busy = false);
     if (ok) widget.onDone();
+  }
+
+  /// 이미 가입된 번호: 방금 만들어진(가입 미완료) 소셜 계정을 지우고 기존 계정으로 로그인하도록 안내
+  Future<void> _duplicate() async {
+    final leave = await showDialog<bool>(
+      context: context,
+      builder: (d) => AlertDialog(
+        title: const Text('이미 가입된 휴대폰 번호'),
+        content: const Text(duplicatePhone),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('번호 다시 입력')),
+          TextButton(onPressed: () => Navigator.pop(d, true), child: const Text('기존 계정으로 로그인')),
+        ],
+      ),
+    );
+    if (leave != true || !mounted) return;
+    await run(context, () => db.rpc('delete_my_account')); // 가입을 마치지 않은 계정이라 지워도 잃는 정보 없음
+    await signOut();
   }
 
   @override
