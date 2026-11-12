@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../common.dart';
 import '../theme.dart';
 import '../venue_map.dart';
+import 'checkin.dart';
 import 'profile.dart';
 
 /// 대회관계자 홈: 내 대회 목록 → 대회별 모집공고·지원자·브리핑 관리
@@ -290,7 +291,7 @@ class _CompetitionManageState extends State<CompetitionManage> {
         body: TabBarView(children: [
           _CompetitionInfo(competition: competition, onEdit: _edit),
           _RecruitmentsManage(cid: competition['id']),
-          _ApplicantsManage(cid: competition['id']),
+          _ApplicantsManage(cid: competition['id'], name: competition['name']),
           _BriefingsManage(cid: competition['id']),
         ]),
       ),
@@ -386,11 +387,104 @@ class _RecruitmentsManageState extends State<_RecruitmentsManage> {
     _key.currentState?.reload();
   }
 
+  /// 지난 대회의 모집공고를 이 대회로 복사 (직무·인원·자격조건·준비사항). 지원 마감은 비워 둔다.
+  Future<void> _copyFrom() async {
+    List<Map<String, dynamic>> comps = [];
+    final loaded = await run(context, () async {
+      final rows = await db
+          .from('competitions')
+          .select('id, name, starts_on, organizer_id, recruitments(position, headcount, requirements, preparation)')
+          .neq('id', widget.cid)
+          .order('starts_on', ascending: false);
+      final withAds = rows.where((c) => (c['recruitments'] as List).isNotEmpty).toList();
+      final mine = withAds.where((c) => c['organizer_id'] == uid).toList();
+      comps = mine.isNotEmpty ? mine : withAds; // 내 대회 우선, 없으면(관리자 등) 전체
+    });
+    if (!loaded || !mounted) return;
+    if (comps.isEmpty) {
+      toast(context, '복사할 수 있는 지난 모집공고가 없습니다.');
+      return;
+    }
+    final from = await showModalBottomSheet<Map<String, dynamic>>(
+      useSafeArea: true,
+      context: context,
+      isScrollControlled: true,
+      builder: (s) => SafeArea(
+        child: ConstrainedBox(
+          constraints: BoxConstraints(maxHeight: MediaQuery.sizeOf(s).height * 0.75),
+          child: ListView(shrinkWrap: true, padding: const EdgeInsets.only(bottom: 24), children: [
+            const ListTile(
+              title: Text('어느 대회의 모집공고를 복사할까요?', style: TextStyle(fontWeight: FontWeight.w700)),
+              subtitle: Text('직무·인원·자격조건·준비사항을 가져옵니다. 지원 마감은 복사 후 정해 주세요.'),
+            ),
+            for (final c in comps)
+              ListTile(
+                title: Text('${c['name']}'),
+                subtitle: Text('${fmtDate(c['starts_on'])} · '
+                    '${(c['recruitments'] as List).map((r) => '${r['position']} ${r['headcount']}명').join(', ')}'),
+                trailing: const Icon(Icons.content_copy, size: 20),
+                onTap: () => Navigator.pop(s, c),
+              ),
+          ]),
+        ),
+      ),
+    );
+    if (from == null || !mounted) return;
+    var copied = 0, skipped = 0;
+    final ok = await run(context, () async {
+      final existing = {
+        for (final r in await db.from('recruitments').select('position').eq('competition_id', widget.cid)) r['position']
+      };
+      final rows = [
+        for (final r in from['recruitments'] as List)
+          if (!existing.contains(r['position']))
+            {
+              'competition_id': widget.cid,
+              'position': r['position'],
+              'headcount': r['headcount'],
+              'requirements': r['requirements'],
+              'preparation': r['preparation'],
+            }
+      ];
+      skipped = (from['recruitments'] as List).length - rows.length;
+      copied = rows.length;
+      if (rows.isNotEmpty) await db.from('recruitments').insert(rows);
+    });
+    if (!mounted) return;
+    if (ok) {
+      toast(
+          context,
+          copied == 0
+              ? '같은 직무의 공고가 이미 있어 복사하지 않았습니다.'
+              : '모집공고 $copied건을 복사했습니다.${skipped > 0 ? ' (이미 있는 직무 $skipped건 제외)' : ''} 지원 마감을 정해 주세요.');
+    }
+    _key.currentState?.reload();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      floatingActionButton: FloatingActionButton(onPressed: _edit, child: const Icon(Icons.add)),
-      body: AsyncList(
+      floatingActionButton: FloatingActionButton(tooltip: '모집공고 작성', onPressed: _edit, child: const Icon(Icons.add)),
+      body: Column(children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+          child: SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(46)),
+              onPressed: _copyFrom,
+              icon: const Icon(Icons.content_copy, size: 18),
+              label: const Text('지난 대회 모집공고 복사'),
+            ),
+          ),
+        ),
+        Expanded(child: _list()),
+      ]),
+    );
+  }
+
+  Widget _list() {
+    return AsyncList(
         key: _key,
         load: () => db.from('recruitments').select().eq('competition_id', widget.cid).order('created_at'),
         empty: '모집공고가 없습니다.',
@@ -407,7 +501,6 @@ class _RecruitmentsManageState extends State<_RecruitmentsManage> {
             },
           ),
         ),
-      ),
     );
   }
 }
@@ -416,7 +509,8 @@ class _RecruitmentsManageState extends State<_RecruitmentsManage> {
 
 class _ApplicantsManage extends StatefulWidget {
   final int cid;
-  const _ApplicantsManage({required this.cid});
+  final String name;
+  const _ApplicantsManage({required this.cid, required this.name});
   @override
   State<_ApplicantsManage> createState() => _ApplicantsManageState();
 }
@@ -463,7 +557,7 @@ class _ApplicantsManageState extends State<_ApplicantsManage> {
   Future<void> _export(List<Map<String, dynamic>> rows) => exportCsv(
         context,
         '지원자_${widget.cid}',
-        ['이름', '연락처', '지역', '직무', '선발결과', '참석', '활동완료', '지원일'],
+        ['이름', '연락처', '지역', '직무', '선발결과', '참석', '출석(QR)', '활동완료', '지원일'],
         [
           for (final a in rows)
             [
@@ -473,6 +567,7 @@ class _ApplicantsManageState extends State<_ApplicantsManage> {
               a['recruitments']['position'],
               label(a['status']),
               label(a['attendance']),
+              a['checked_in_at'] == null ? '' : fmtDateTime(a['checked_in_at']),
               a['completed_at'] == null ? '' : fmtDateTime(a['completed_at']),
               fmtDateTime(a['created_at']),
             ],
@@ -508,6 +603,15 @@ class _ApplicantsManageState extends State<_ApplicantsManage> {
                         StatusChip('${e.key} 선발 ${e.value.$1}/${e.value.$2}',
                             e.value.$1 >= e.value.$2 ? 'selected' : 'pending'),
                     ]),
+                  ),
+                  IconButton(
+                    tooltip: '출석 체크 (QR)',
+                    onPressed: () async {
+                      await Navigator.push(
+                          context, MaterialPageRoute(builder: (_) => CheckinScanScreen(competition: widget.name)));
+                      _reload();
+                    },
+                    icon: const Icon(Icons.qr_code_scanner),
                   ),
                   IconButton(
                     tooltip: '엑셀 내보내기',
@@ -589,7 +693,7 @@ class _ApplicantsManageState extends State<_ApplicantsManage> {
     final title = '${p['name']} · ${a['recruitments']['position']}';
     final clash = _clash[p['id']];
     final sub = (a['status'] == 'selected'
-            ? '${attendanceText(a['attendance'])}${done ? ' · 활동완료' : ''}'
+            ? '${a['checked_in_at'] != null ? '출석 ${fmtDateTime(a['checked_in_at'])}' : attendanceText(a['attendance'])}${done ? ' · 활동완료' : ''}'
             : '지원 ${fmtDate(a['created_at'])}${p['region'] != null ? ' · ${p['region']}' : ''}') +
         (clash == null ? '' : '\n일정 겹침: ${clash.join(', ')}');
     if (_picking) {
@@ -679,6 +783,14 @@ class _ApplicantSheet extends StatelessWidget {
                   '활동완료 처리했습니다. 활동이력에 반영됩니다.'),
               child: const Text('활동완료 처리'),
             ),
+          ],
+          if (app['checked_in_at'] != null) ...[
+            const SizedBox(height: 12),
+            Row(children: [
+              const Icon(Icons.qr_code_2, size: 18, color: Color(0xFF1E8E4E)),
+              const SizedBox(width: 6),
+              Text('현장 출석 확인: ${fmtDateTime(app['checked_in_at'])}', style: const TextStyle(fontWeight: FontWeight.w600)),
+            ]),
           ],
           if (done) Text('활동완료: ${fmtDateTime(app['completed_at'])}'),
           const Divider(height: 36),

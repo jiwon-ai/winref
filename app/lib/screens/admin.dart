@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../common.dart';
 import '../theme.dart';
+import 'admin_reports.dart';
 import 'organizer.dart';
 import 'profile.dart';
 
@@ -35,6 +36,8 @@ class _AdminHomeState extends State<AdminHome> {
     (Icons.school_outlined, '교육'),
     (Icons.flag_outlined, '대회'),
     (Icons.campaign_outlined, '공지·알림'),
+    (Icons.assessment_outlined, '성과 리포트'),
+    (Icons.history, '처리 기록'),
   ];
 
   Widget _page() => switch (_i) {
@@ -49,7 +52,9 @@ class _AdminHomeState extends State<AdminHome> {
         2 => const _Qualifications(),
         3 => const _Courses(),
         4 => const _Competitions(),
-        _ => const _NoticesAdmin(),
+        5 => const _NoticesAdmin(),
+        6 => const ReportPage(),
+        _ => const AuditPage(),
       };
 
   @override

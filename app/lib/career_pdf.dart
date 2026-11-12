@@ -14,6 +14,8 @@ Future<Uint8List> buildCareerPdf({
   required pw.Font bold,
   Uint8List? logoPng,
   DateTime? issuedAt,
+  String? certCode, // 서버가 발급한 번호 (진위 확인용). 없으면 QR 없이 출력
+  String? verifyUrl, // 진위 확인 페이지 주소 (QR 에 담김)
 }) async {
   const blue = PdfColor.fromInt(0xFF2560AC);
   const line = PdfColor.fromInt(0xFFC3D0E0);
@@ -25,7 +27,8 @@ Future<Uint8List> buildCareerPdf({
   }
 
   final id = (profile['id'] ?? '').toString();
-  final docNo = 'WR-${DateFormat('yyyyMMdd').format(issued)}-${id.length >= 8 ? id.substring(0, 8).toUpperCase() : id}';
+  final docNo = certCode ??
+      'WR-${DateFormat('yyyyMMdd').format(issued)}-${id.length >= 8 ? id.substring(0, 8).toUpperCase() : id}';
   final byPos = <String, int>{};
   for (final h in history) {
     byPos[h['position']] = (byPos[h['position']] ?? 0) + 1;
@@ -53,7 +56,7 @@ Future<Uint8List> buildCareerPdf({
     footer: (ctx) => pw.Column(children: [
       pw.Divider(color: line, thickness: 0.5),
       pw.Row(mainAxisAlignment: pw.MainAxisAlignment.spaceBetween, children: [
-        pw.Text('문서번호 $docNo · 발급 ${DateFormat('yyyy.MM.dd').format(issued)}',
+        pw.Text('발급번호 $docNo · 발급 ${DateFormat('yyyy.MM.dd').format(issued)}',
             style: const pw.TextStyle(fontSize: 8, color: muted)),
         pw.Text('${ctx.pageNumber} / ${ctx.pagesCount}', style: const pw.TextStyle(fontSize: 8, color: muted)),
       ]),
@@ -64,8 +67,22 @@ Future<Uint8List> buildCareerPdf({
         if (logoPng != null) pw.SizedBox(width: 10),
         pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.start, children: [
           pw.Text('WINREF ACADEMY', style: pw.TextStyle(font: bold, fontSize: 11, color: blue, letterSpacing: 2)),
-          pw.Text('스포츠 인재은행', style: const pw.TextStyle(fontSize: 9, color: muted)),
+          pw.Text('알파인 스키 심판 인재은행', style: const pw.TextStyle(fontSize: 9, color: muted)),
         ]),
+        pw.Spacer(),
+        // 진위 확인 QR: 문서를 받은 기관이 스캔하면 발급 내용을 확인할 수 있다
+        if (certCode != null && verifyUrl != null)
+          pw.Row(crossAxisAlignment: pw.CrossAxisAlignment.center, children: [
+            pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.end, children: [
+              pw.Text('진위 확인', style: pw.TextStyle(font: bold, fontSize: 8.5, color: blue)),
+              pw.Text('QR 을 스캔하면 발급 내용을', style: const pw.TextStyle(fontSize: 7, color: muted)),
+              pw.Text('확인할 수 있습니다.', style: const pw.TextStyle(fontSize: 7, color: muted)),
+              pw.SizedBox(height: 2),
+              pw.Text(certCode, style: pw.TextStyle(font: bold, fontSize: 8)),
+            ]),
+            pw.SizedBox(width: 8),
+            pw.BarcodeWidget(barcode: pw.Barcode.qrCode(), data: verifyUrl, width: 58, height: 58),
+          ]),
       ]),
       pw.SizedBox(height: 18),
       pw.Text('심판 활동 이력', style: pw.TextStyle(font: bold, fontSize: 20)),
@@ -127,8 +144,13 @@ Future<Uint8List> buildCareerPdf({
           cellPadding: const pw.EdgeInsets.symmetric(horizontal: 6, vertical: 5),
         ),
       pw.SizedBox(height: 24),
-      pw.Text('본 문서는 WINREF 인재은행 앱에 기록된 활동완료 내역과 관리자가 확인한 자격 정보를 출력한 것입니다.',
+      pw.Text('본 문서는 WINREF 알파인 스키 심판 인재은행 앱에 기록된 활동완료 내역과 관리자가 확인한 자격 정보를 출력한 것입니다.',
           style: const pw.TextStyle(fontSize: 8.5, color: muted)),
+      if (certCode != null && verifyUrl != null)
+        pw.Padding(
+          padding: const pw.EdgeInsets.only(top: 3),
+          child: pw.Text('진위 확인: $verifyUrl  (발급번호 $certCode)', style: const pw.TextStyle(fontSize: 8.5, color: muted)),
+        ),
       pw.SizedBox(height: 4),
       pw.Text('사회적기업 창업지원사업', style: const pw.TextStyle(fontSize: 8, color: muted)),
     ],

@@ -1,8 +1,9 @@
 import 'dart:convert';
 import 'dart:math' as math;
+import 'dart:ui' show PlatformDispatcher;
 
 import 'package:file_picker/file_picker.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/foundation.dart' show kIsWeb, defaultTargetPlatform, FlutterError;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
@@ -128,7 +129,46 @@ String friendlyError(Object e) {
   }
   if (e is StorageException) return '파일을 처리하지 못했습니다. 잠시 후 다시 시도해 주세요.';
   debugPrint('처리되지 않은 오류: $raw');
+  reportError(e, e is Error ? e.stackTrace : null); // 원인을 알 수 없는 오류는 관리자 화면(앱 오류 기록)으로 보낸다
   return '일시적인 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.';
+}
+
+// ---------- 오류 수집 ----------
+
+final _reported = <int>{};
+final _networkError = RegExp(
+    r'SocketException|ClientException|Failed host lookup|Connection (refused|reset|closed)|Network is unreachable|TimeoutException|XMLHttpRequest|Failed to fetch',
+    caseSensitive: false);
+
+/// 예상하지 못한 앱 오류를 서버에 남긴다 (관리자 › 처리 기록 › 앱 오류 기록).
+/// 인터넷 끊김처럼 사용자 환경 문제는 보내지 않고, 같은 오류는 한 번만, 한 번 실행에 최대 10건.
+void reportError(Object error, StackTrace? stack) {
+  try {
+    final msg = error.toString();
+    if (_networkError.hasMatch(msg)) return;
+    if (_reported.length >= 10 || !_reported.add(msg.hashCode)) return;
+    db.rpc('log_error', params: {
+      'p_message': msg,
+      'p_stack': stack?.toString(),
+      'p_build': const String.fromEnvironment('BUILD', defaultValue: 'dev'),
+      'p_platform': kIsWeb ? 'web' : defaultTargetPlatform.name,
+    }).then((_) {}, onError: (_) {});
+  } catch (_) {
+    // 오류 보고가 앱 동작을 방해하면 안 된다
+  }
+}
+
+/// 앱 전체의 처리되지 않은 오류를 [reportError] 로 연결
+void installErrorReporting() {
+  final previous = FlutterError.onError;
+  FlutterError.onError = (details) {
+    previous?.call(details);
+    reportError(details.exception, details.stack);
+  };
+  PlatformDispatcher.instance.onError = (error, stack) {
+    reportError(error, stack);
+    return false; // 기본 처리(콘솔 출력)는 그대로
+  };
 }
 
 /// 불러오기 실패 화면: 안내 + 다시 시도

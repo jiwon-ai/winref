@@ -88,6 +88,8 @@ jobs:
       - name: Run browser scenarios
         run: |
           source /tmp/sb/env.sh
+          # 진위 확인 페이지가 테스트 서버를 보게 한다
+          printf "window.WINREF_API='%s'; window.WINREF_KEY='%s';\n" "$API_URL" "$ANON_KEY" > app/build/web/verify-config.js
           (cd app/build/web && python3 -m http.server 8080 > /dev/null 2>&1 &)
           cd e2e
           npm init -y > /dev/null

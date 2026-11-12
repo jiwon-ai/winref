@@ -21,6 +21,8 @@ dependencies:
   printing: ^5.13.0
   firebase_core: ^3.0.0
   firebase_messaging: ^15.0.0
+  qr_flutter: ^4.1.0        # 출석 QR 표시
+  mobile_scanner: ^7.0.0    # 출석 QR 스캔 (카메라)
 
 dev_dependencies:
   flutter_test:

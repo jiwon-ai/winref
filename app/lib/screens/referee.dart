@@ -6,6 +6,7 @@ import 'browse.dart';
 import 'profile.dart';
 import '../calendar_link.dart';
 import '../venue_map.dart';
+import 'checkin.dart';
 
 /// 심판·교육신청자 홈: 홈 / 대회 / 교육 / 내 활동 / 자격
 class RefereeHome extends StatefulWidget {
@@ -919,7 +920,7 @@ class _BriefingScreenState extends State<BriefingScreen> {
     final comp = await db.from('competitions').select().eq('id', cid).single();
     final mine = await db
         .from('applications')
-        .select('id, status, attendance, completed_at, recruitments!inner(position, competition_id)')
+        .select('id, status, attendance, completed_at, checkin_code, checked_in_at, recruitments!inner(position, competition_id)')
         .eq('user_id', uid)
         .eq('recruitments.competition_id', cid)
         .eq('status', 'selected');
@@ -1000,6 +1001,23 @@ class _BriefingScreenState extends State<BriefingScreen> {
                   ),
                 ),
               ]),
+              // 현장 출석: 대회관계자가 이 QR 을 스캔하면 출석이 기록된다
+              if (a['checkin_code'] != null && a['attendance'] != 'absent') ...[
+                const SizedBox(height: 8),
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(46)),
+                    onPressed: () => showCheckinQr(context,
+                        code: a['checkin_code'],
+                        competition: c['name'],
+                        position: a['recruitments']['position'],
+                        checkedInAt: a['checked_in_at']),
+                    icon: Icon(a['checked_in_at'] != null ? Icons.check_circle_outline : Icons.qr_code_2),
+                    label: Text(a['checked_in_at'] != null ? '출석 완료 · ${fmtDateTime(a['checked_in_at'])}' : '출석 QR 보기'),
+                  ),
+                ),
+              ],
             ]),
           ),
         if (_mine.isNotEmpty) const Divider(),

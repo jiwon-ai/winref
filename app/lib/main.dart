@@ -26,6 +26,7 @@ Future<void> main() async {
   }
   if (_e2e) SemanticsBinding.instance.ensureSemantics();
   await Supabase.initialize(url: supabaseUrl, publishableKey: supabaseAnonKey);
+  installErrorReporting(); // 사용자 기기에서 난 예상 밖 오류를 관리자 화면으로 모은다
   if (!kIsWeb) await Push.init();
   runApp(const WinrefApp());
 }

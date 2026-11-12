@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>WINREF 활동확인서 진위 확인</title>
+<style>
+  :root { --ink:#1B2A41; --muted:#5D6B7E; --blue:#2560AC; --line:#E6EEF8; --bg:#F5F8FC; --ok:#1E8E4E; --bad:#D32F2F; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font:15px/1.7 -apple-system, "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", sans-serif; }
+  main { max-width:720px; margin:0 auto; padding:32px 16px 64px; }
+  header { border-bottom:2px solid var(--blue); padding-bottom:12px; margin-bottom:24px; }
+  h1 { font-size:22px; margin:0; } .sub { color:var(--muted); font-size:13px; }
+  form { display:flex; gap:8px; margin-bottom:20px; }
+  input { flex:1; min-width:0; font:inherit; padding:12px 14px; border:1px solid #C3D0E0; border-radius:12px; text-transform:uppercase; letter-spacing:1px; }
+  button { font:inherit; font-weight:700; color:#fff; background:var(--blue); border:0; border-radius:12px; padding:0 20px; cursor:pointer; }
+  .card { background:#fff; border:1px solid var(--line); border-radius:16px; padding:20px; }
+  .badge { display:inline-flex; align-items:center; gap:8px; font-weight:700; font-size:17px; }
+  .ok { color:var(--ok); } .bad { color:var(--bad); }
+  dl { display:grid; grid-template-columns:96px 1fr; gap:6px 12px; margin:16px 0 0; }
+  dt { color:var(--muted); } dd { margin:0; font-weight:600; }
+  h2 { font-size:15px; color:var(--blue); margin:24px 0 8px; }
+  table { width:100%; border-collapse:collapse; font-size:14px; }
+  th, td { border:1px solid var(--line); padding:8px 10px; text-align:left; vertical-align:top; }
+  th { background:#EEF4FB; white-space:nowrap; }
+  .note { color:var(--muted); font-size:13px; margin-top:16px; }
+  footer { margin-top:40px; color:var(--muted); font-size:12px; text-align:center; }
+</style>
+</head>
+<body>
+<main>
+<header>
+  <h1>활동확인서 진위 확인</h1>
+  <div class="sub">WINREF 알파인 스키 심판 인재은행 앱에서 발급한 ‘심판 활동 이력’ 문서가 실제로 발급된 것인지 확인합니다.</div>
+</header>
+
+<form id="f">
+  <input id="code" placeholder="발급번호 (예: WR2611-1A2B3C4D)" autocomplete="off" maxlength="20" aria-label="발급번호">
+  <button type="submit">확인</button>
+</form>
+<div id="out"></div>
+
+<footer>WINREF ACADEMY · 주식회사 윈렙아카데미 · 문의 winrefacademy@gmail.com</footer>
+</main>
+<script src="verify-config.js"></script>
+<script>
+  // 공개용(publishable) 키: 발급번호로 발급 내용만 조회할 수 있고 다른 정보에는 접근할 수 없다 (verify-config.js)
+  var API = window.WINREF_API, KEY = window.WINREF_KEY;
+  var out = document.getElementById('out'), input = document.getElementById('code');
+
+  function el(tag, cls, text) { var e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
+  function date(v) { return v ? String(v).slice(0, 10).replace(/-/g, '.') : '-'; }
+  function dateTime(v) {
+    var d = new Date(v); if (isNaN(d)) return '-';
+    return d.toLocaleString('ko-KR', { timeZone: 'Asia/Seoul', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) + ' (한국 시간)';
+  }
+  function show(node) { out.textContent = ''; out.appendChild(node); }
+  function message(cls, title, body) {
+    var c = el('div', 'card'); c.appendChild(el('div', 'badge ' + cls, title)); c.appendChild(el('div', 'note', body)); show(c);
+  }
+  function table(headers, rows) {
+    var t = el('table'), tr = el('tr');
+    headers.forEach(function (h) { tr.appendChild(el('th', null, h)); }); t.appendChild(tr);
+    rows.forEach(function (r) { var x = el('tr'); r.forEach(function (v) { x.appendChild(el('td', null, v == null || v === '' ? '-' : v)); }); t.appendChild(x); });
+    return t;
+  }
+
+  function verify(code) {
+    code = (code || '').trim().toUpperCase();
+    if (!code) return;
+    input.value = code;
+    message('', '확인 중…', '');
+    fetch(API + '/rest/v1/rpc/verify_certificate', {
+      method: 'POST',
+      headers: { apikey: KEY, Authorization: 'Bearer ' + KEY, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ p_code: code })
+    }).then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); }).then(function (d) {
+      if (!d || !d.valid) {
+        message('bad', '✕ 확인되지 않는 발급번호입니다', '번호를 다시 확인해 주세요. 발급한 회원이 탈퇴한 경우에도 확인되지 않습니다.');
+        return;
+      }
+      var c = el('div', 'card');
+      c.appendChild(el('div', 'badge ok', '✓ WINREF 가 발급한 문서가 맞습니다'));
+      var dl = el('dl');
+      [['발급번호', d.code], ['성명', d.name], ['발급 일시', dateTime(d.issued_at)], ['활동 완료', d.count + '회']].forEach(function (p) {
+        dl.appendChild(el('dt', null, p[0])); dl.appendChild(el('dd', null, p[1]));
+      });
+      c.appendChild(dl);
+      c.appendChild(el('h2', null, '보유 자격 (관리자 확인 완료)'));
+      c.appendChild(d.quals && d.quals.length
+        ? table(['자격명', '등급', '유효기간'], d.quals.map(function (q) { return [q.name, q.grade, date(q.expires_on)]; }))
+        : el('div', 'note', '확인된 자격이 없습니다.'));
+      c.appendChild(el('h2', null, '대회 활동 내역'));
+      c.appendChild(d.items && d.items.length
+        ? table(['대회명', '기간', '장소', '직무'], d.items.map(function (i) {
+            var p = i.ends_on && i.ends_on !== i.starts_on ? date(i.starts_on) + ' ~ ' + date(i.ends_on) : date(i.starts_on);
+            return [i.competition, p, i.venue, i.position];
+          }))
+        : el('div', 'note', '완료된 활동이 없습니다.'));
+      c.appendChild(el('div', 'note', '위 내용은 문서를 발급한 시점의 기록입니다. 제출받은 문서의 내용과 같은지 비교해 주세요.'));
+      show(c);
+    }).catch(function () {
+      message('bad', '확인하지 못했습니다', '인터넷 연결을 확인한 뒤 다시 시도해 주세요.');
+    });
+  }
+
+  document.getElementById('f').addEventListener('submit', function (e) { e.preventDefault(); verify(input.value); });
+  var q = new URLSearchParams(location.search).get('code');
+  if (q) verify(q);
+</script>
+</body>
+</html>

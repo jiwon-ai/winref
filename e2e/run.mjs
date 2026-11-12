@@ -87,6 +87,16 @@ async function see(text) {
   try { await l.waitFor({ state: 'visible', timeout: 15000 }); }
   catch (e) { await dumpLabels(); throw new Error(`"${text}" 가 화면에 없음`); }
 }
+// 화면 아래쪽에 있어 아직 그려지지 않은 내용: 휠로 내려가며 찾는다
+async function seeDown(text) {
+  const l = page.getByText(text, { exact: false }).or(page.locator(`[aria-label*="${text}"]`)).first();
+  for (let i = 0; i < 25 && !(await l.isVisible().catch(() => false)); i++) {
+    await page.mouse.move(700, 450);
+    await page.mouse.wheel(0, 500);
+    await page.waitForTimeout(250);
+  }
+  await see(text);
+}
 async function check(name, fn) {
   try { await fn(); results.push(['PASS', name]); console.log('PASS', name); }
   catch (e) { results.push(['FAIL', name, e.message]); console.log('FAIL', name, '-', e.message); await shot('FAIL-' + name.replace(/[^\p{L}\p{N}]+/gu, '_')); throw e; }
@@ -333,7 +343,27 @@ try {
     await shot('applicant-sheet');
     await tap('참석', 'checkbox!');
     await page.waitForTimeout(800);
+    // 현장 QR 출석: 카메라 대신 출석 코드 직접 입력 (자동 테스트에는 카메라가 없음)
+    await tap('출석 체크 (QR)', 'button');
+    await see('선발된 심판의 출석 QR');
+    await type('출석 코드', 'ZZZZ-ZZZZ');
+    await tap('출석 처리', 'button!');
+    await see('등록되지 않은 출석 코드');
+    const ciCode = sql(`select checkin_code from applications a join profiles p on p.id=a.user_id where p.name='김심판' and a.status='selected'`);
+    await retype('출석 코드', ciCode);
+    await tap('출석 처리', 'button!');
+    await see('김심판 님 출석 완료');
+    await shot('checkin-scan');
+    await retype('출석 코드', ciCode);
+    await page.waitForTimeout(4200);        // 같은 코드 연속 입력 방지 시간(4초) 뒤
+    await tap('출석 처리', 'button!');
+    await see('이미 출석 처리되었습니다');
+    if (sql(`select (checked_in_at is not null)||','||(checked_in_by is not null) from applications a join profiles p on p.id=a.user_id where p.name='김심판' and a.status='selected'`) !== 'true,true')
+      throw new Error('출석 기록 저장 안 됨');
+    await back();
+    await see('김심판 · 기문심판');
     await tap('김심판');
+    await see('현장 출석 확인');
     await tap('활동완료 처리', 'button');
     await page.waitForTimeout(800);
     const r = sql(`select status||','||attendance||','||(completed_at is not null) from applications a join profiles p on p.id=a.user_id where p.name='김심판'`);
@@ -365,6 +395,20 @@ try {
     await tap('저장', 'button');
     await see('대회를 등록했습니다');
     await tap('삭제 테스트 대회', 'button');
+    // 지난 대회 모집공고 복사
+    await tap('모집공고', 'tab');
+    await see('모집공고가 없습니다');
+    await tap('지난 대회 모집공고 복사', 'button');
+    await see('어느 대회의 모집공고를 복사할까요');
+    await shot('copy-recruitments');
+    await tap('2026 용평컵 알파인 스키대회');
+    await see('복사했습니다');
+    await see('기문심판 · 2명');
+    const copied = sql(`select count(*)||','||count(deadline) from recruitments r join competitions c on c.id=r.competition_id where c.name='삭제 테스트 대회'`);
+    if (!/^[1-9]\d*,0$/.test(copied)) throw new Error('공고 복사 결과: ' + copied);   // 1건 이상, 마감은 비움
+    await tap('지난 대회 모집공고 복사', 'button');
+    await tap('2026 용평컵 알파인 스키대회');
+    await see('이미 있어 복사하지 않았습니다');       // 같은 직무 중복 방지
     await tap('대회 수정', 'button');
     await retype('대회명', '삭제 테스트 대회 수정본');
     await tap('저장', 'button');
@@ -384,6 +428,12 @@ try {
     await see('참석 여부를 알려주세요');
     await el('캘린더에 추가', 'button').waitFor({ state: 'visible', timeout: 10000 });
     await shot('rsvp'); await store('rsvp');
+    await tap('출석 QR 보기', 'button');
+    await see('출석 코드');
+    await see('대회관계자에게 이 화면을 보여주세요');
+    await shot('checkin-qr');
+    await page.keyboard.press('Escape');
+    await page.waitForTimeout(500);
     await tap('불참', 'button!');
     await tap('불참 응답', 'button!');
     await see('불참으로 응답했습니다');
@@ -607,6 +657,49 @@ try {
     await tap('공지·알림', 'any!');
     await see('WINREF 인재은행 오픈');
     await shot('admin-notices');
+  });
+
+  await check('관리자: 성과 리포트', async () => {
+    await tap('성과 리포트', 'any!');
+    await see('리포트 기간');
+    await seeDown('현장 출석 확인 (QR)');
+    await shot('admin-report');
+    await seeDown('선발 2 · 출석 1 · 완료 1');  // 용평컵: 일괄 선발 2명, QR 출석 1명, 활동완료 1명
+    await shot('admin-report-competitions');
+    await page.mouse.wheel(0, -20000);
+    await page.waitForTimeout(500);
+    await tap('엑셀 내보내기', 'button');
+    await see('성과리포트');                    // 내려받기(또는 클립보드 복사) 안내
+  });
+
+  await check('관리자: 처리 기록·앱 오류 기록', async () => {
+    await tap('처리 기록', 'any!');
+    await shot('admin-audit');
+    await tap('선발 처리', 'any!');
+    await see('선발 처리 · 김심판');
+    await see('지원완료 → 선발');
+    await tap('현장 출석', 'any!');
+    await see('현장 출석 · 김심판');
+    await tap('탈퇴 처리', 'any!');
+    await see('탈퇴 처리 · (탈퇴 회원)');       // 탈퇴 처리된 회원은 이름을 남기지 않음
+    await tap('자격 승인', 'any!');
+    await see('자격 승인 · 김심판');
+    await shot('admin-audit-filter');
+    await tap('앱 오류 기록', 'tab');
+    await see('사용자 기기에서 앱이 예상하지 못한 오류');
+    await shot('admin-error-logs');
+    console.log('  수집된 앱 오류:', sql(`select count(*) from error_logs`), '|', sql(`select coalesce(string_agg(left(message, 160), ' || '), '') from error_logs`));
+  });
+
+  await check('활동확인서 진위 확인 페이지', async () => {
+    sql(`insert into certificates (code, user_id, name, items, quals) select 'WR2611-E2ETEST1', id, name, jsonb_build_array(jsonb_build_object('competition', '2026 용평컵 알파인 스키대회', 'starts_on', '2026-11-13', 'venue', '용평리조트', 'position', '기문심판')), '[]'::jsonb from profiles where name='김심판'`);
+    await page.goto(APP + '/verify.html?code=wr2611-e2etest1');
+    await see('발급한 문서가 맞습니다');
+    await see('김심판');
+    await see('2026 용평컵 알파인 스키대회');
+    await shot('verify-ok');
+    await page.goto(APP + '/verify.html?code=WR0000-00000000');
+    await see('확인되지 않는 발급번호');
   });
 } catch (e) {
   // 첫 실패에서 멈춤 (뒤 단계는 앞 단계 결과에 의존)

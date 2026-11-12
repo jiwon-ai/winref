@@ -36,6 +36,8 @@ void main() {
       regular: regular,
       bold: bold,
       issuedAt: DateTime(2026, 11, 8),
+      certCode: 'WR2611-1A2B3C4D',
+      verifyUrl: 'https://jiwon.fr/winref/verify.html?code=WR2611-1A2B3C4D',
     );
     expect(String.fromCharCodes(bytes.sublist(0, 5)), '%PDF-');
     final pages = RegExp(r'/Type\s*/Page[^s]').allMatches(String.fromCharCodes(bytes)).length;

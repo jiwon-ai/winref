@@ -228,5 +228,97 @@ ok((await as(ADMIN, `insert into courses (title, starts_at, ends_at) values ('�
 ok((await as(ADMIN, `insert into courses (title, starts_at, apply_deadline) values ('과정', '2027-01-06 09:00+09', '2027-01-07 09:00+09')`)).err?.includes('courses_date_order'), '교육 신청마감 > 시작 차단');
 ok((await as(REF2, `insert into qualifications (user_id,name,acquired_on,expires_on) values ($1,'알파인스키 국내심판','2026-01-01','2025-01-01')`, [REF2])).err?.includes('qualifications_date_order'), '자격 만료일 < 취득일 차단');
 
+// --- 0020: QR 출석 · 활동확인서 · 성과 리포트 · 처리 기록 · 오류 수집 ---
+const O2 = '00000000-0000-0000-0000-0000000000a1', R3 = '00000000-0000-0000-0000-0000000000a2', R4 = '00000000-0000-0000-0000-0000000000a3', O3 = '00000000-0000-0000-0000-0000000000a4';
+await db.exec(`insert into auth.users values
+ ('${O2}', '{"name":"출석관계","role":"organizer","organization":"출석협회","phone":"01022220001"}', '{"provider":"email"}', 'o2@test.kr'),
+ ('${R3}', '{"name":"출석심판","phone":"01022220002"}', '{"provider":"email"}', 'r3@test.kr'),
+ ('${R4}', '{"name":"미선발자","phone":"01022220003"}', '{"provider":"email"}', 'r4@test.kr'),
+ ('${O3}', '{"name":"남의관계","role":"organizer","organization":"다른협회","phone":"01022220004"}', '{"provider":"email"}', 'o3@test.kr')`);
+const auditN = async (action) => (await db.query(`select count(*)::int n from audit_log where action='${action}'`)).rows[0].n;
+const orgApprovedBefore = await auditN('org_approved');
+await as(ADMIN, `update profiles set org_status='approved' where id in ('${O2}','${O3}')`);
+ok(await auditN('org_approved') === orgApprovedBefore + 2, '처리 기록: 기관 승인');
+const kst = (await db.query(`select (now() at time zone 'Asia/Seoul')::date::text d`)).rows[0].d;
+const c20 = (await as(O2, `insert into competitions (organizer_id,name,starts_on) values ($1,'출석대회',$2) returning id`, [O2, kst])).rows[0].id;
+const r20 = (await as(O2, `insert into recruitments (competition_id,position,headcount) values (${c20},'기문심판',2) returning id`)).rows[0].id;
+await as(R3, `insert into applications (recruitment_id,user_id) values (${r20},$1)`, [R3]);
+await as(R4, `insert into applications (recruitment_id,user_id) values (${r20},$1)`, [R4]);
+const code3 = (await as(R3, `select checkin_code from applications where user_id=$1 and recruitment_id=${r20}`, [R3])).rows[0].checkin_code;
+const code4 = (await as(R4, `select checkin_code from applications where user_id=$1 and recruitment_id=${r20}`, [R4])).rows[0].checkin_code;
+ok(/^[0-9A-F]{8}$/.test(code3) && code3 !== code4, '지원마다 서로 다른 8자리 출석 코드');
+ok((await as(O2, `select check_in($1)`, [code3])).err?.includes('선발된 심판이 아닙니다'), '선발 전 출석 차단');
+const selBefore = await auditN('selection');
+await as(O2, `update applications set status='selected' where user_id=$1 and recruitment_id=${r20}`, [R3]);
+ok(await auditN('selection') === selBefore + 1, '처리 기록: 선발 처리');
+ok((await as(R3, `update applications set checked_in_at=now() where user_id=$1 and recruitment_id=${r20}`, [R3])).err, '심판 본인이 출석 기록 조작 불가');
+ok((await as(R3, `select check_in($1)`, [code3])).err?.includes('내가 등록한 대회'), '심판 본인이 자기 QR 로 출석 처리 불가');
+ok((await as(O3, `select check_in($1)`, [code3])).err?.includes('내가 등록한 대회'), '다른 대회관계자는 출석 처리 불가');
+ok((await as(O2, `select check_in('ZZZZZZZZ')`)).err?.includes('등록되지 않은'), '없는 코드 안내');
+const ci = (await as(O2, `select check_in($1) j`, ['wr:' + code3.toLowerCase().slice(0, 4) + '-' + code3.toLowerCase().slice(4)])).rows?.[0]?.j;
+ok(ci?.name === '출석심판' && ci?.already === false && ci?.position === '기문심판', '출석 처리 (소문자·하이픈 입력 허용)');
+const row3 = (await db.query(`select checked_in_at is not null ok, checked_in_by, attendance from applications where user_id='${R3}' and recruitment_id=${r20}`)).rows[0];
+ok(row3.ok && row3.checked_in_by === O2 && row3.attendance === 'attending', '출석 시각·처리자 기록, 참석으로 표시');
+ok((await as(O2, `select check_in($1) j`, [code3])).rows?.[0]?.j?.already === true, '두 번째 스캔은 "이미 출석"');
+ok(await auditN('checkin') === 1, '처리 기록: 출석 1건 (중복 스캔은 기록 안 함)');
+ok((await as(ADMIN, `select check_in($1) j`, [code3])).rows?.[0]?.j?.already === true, '관리자도 출석 처리 가능');
+await db.exec(`update competitions set starts_on = starts_on + 5 where id=${c20}`);
+await db.exec(`update applications set checked_in_at=null where user_id='${R3}' and recruitment_id=${r20}`);
+ok((await as(O2, `select check_in($1)`, [code3])).err?.includes('대회 전날부터'), '대회 기간 밖 출석 차단');
+await db.exec(`update competitions set starts_on = '${kst}' where id=${c20}`);
+await as(O2, `select check_in($1)`, [code3]);
+
+// 활동확인서
+await as(O2, `update applications set completed_at=now() where user_id=$1 and recruitment_id=${r20}`, [R3]);
+ok(await auditN('activity_completed') >= 1, '처리 기록: 활동완료');
+const cert = (await as(R3, `select issue_certificate() j`)).rows?.[0]?.j;
+ok(/^WR\d{4}-[0-9A-F]{8}$/.test(cert?.code ?? ''), '활동확인서 발급번호 형식');
+const ver = (await as(null, `select verify_certificate($1) j`, [cert.code.toLowerCase()])).rows?.[0]?.j;
+ok(ver?.valid === true && ver.name === '출석심판' && ver.count === 1 && ver.items[0].competition === '출석대회', '진위 확인: 로그인 없이 발급 내용 조회');
+ok(!JSON.stringify(ver).includes('0102222'), '진위 확인 결과에 연락처 없음');
+ok((await as(null, `select verify_certificate('WR0000-00000000') j`)).rows?.[0]?.j?.valid === false, '진위 확인: 없는 번호');
+ok((await as(R4, `select * from certificates`)).rows.length === 0, '남의 확인서 목록 조회 불가');
+ok((await as(null, `select issue_certificate()`)).err, '비로그인 발급 불가');
+
+// 성과 리포트
+const rep = (await as(ADMIN, `select admin_report($1::date, $2::date) j`, [kst, kst])).rows?.[0]?.j;
+ok(rep?.competitions >= 1 && rep.checked_in === 1 && rep.completed >= 1 && rep.certificates === 1 && rep.new_members >= 4, '성과 리포트 집계');
+ok(rep.by_competition.some((x) => x.name === '출석대회' && x.selected === 1 && x.checked_in === 1 && x.completed === 1), '성과 리포트: 대회별 표');
+ok((await as(R3, `select admin_report($1::date, $2::date)`, [kst, kst])).err?.includes('forbidden'), '성과 리포트는 관리자만');
+
+// 처리 기록
+const q20 = (await as(R4, `insert into qualifications (user_id,name,grade) values ($1,'알파인스키 국내심판','3급 신규') returning id`, [R4])).rows[0].id;
+await as(ADMIN, `update qualifications set status='approved' where id=${q20}`);
+const al = (await as(ADMIN, `select actor_name, target from audit_log where action='qual_approved' order by id desc limit 1`)).rows[0];
+ok(al.actor_name === '관리자' && al.target.includes('미선발자') && al.target.includes('3급 신규'), '처리 기록: 자격 승인 (처리자·대상)');
+ok((await as(R3, `select * from audit_log`)).rows.length === 0, '처리 기록은 관리자만 조회');
+ok((await as(ADMIN, `delete from audit_log`)).rows?.length === 0 && (await db.query(`select count(*)::int n from audit_log`)).rows[0].n > 0, '처리 기록은 관리자도 삭제 불가');
+ok((await as(ADMIN, `insert into audit_log (action) values ('fake')`)).err, '처리 기록 직접 쓰기 불가');
+await as(ADMIN, `update profiles set role='organizer', org_status='approved' where id=$1`, [R4]);
+ok(await auditN('role_changed') >= 1, '처리 기록: 회원 유형 변경');
+await as(ADMIN, `update profiles set role='referee', org_status=null where id=$1`, [R4]);
+const qd = await auditN('qual_deleted');
+ok(!(await as(ADMIN, `select admin_delete_user($1)`, [R4])).err, '관리자 탈퇴 처리');
+const md = (await db.query(`select target, detail from audit_log where action='member_deleted' order by id desc limit 1`)).rows[0];
+ok(md.target === '(탈퇴 회원)' && md.detail === 'r4***@test.kr', '처리 기록: 탈퇴 처리 (이름은 지우고 가린 이메일만)');
+ok((await db.query(`select count(*)::int n from audit_log where target like '%미선발자%'`)).rows[0].n === 0, '탈퇴 처리된 회원의 이름은 이전 처리 기록에서도 지워짐');
+ok(await auditN('qual_deleted') === qd, '탈퇴로 함께 지워진 자격은 "자격 삭제"로 기록하지 않음');
+ok(!(await as(R3, `select delete_my_account()`)).err, '본인 탈퇴');
+ok((await db.query(`select count(*)::int n from certificates`)).rows[0].n === 0, '탈퇴 시 활동확인서 기록 삭제');
+ok((await as(null, `select verify_certificate($1) j`, [cert.code])).rows?.[0]?.j?.valid === false, '탈퇴 후 진위 확인 불가');
+const ml = (await db.query(`select actor_name, target from audit_log where action='member_left' order by id desc limit 1`)).rows[0];
+ok(ml.target === '본인 탈퇴' && !JSON.stringify(ml).includes('출석심판'), '본인 탈퇴 기록에 개인정보 없음');
+ok((await db.query(`select count(*)::int n from audit_log where target like '%출석심판%'`)).rows[0].n === 0, '본인 탈퇴 시 선발·출석 기록의 이름도 지워짐');
+ok((await db.query(`select count(*)::int n from audit_log where target like '(탈퇴 회원) · 출석대회%'`)).rows[0].n >= 2, '처리 사실(선발·출석)은 남음');
+ok(!(await as(O2, `delete from competitions where id=${c20}`)).err && await auditN('competition_deleted') >= 1, '처리 기록: 대회 삭제');
+
+// 오류 수집
+ok(!(await as(null, `select log_error('TypeError: x', 'stack...', '120', 'android')`)).err, '오류 기록: 비로그인도 전송 가능');
+ok(!(await as(O2, `select log_error($1, $2, '120', 'web')`, ['E'.repeat(900), 'S'.repeat(9000)])).err, '오류 기록: 로그인 사용자');
+const el = (await as(ADMIN, `select user_id, length(message) m, length(stack) s from error_logs order by id desc limit 1`)).rows[0];
+ok(el.user_id === O2 && el.m === 500 && el.s === 4000, '오류 기록: 길이 제한·사용자 식별자만 저장');
+ok((await as(O2, `select * from error_logs`)).rows.length === 0, '오류 기록은 관리자만 조회');
+ok((await as(O2, `insert into error_logs (message) values ('x')`)).err, '오류 기록 직접 쓰기 불가');
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

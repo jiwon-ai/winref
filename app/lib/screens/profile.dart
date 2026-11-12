@@ -216,7 +216,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
       final regular = await PdfGoogleFonts.notoSansKRRegular();
       final bold = await PdfGoogleFonts.notoSansKRBold();
       final logo = (await rootBundle.load('assets/brand/snowflake_blue.png')).buffer.asUint8List();
-      final bytes = await buildCareerPdf(profile: p, history: history, quals: quals, regular: regular, bold: bold, logoPng: logo);
+      // 발급번호를 서버에 기록 → 문서를 받은 기관이 QR·번호로 진위를 확인할 수 있다
+      final cert = Map<String, dynamic>.from(await db.rpc('issue_certificate') as Map);
+      final code = cert['code'] as String;
+      final bytes = await buildCareerPdf(
+        profile: p,
+        history: history,
+        quals: quals,
+        regular: regular,
+        bold: bold,
+        logoPng: logo,
+        issuedAt: DateTime.tryParse(cert['issued_at'].toString())?.toLocal(),
+        certCode: code,
+        verifyUrl: '${appUrl}verify.html?code=$code',
+      );
       await Printing.layoutPdf(onLayout: (_) async => bytes, name: 'WINREF_활동이력_${p['name']}.pdf');
     });
   }
