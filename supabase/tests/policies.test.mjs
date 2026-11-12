@@ -150,6 +150,14 @@ const nc = async (u, kind) => (await db.query(`select count(*)::int n from notif
 ok(await nc(ORG, 'new_applicant') === 2, '새 지원자 → 관계자 알림 (2명)');
 ok(await nc(ADMIN, 'org_request') === 1, '기관 승인 요청 → 관리자 알림');
 ok(await nc(ADMIN, 'qual_request') === 1, '자격 등록 → 관리자 확인 요청 알림');
+const q2 = (await as(REF2, `insert into qualifications (user_id,name,grade) values ($1,'알파인스키 국내심판','2급 신규') returning id`, [REF2])).rows[0].id;
+ok(await nc(ADMIN, 'qual_request') === 2, '두 번째 자격 등록 → 관리자 알림');
+await as(ADMIN, `update qualifications set status='rejected' where id=${q2}`);
+ok(!(await as(REF2, `update qualifications set grade='2급 보수', status='pending' where id=${q2}`)).err, '반려된 자격 수정 후 재제출');
+ok(await nc(ADMIN, 'qual_request') === 3, '재제출 → 관리자 재확인 요청 알림');
+ok(await nc(REF2, 'qual_request') === 0, '재제출해도 본인에게 확인 요청 알림 없음');
+ok(await nc(REF, 'qual_request') === 0, '자격 확인 요청 알림은 요청한 심판에게 가지 않음');
+ok((await db.query(`select count(*)::int n from notifications where kind='qual_request' and user_id not in (select id from profiles where role='admin')`)).rows[0].n === 0, '자격 확인 요청 알림은 관리자에게만');
 const cid = (await as(ADMIN, `insert into courses (title, capacity) values ('정원1 과정', 1) returning id`)).rows[0].id;
 ok(!(await as(REF, `insert into course_applications (course_id,user_id) values (${cid},$1)`, [REF])).err, '정원 내 신청');
 const full = await as(REF2, `insert into course_applications (course_id,user_id) values (${cid},$1)`, [REF2]);
