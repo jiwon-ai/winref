@@ -39,6 +39,8 @@ String authMessage(AuthException e) {
   if (e.code == 'weak_password' || m.contains('password should be') || m.contains('weak')) {
     return '비밀번호가 너무 짧거나 쉽습니다. 8자 이상, 영문과 숫자를 섞어 정해주세요.';
   }
+  // 메일 서버(SMTP) 설정 오류 등으로 서버가 메일을 보내지 못함
+  if (m.contains('sending') && m.contains('email')) return '메일을 보내지 못했습니다. 잠시 후 다시 시도하고, 계속되면 관리자에게 알려주세요.';
   if (m.contains('email rate limit')) return '메일 발송 한도를 넘었습니다. 1시간쯤 뒤에 다시 시도해 주세요.';
   if (m.contains('security purposes') || m.contains('seconds')) return '방금 메일을 보냈습니다. 1분 뒤에 다시 시도해 주세요.';
   if (m.contains('rate limit') || m.contains('too many')) return '요청이 많습니다. 잠시 후 다시 시도해 주세요.';
