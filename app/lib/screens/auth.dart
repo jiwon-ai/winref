@@ -5,6 +5,10 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../common.dart';
 import '../theme.dart';
 
+/// 카카오 로그인: Supabase 에 카카오 키를 넣은 뒤 빌드에 --dart-define=KAKAO=true 로 켠다.
+/// (설정 전 버튼이 보이면 눌러도 오류가 나 Play 심사에서 '작동하지 않는 기능'으로 반려될 수 있음)
+const kakaoLogin = bool.fromEnvironment('KAKAO');
+
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
   @override
@@ -168,14 +172,16 @@ class _LoginScreenState extends State<LoginScreen> {
                           Expanded(child: Divider()),
                         ]),
                         SizedBox(height: gap(12, 20)),
-                        _SocialButton(
-                          label: '카카오로 계속하기',
-                          background: const Color(0xFFFEE500),
-                          foreground: const Color(0xD9000000),
-                          icon: const Icon(Icons.chat_bubble, size: 18, color: Color(0xD9000000)),
-                          onPressed: () => _social(OAuthProvider.kakao),
-                        ),
-                        const SizedBox(height: 10),
+                        if (kakaoLogin) ...[
+                          _SocialButton(
+                            label: '카카오로 계속하기',
+                            background: const Color(0xFFFEE500),
+                            foreground: const Color(0xD9000000),
+                            icon: const Icon(Icons.chat_bubble, size: 18, color: Color(0xD9000000)),
+                            onPressed: () => _social(OAuthProvider.kakao),
+                          ),
+                          const SizedBox(height: 10),
+                        ],
                         _SocialButton(
                           label: 'Google로 계속하기',
                           background: Colors.white,

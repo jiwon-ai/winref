@@ -435,8 +435,7 @@ try {
   });
 
   await check('소셜 로그인 버튼 표시', async () => {
-    await see('카카오로 계속하기');
-    await see('Google로 계속하기');
+    await see('Google로 계속하기'); // 카카오는 키 설정 후 KAKAO=true 빌드에서만 표시
   });
 
   await check('소셜 첫 가입: 가입 정보 입력', async () => {
