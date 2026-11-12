@@ -448,8 +448,19 @@ try {
     await shot('clash-warning');
     await back();
     await goTab('홈');
+    // 탈퇴는 메뉴에 없고(실수 방지) 내 정보 화면 맨 아래에만 있음
     await tap('메뉴 표시', 'button');
-    await tap('회원 탈퇴', 'menuitem');
+    if (await page.getByRole('menuitem', { name: '회원 탈퇴' }).count()) throw new Error('메뉴에 회원 탈퇴가 남아 있음');
+    await tap('내 정보', 'menuitem');
+    await see('직무별 활동');
+    const del = page.getByRole('button', { name: '회원 탈퇴' });
+    for (let i = 0; i < 15 && !(await del.isVisible().catch(() => false)); i++) {
+      await page.mouse.move(200, 400);
+      await page.mouse.wheel(0, 800);
+      await page.waitForTimeout(300);
+    }
+    await shot('delete-account-link');
+    await tap('회원 탈퇴', 'button');
     await tap('탈퇴', 'button!');
     await see('WINREF ACADEMY');
     if (sql(`select count(*) from auth.users where email='ref2@test.kr'`) !== '0') throw new Error('계정이 삭제되지 않음');

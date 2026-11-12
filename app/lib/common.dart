@@ -788,11 +788,16 @@ Future<void> deleteAccount(BuildContext context) async {
       content: const Text('계정과 자격정보·지원내역·활동이력이 모두 삭제되며 되돌릴 수 없습니다. 탈퇴하시겠습니까?'),
       actions: [
         TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('취소')),
-        TextButton(onPressed: () => Navigator.pop(d, true), child: const Text('탈퇴')),
+        TextButton(
+          style: TextButton.styleFrom(foregroundColor: const Color(0xFFD32F2F)),
+          onPressed: () => Navigator.pop(d, true),
+          child: const Text('탈퇴'),
+        ),
       ],
     ),
   );
   if (ok != true || !context.mounted) return;
+  final nav = Navigator.of(context);
   final done = await run(context, () async {
     // 본인이 올린 파일(프로필 사진·자격증 사본)을 먼저 지운다. 실패해도 탈퇴는 계속.
     for (final folder in ['avatars/$uid', 'quals/$uid']) {
@@ -803,7 +808,30 @@ Future<void> deleteAccount(BuildContext context) async {
     }
     await db.rpc('delete_my_account');
   });
-  if (done) await signOut();
+  if (done) {
+    nav.popUntil((r) => r.isFirst); // 내 정보 화면 등을 닫고 로그인 화면으로
+    await signOut();
+  }
+}
+
+/// 회원 탈퇴: 실수로 누르지 않도록 메뉴가 아니라 내 정보 화면 맨 아래에 작게 둔다
+class DeleteAccountLink extends StatelessWidget {
+  final VoidCallback? onPressed; // 시트 안에서는 시트를 닫고 진행
+  const DeleteAccountLink({super.key, this.onPressed});
+  @override
+  Widget build(BuildContext context) => Padding(
+        padding: const EdgeInsets.fromLTRB(16, 24, 16, 32),
+        child: Center(
+          child: TextButton(
+            style: TextButton.styleFrom(
+              foregroundColor: Brand.muted,
+              textStyle: const TextStyle(fontSize: 13, decoration: TextDecoration.underline),
+            ),
+            onPressed: onPressed ?? () => deleteAccount(context),
+            child: const Text('회원 탈퇴'),
+          ),
+        ),
+      );
 }
 
 /// 앱바 공통 메뉴: 알림·공지·내정보·로그아웃
@@ -846,14 +874,17 @@ List<Widget> commonActions(BuildContext context, Map<String, dynamic> profile) =
                           editProfile(context, profile);
                         },
                       ),
+                      if (profile['role'] != 'admin')
+                        DeleteAccountLink(onPressed: () {
+                          Navigator.pop(s);
+                          deleteAccount(context);
+                        }),
                     ]),
                   ),
                 );
               }
             case 'logout':
               signOut();
-            case 'delete':
-              deleteAccount(context);
             case 'about':
               Navigator.push(context, MaterialPageRoute(builder: (_) => const AppInfoScreen()));
           }
@@ -863,7 +894,6 @@ List<Widget> commonActions(BuildContext context, Map<String, dynamic> profile) =
           const PopupMenuItem(value: 'me', child: Text('내 정보')),
           const PopupMenuItem(value: 'about', child: Text('앱 정보')),
           const PopupMenuItem(value: 'logout', child: Text('로그아웃')),
-          if (profile['role'] != 'admin') const PopupMenuItem(value: 'delete', child: Text('회원 탈퇴')),
         ],
       ),
     ];

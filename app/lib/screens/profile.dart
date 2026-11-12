@@ -323,6 +323,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 padding: const EdgeInsets.all(20),
                 child: CareerView(key: ValueKey(p.toString()), profile: p),
               ),
+              const DeleteAccountLink(),
             ]),
           );
         },
