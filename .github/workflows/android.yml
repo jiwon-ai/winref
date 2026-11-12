@@ -99,8 +99,9 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           cp build/app/outputs/flutter-apk/app-release.apk /tmp/winref.apk
+          cp build/app/outputs/bundle/release/app-release.aab /tmp/winref.aab  # Play Console 업로드용
           gh release delete latest --yes --cleanup-tag || true
-          gh release create latest /tmp/winref.apk --target "$GITHUB_SHA" \
+          gh release create latest /tmp/winref.apk /tmp/winref.aab --target "$GITHUB_SHA" \
             --title "WINREF 최신 안드로이드 앱" \
             --notes "main ${GITHUB_SHA::7} 자동 빌드. 휴대폰에서 winref.apk 를 눌러 설치하세요."
 
