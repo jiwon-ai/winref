@@ -182,6 +182,17 @@ try {
     await shot('referee-home');
   });
 
+  await check('앱 정보 화면 (버전·문의·약관·라이선스)', async () => {
+    await tap('메뉴 표시', 'button').catch(() => tap('Show menu', 'button'));
+    await tap('앱 정보', 'menuitem');
+    await see('WINREF 알파인 스키 심판 인재은행');
+    await see('winrefacademy@gmail.com');
+    await see('오픈소스 라이선스');
+    await shot('app-info');
+    await tap('뒤로', 'button').catch(() => tap('Back', 'button'));
+    await see('다가오는 일정');
+  });
+
   await check('프로필 편집·사진 업로드', async () => {
     await tap('내 프로필·경력 보기');
     await see('보유 자격');
