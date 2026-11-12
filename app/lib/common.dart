@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:math' as math;
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
@@ -157,8 +158,8 @@ class EmptyView extends StatelessWidget {
   Widget build(BuildContext context) => Padding(
         padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 56),
         child: Column(children: [
-          Icon(icon, size: 40, color: const Color(0xFFB4C2D4)),
-          const SizedBox(height: 12),
+          const AlpineEmptyArt(),
+          const SizedBox(height: 14),
           Text(text, textAlign: TextAlign.center, style: const TextStyle(color: Brand.muted, height: 1.5)),
         ]),
       );
@@ -1168,5 +1169,174 @@ class _DetailDialogState extends State<_DetailDialog> {
         ]),
       ),
     );
+  }
+}
+
+// ---------- 알파인 디자인 디테일 ----------
+
+/// 남색 헤더 위에 흩날리는 눈송이 (장식, 터치·접근성 영향 없음). 위치는 고정이라 화면마다 같은 모양.
+class Snowfall extends StatelessWidget {
+  final double opacity;
+  const Snowfall({super.key, this.opacity = 1});
+  @override
+  Widget build(BuildContext context) => IgnorePointer(
+        child: ExcludeSemantics(child: CustomPaint(painter: _SnowPainter(opacity), size: Size.infinite)),
+      );
+}
+
+class _SnowPainter extends CustomPainter {
+  final double opacity;
+  _SnowPainter(this.opacity);
+  // (x, y 비율, 크기, 투명도) — 무작위처럼 보이되 항상 같은 배치
+  static const _flakes = [
+    (0.06, 0.18, 1.6, 0.35), (0.14, 0.62, 1.2, 0.25), (0.23, 0.30, 2.2, 0.30), (0.31, 0.80, 1.4, 0.20),
+    (0.39, 0.12, 1.2, 0.28), (0.47, 0.52, 1.8, 0.22), (0.55, 0.24, 1.3, 0.30), (0.63, 0.70, 2.0, 0.24),
+    (0.71, 0.10, 1.5, 0.32), (0.78, 0.44, 1.2, 0.26), (0.86, 0.22, 2.4, 0.30), (0.93, 0.66, 1.4, 0.22),
+    (0.10, 0.90, 1.1, 0.18), (0.50, 0.92, 1.2, 0.16), (0.82, 0.88, 1.1, 0.18), (0.98, 0.36, 1.3, 0.24),
+  ];
+
+  @override
+  void paint(Canvas canvas, Size s) {
+    final p = Paint()..color = Colors.white;
+    for (final (x, y, r, a) in _flakes) {
+      p.color = Colors.white.withValues(alpha: a * opacity);
+      canvas.drawCircle(Offset(x * s.width, y * s.height), r, p);
+    }
+    // 큰 눈꽃 결정 두 개 (가는 선)
+    _crystal(canvas, Offset(s.width * 0.90, s.height * 0.30), 14, 0.16 * opacity);
+    _crystal(canvas, Offset(s.width * 0.68, s.height * 0.78), 9, 0.12 * opacity);
+  }
+
+  void _crystal(Canvas c, Offset o, double r, double a) {
+    final p = Paint()
+      ..color = Colors.white.withValues(alpha: a)
+      ..strokeWidth = 1.2
+      ..strokeCap = StrokeCap.round;
+    for (var i = 0; i < 6; i++) {
+      final ang = i * math.pi / 3;
+      final tip = o + Offset(math.cos(ang), math.sin(ang)) * r;
+      c.drawLine(o, tip, p);
+      final mid = o + Offset(math.cos(ang), math.sin(ang)) * r * 0.55;
+      for (final d in [-0.6, 0.6]) {
+        c.drawLine(mid, mid + Offset(math.cos(ang + d), math.sin(ang + d)) * r * 0.32, p);
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(_SnowPainter old) => old.opacity != opacity;
+}
+
+/// 섹션 제목: 작은 눈꽃 + 제목 + 오른쪽으로 옅어지는 선 (편집 디자인 느낌)
+class SectionHeader extends StatelessWidget {
+  final String title;
+  final EdgeInsetsGeometry padding;
+  const SectionHeader(this.title, {super.key, this.padding = const EdgeInsets.fromLTRB(20, 0, 20, 8)});
+  @override
+  Widget build(BuildContext context) => Padding(
+        padding: padding,
+        child: Row(children: [
+          ExcludeSemantics(child: Image.asset('assets/brand/snowflake_blue.png', width: 14, height: 14)),
+          const SizedBox(width: 7),
+          Text(title, style: const TextStyle(color: Brand.navy, fontSize: 15, fontWeight: FontWeight.w700, letterSpacing: 0.3)),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Container(
+              height: 1,
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(colors: [Color(0x332560AC), Color(0x002560AC)]),
+              ),
+            ),
+          ),
+        ]),
+      );
+}
+
+/// 빈 화면 그림: 눈 덮인 산 두 개와 기문(旗門) 깃발
+class AlpineEmptyArt extends StatelessWidget {
+  const AlpineEmptyArt({super.key});
+  @override
+  Widget build(BuildContext context) =>
+      ExcludeSemantics(child: CustomPaint(size: const Size(132, 72), painter: _AlpineArtPainter()));
+}
+
+class _AlpineArtPainter extends CustomPainter {
+  @override
+  void paint(Canvas c, Size s) {
+    final w = s.width, h = s.height;
+    // 바닥 눈 언덕
+    c.drawPath(
+        Path()
+          ..moveTo(0, h)
+          ..quadraticBezierTo(w * 0.5, h * 0.78, w, h)
+          ..close(),
+        Paint()..color = const Color(0xFFE3ECF8));
+    // 뒤 산
+    final back = Path()
+      ..moveTo(w * 0.30, h * 0.92)
+      ..lineTo(w * 0.62, h * 0.18)
+      ..lineTo(w * 0.94, h * 0.92)
+      ..close();
+    c.drawPath(back, Paint()..color = const Color(0xFFC9D9EF));
+    // 앞 산
+    final front = Path()
+      ..moveTo(w * 0.04, h * 0.95)
+      ..lineTo(w * 0.36, h * 0.30)
+      ..lineTo(w * 0.70, h * 0.95)
+      ..close();
+    c.drawPath(front, Paint()..color = const Color(0xFFA9C2E6));
+    // 눈 덮인 봉우리
+    void cap(double px, double py, double sw) {
+      c.drawPath(
+          Path()
+            ..moveTo(px, py)
+            ..lineTo(px - sw, py + sw * 1.15)
+            ..lineTo(px - sw * 0.35, py + sw * 0.85)
+            ..lineTo(px, py + sw * 1.2)
+            ..lineTo(px + sw * 0.4, py + sw * 0.85)
+            ..lineTo(px + sw, py + sw * 1.15)
+            ..close(),
+          Paint()..color = Colors.white);
+    }
+    cap(w * 0.36, h * 0.30, w * 0.07);
+    cap(w * 0.62, h * 0.18, w * 0.06);
+    // 기문 깃발 (빨강)
+    final pole = Paint()
+      ..color = const Color(0xFF6B7684)
+      ..strokeWidth = 1.6;
+    final fx = w * 0.80, fy = h * 0.50;
+    c.drawLine(Offset(fx, fy), Offset(fx, h * 0.96), pole);
+    c.drawPath(
+        Path()
+          ..moveTo(fx, fy)
+          ..lineTo(fx + w * 0.11, fy + h * 0.08)
+          ..lineTo(fx, fy + h * 0.16)
+          ..close(),
+        Paint()..color = const Color(0xFFE5484D));
+  }
+
+  @override
+  bool shouldRepaint(_AlpineArtPainter old) => false;
+}
+
+/// 헤더 배경: 단색 + 흩날리는 눈송이. Container(decoration: AlpineHeaderDecoration()) 로 사용.
+class AlpineHeaderDecoration extends Decoration {
+  final Color color;
+  const AlpineHeaderDecoration({this.color = Brand.navy});
+  @override
+  BoxPainter createBoxPainter([VoidCallback? onChanged]) => _AlpineHeaderPainter(color);
+}
+
+class _AlpineHeaderPainter extends BoxPainter {
+  final Color color;
+  _AlpineHeaderPainter(this.color);
+  @override
+  void paint(Canvas canvas, Offset offset, ImageConfiguration cfg) {
+    final size = cfg.size ?? Size.zero;
+    canvas.drawRect(offset & size, Paint()..color = color);
+    canvas.save();
+    canvas.translate(offset.dx, offset.dy);
+    _SnowPainter(1).paint(canvas, size);
+    canvas.restore();
   }
 }

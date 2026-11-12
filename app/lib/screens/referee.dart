@@ -222,7 +222,7 @@ class _DashboardTabState extends State<_DashboardTab> {
           ),
         );
     return Container(
-      color: Brand.navy,
+      decoration: const AlpineHeaderDecoration(),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
        Padding(
         padding: const EdgeInsets.fromLTRB(20, 8, 20, 8),
@@ -273,11 +273,7 @@ class _Section extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.only(top: 20),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
-          child: Text(title,
-              style: const TextStyle(color: Brand.navy, fontSize: 15, fontWeight: FontWeight.w700, letterSpacing: 0.5)),
-        ),
+        SectionHeader(title),
         ...children,
       ]),
     );

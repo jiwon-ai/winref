@@ -231,6 +231,7 @@ class BrandHero extends StatelessWidget {
               style: TextStyle(color: Colors.white, fontSize: 15, letterSpacing: 2)),
         ]),
       ),
+      const Positioned.fill(child: Snowfall(opacity: 0.9)),
       Positioned(left: 0, right: 0, bottom: -1, child: MountainRidge(height: 22 + 12 * t)),
     ]);
   }

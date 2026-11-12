@@ -115,17 +115,22 @@ class _OrganizerBoardState extends State<_OrganizerBoard> {
           onRefresh: () async => reload(),
           child: ListView(padding: const EdgeInsets.only(bottom: 96), children: [
             Container(
-              color: Brand.navy,
-              padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
-              child: Container(
-                decoration: BoxDecoration(color: Brand.navyLight, borderRadius: BorderRadius.circular(6)),
-                padding: const EdgeInsets.symmetric(vertical: 12),
-                child: Row(children: [
-                  _sum('예정 대회', '${upcoming.length}'),
-                  _sum('검토 대기', '$pending', highlight: pending > 0),
-                  _sum('선발 충원율', quota == 0 ? '-' : '${(selected * 100 / quota).round()}%'),
-                ]),
-              ),
+              decoration: const AlpineHeaderDecoration(),
+              child: Column(children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+                  child: Container(
+                    decoration: BoxDecoration(color: Brand.navyLight, borderRadius: BorderRadius.circular(6)),
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    child: Row(children: [
+                      _sum('예정 대회', '${upcoming.length}'),
+                      _sum('검토 대기', '$pending', highlight: pending > 0),
+                      _sum('선발 충원율', quota == 0 ? '-' : '${(selected * 100 / quota).round()}%'),
+                    ]),
+                  ),
+                ),
+                MountainRidge(height: 22, color: Theme.of(context).scaffoldBackgroundColor),
+              ]),
             ),
             if (snap.data!.isEmpty)
               const Padding(
@@ -151,10 +156,7 @@ class _OrganizerBoardState extends State<_OrganizerBoard> {
         ]),
       );
 
-  Widget _label(String t) => Padding(
-        padding: const EdgeInsets.fromLTRB(20, 20, 20, 8),
-        child: Text(t, style: const TextStyle(color: Brand.navy, fontSize: 15, fontWeight: FontWeight.w700)),
-      );
+  Widget _label(String t) => SectionHeader(t, padding: const EdgeInsets.fromLTRB(20, 20, 20, 8));
 
   Widget _card(BuildContext context, Map<String, dynamic> c, {bool past = false}) {
     final st = stats(c);

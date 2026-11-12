@@ -235,7 +235,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             onRefresh: () async => _reload(),
             child: ListView(children: [
               Container(
-                color: Brand.navy,
+                decoration: const AlpineHeaderDecoration(),
                 padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
                 child: Row(children: [
                   Stack(children: [
