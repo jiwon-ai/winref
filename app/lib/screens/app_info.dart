@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show LicenseRegistry;
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -59,16 +60,7 @@ class AppInfoScreen extends StatelessWidget {
             _Row(
               icon: Icons.description_outlined,
               title: '오픈소스 라이선스',
-              onTap: () => showLicensePage(
-                context: context,
-                applicationName: appName,
-                applicationVersion: appVersion,
-                applicationIcon: Padding(
-                  padding: const EdgeInsets.all(8),
-                  child: Image.asset('assets/brand/snowflake_blue.png', width: 48, height: 48),
-                ),
-                applicationLegalese: '© 주식회사 윈렙아카데미',
-              ),
+              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const OssLicensesScreen())),
             ),
           ]),
           const SizedBox(height: 32),
@@ -115,4 +107,73 @@ class _Row extends StatelessWidget {
         trailing: onTap == null ? null : const Icon(Icons.chevron_right, color: Brand.muted),
         onTap: onTap,
       );
+}
+
+/// 오픈소스 라이선스: 사용한 오픈소스 이름 목록 → 누르면 라이선스 전문
+class OssLicensesScreen extends StatelessWidget {
+  const OssLicensesScreen({super.key});
+
+  static final _licenses = _load(); // 한 번만 읽는다
+
+  static Future<Map<String, List<String>>> _load() async {
+    final out = <String, List<String>>{};
+    await for (final l in LicenseRegistry.licenses) {
+      final text = l.paragraphs.map((p) => p.text).join('\n\n');
+      for (final pkg in l.packages) {
+        (out[pkg] ??= []).add(text);
+      }
+    }
+    return Map.fromEntries(out.entries.toList()..sort((a, b) => a.key.toLowerCase().compareTo(b.key.toLowerCase())));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('오픈소스 라이선스')),
+      body: FutureBuilder<Map<String, List<String>>>(
+        future: _licenses,
+        builder: (context, snap) {
+          if (!snap.hasData) return const Center(child: CircularProgressIndicator());
+          final items = snap.data!.entries.toList();
+          return ListView.separated(
+            padding: const EdgeInsets.only(bottom: 48),
+            itemCount: items.length + 1,
+            separatorBuilder: (_, i) => i == 0 ? const SizedBox.shrink() : const Divider(height: 1, indent: 16),
+            itemBuilder: (context, i) {
+              if (i == 0) {
+                return const Padding(
+                  padding: EdgeInsets.fromLTRB(16, 16, 16, 8),
+                  child: Text('이 앱은 아래 오픈소스 소프트웨어를 사용합니다.', style: TextStyle(color: Brand.muted, fontSize: 13)),
+                );
+              }
+              final e = items[i - 1];
+              return ListTile(
+                dense: true,
+                tileColor: Colors.white,
+                title: Text(e.key, style: const TextStyle(fontSize: 14)),
+                trailing: const Icon(Icons.chevron_right, color: Brand.muted, size: 20),
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => Scaffold(
+                      appBar: AppBar(title: Text(e.key)),
+                      body: ListView(
+                        padding: const EdgeInsets.fromLTRB(16, 16, 16, 48),
+                        children: [
+                          for (final t in e.value) ...[
+                            Text(t, style: const TextStyle(fontSize: 12, height: 1.5, color: Brand.ink)),
+                            const Divider(height: 32),
+                          ],
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            },
+          );
+        },
+      ),
+    );
+  }
 }

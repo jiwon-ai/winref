@@ -187,8 +187,11 @@ try {
     await tap('앱 정보', 'menuitem');
     await see('WINREF 알파인 스키 심판 인재은행');
     await see('winrefacademy@gmail.com');
-    await see('오픈소스 라이선스');
     await shot('app-info');
+    await tap('오픈소스 라이선스');
+    await see('이 앱은 아래 오픈소스 소프트웨어를 사용합니다');
+    await shot('oss-licenses');
+    await tap('뒤로', 'button').catch(() => tap('Back', 'button'));
     await tap('뒤로', 'button').catch(() => tap('Back', 'button'));
     await see('다가오는 일정');
   });
