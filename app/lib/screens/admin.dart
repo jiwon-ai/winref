@@ -222,20 +222,16 @@ class _DashboardState extends State<_Dashboard> {
 
   // ---- 운영 현황 카드 → 상세 목록 ----
   Future<void> _detail(BuildContext context, Future<(String, List<(String, String, String)>)> Function() load) =>
-      showModalBottomSheet(
-        useSafeArea: true, // 상태바·하단바에 가리지 않게
-        context: context,
-        isScrollControlled: true,
-        builder: (_) => DraggableScrollableSheet(
-          expand: false,
-          initialChildSize: 0.75,
-          builder: (_, sc) => FutureBuilder<(String, List<(String, String, String)>)>(
+      showDetail(
+        context,
+        initial: 0.75,
+        builder: (_, sc) => FutureBuilder<(String, List<(String, String, String)>)>(
             future: load(),
             builder: (c, snap) {
               if (snap.hasError) return ErrorView(error: snap.error, onRetry: () => Navigator.pop(c));
               if (!snap.hasData) return const Center(child: CircularProgressIndicator());
               final (title, rows) = snap.data!;
-              return ListView(controller: sc, padding: const EdgeInsets.fromLTRB(8, 16, 8, 24), children: [
+              return ListView(controller: sc, padding: const EdgeInsets.fromLTRB(8, 16, 8, 48), children: [
                 ListTile(
                   title: Text(title, style: Theme.of(c).textTheme.titleLarge),
                   trailing: Text('${rows.length}건', style: const TextStyle(color: Brand.navy, fontWeight: FontWeight.w700)),
@@ -251,7 +247,6 @@ class _DashboardState extends State<_Dashboard> {
               ]);
             },
           ),
-        ),
       );
 
   Future<(String, List<(String, String, String)>)> _newMembers() async {
@@ -608,15 +603,10 @@ class _MembersState extends State<_Members> {
           item: (c, p, reload) {
             final org = p['role'] == 'organizer';
             Future<void> open() async {
-              final changed = await showModalBottomSheet<bool>(
-                useSafeArea: true, // 상태바·하단바에 가리지 않게
-                context: c,
-                isScrollControlled: true,
-                builder: (_) => DraggableScrollableSheet(
-                  expand: false,
-                  initialChildSize: p['role'] == 'referee' ? 0.9 : 0.7,
-                  builder: (_, sc) => _MemberSheet(member: p, controller: sc),
-                ),
+              final changed = await showDetail<bool>(
+                c,
+                initial: p['role'] == 'referee' ? 0.9 : 0.7,
+                builder: (_, sc) => _MemberSheet(member: p, controller: sc),
               );
               if (changed == true) reload();
             }
@@ -744,7 +734,7 @@ class _MemberSheet extends StatelessWidget {
     final me = p['id'] == uid;
     return SingleChildScrollView(
       controller: controller,
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.fromLTRB(20, 20, 20, 48), // 맨 아래 여유
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         Row(children: [
           Avatar(path: p['avatar_path'], name: p['name'] ?? '', size: 56),

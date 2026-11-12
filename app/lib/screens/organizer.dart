@@ -548,17 +548,7 @@ class _ApplicantsManageState extends State<_ApplicantsManage> {
       trailing: StatusChip(done ? '활동완료' : label(a['status']), done ? 'approved' : a['status']),
       isThreeLine: clash != null,
       onTap: () async {
-        await showModalBottomSheet(
-          useSafeArea: true, // 상태바·하단바에 가리지 않게
-          context: c,
-          isScrollControlled: true,
-          builder: (_) => DraggableScrollableSheet(
-            expand: false,
-            initialChildSize: 0.85,
-            maxChildSize: 0.95,
-            builder: (_, sc) => _ApplicantSheet(app: a, controller: sc),
-          ),
-        );
+        await showDetail(c, builder: (_, sc) => _ApplicantSheet(app: a, controller: sc));
         _reload();
       },
     );
@@ -583,7 +573,7 @@ class _ApplicantSheet extends StatelessWidget {
     return SafeArea(
       child: SingleChildScrollView(
         controller: controller,
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.fromLTRB(20, 20, 20, 48), // 맨 아래 여유
         child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
           Row(children: [
             Avatar(path: p['avatar_path'], name: p['name'] ?? '', size: 56),

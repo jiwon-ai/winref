@@ -987,3 +987,74 @@ class _BackGuardState extends State<BackGuard> {
         child: widget.child,
       );
 }
+
+/// 긴 상세 화면 열기: 휴대폰은 아래에서 올라오는 시트, PC(폭 900 이상)는 가운데 창.
+/// PC 창은 높이를 화면의 88% 로 제한하고 스크롤바를 항상 보여 아래 내용이 잘려 보이지 않게 한다.
+Future<T?> showDetail<T>(
+  BuildContext context, {
+  double initial = 0.85,
+  required Widget Function(BuildContext context, ScrollController controller) builder,
+}) {
+  if (MediaQuery.sizeOf(context).width >= 900) {
+    return showDialog<T>(context: context, builder: (_) => _DetailDialog(builder: builder));
+  }
+  return showModalBottomSheet<T>(
+    useSafeArea: true, // 상태바·하단바에 가리지 않게
+    context: context,
+    isScrollControlled: true,
+    builder: (_) => DraggableScrollableSheet(
+      expand: false,
+      initialChildSize: initial,
+      maxChildSize: 0.95,
+      builder: builder,
+    ),
+  );
+}
+
+class _DetailDialog extends StatefulWidget {
+  final Widget Function(BuildContext, ScrollController) builder;
+  const _DetailDialog({required this.builder});
+  @override
+  State<_DetailDialog> createState() => _DetailDialogState();
+}
+
+class _DetailDialogState extends State<_DetailDialog> {
+  final _sc = ScrollController();
+
+  @override
+  void dispose() {
+    _sc.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final h = MediaQuery.sizeOf(context).height;
+    return Dialog(
+      backgroundColor: Colors.white,
+      surfaceTintColor: Colors.transparent,
+      insetPadding: const EdgeInsets.all(24),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      clipBehavior: Clip.antiAlias,
+      child: ConstrainedBox(
+        constraints: BoxConstraints(maxWidth: 760, maxHeight: h * 0.88),
+        child: Stack(children: [
+          Scrollbar(
+            controller: _sc,
+            thumbVisibility: true,
+            child: Padding(padding: const EdgeInsets.only(top: 44), child: widget.builder(context, _sc)), // 위쪽은 닫기 버튼 자리
+          ),
+          Positioned(
+            top: 8,
+            right: 8,
+            child: IconButton(
+              tooltip: '닫기',
+              icon: const Icon(Icons.close),
+              onPressed: () => Navigator.pop(context),
+            ),
+          ),
+        ]),
+      ),
+    );
+  }
+}
