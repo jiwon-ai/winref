@@ -675,12 +675,12 @@ try {
   await check('관리자: 처리 기록·앱 오류 기록', async () => {
     await tap('처리 기록', 'any!');
     await shot('admin-audit');
-    await tap('선발 처리', 'any!');
+    await tap('선발 처리', 'checkbox!');
     await see('선발 처리 · 김심판');
     await see('지원완료 → 선발');
-    await tap('현장 출석', 'any!');
+    await tap('현장 출석', 'checkbox!');
     await see('현장 출석 · 김심판');
-    await tap('탈퇴 처리', 'any!');
+    await tap('탈퇴 처리', 'checkbox!');
     await see('탈퇴 처리 · (탈퇴 회원)');       // 탈퇴 처리된 회원은 이름을 남기지 않음
     await shot('admin-audit-filter');
     await tap('앱 오류 기록', 'tab');
