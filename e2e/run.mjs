@@ -456,9 +456,13 @@ try {
     await see('가입 정보 입력');
     await shot('onboarding');
     await tap('대회관계자');
-    await type('휴대폰', '01099998888');
+    await type('휴대폰', '0109999');            // 번호를 덜 입력하면 가입되지 않아야 함
     await type('소속 기관', '무주스키클럽');
     await tap('개인정보 수집', 'checkbox');
+    await tap('가입 완료', 'button');
+    await see('휴대폰 번호를 정확히 입력해 주세요');
+    if (sql(`select onboarded from profiles where name='최소셜'`) !== 'f') throw new Error('번호 미완성인데 가입 완료됨');
+    await retype('휴대폰', '01099998888');
     await tap('가입 완료', 'button');
     await see('기관 승인 대기');
     const r = sql(`select role||','||org_status||','||onboarded||','||(agreed_at is not null) from profiles where name='최소셜'`);
