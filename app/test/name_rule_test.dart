@@ -36,7 +36,7 @@ void main() {
     for (final bad in ['23252', '0101234567', '02123456789', '01212345678']) {
       expect(phoneError(bad), isNotNull, reason: bad);
     }
-    var v = const TextEditingValue(text: '010-1234-5678ab9');
+    var v = const TextEditingValue(text: '010-1234-5678ab9', selection: TextSelection.collapsed(offset: 16));
     for (final f in phoneInput) {
       v = f.formatEditUpdate(TextEditingValue.empty, v);
     }
