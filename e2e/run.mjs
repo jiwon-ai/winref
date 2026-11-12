@@ -308,6 +308,10 @@ try {
     await see('검토 대기 3명');   // 홈 보드: 대회별 검토 대기 인원
     await shot('organizer-home'); await store('organizer-home');
     await tap('2026 용평컵 알파인 스키대회', 'button');
+    await see('대회 정보 수정');          // 첫 탭: 대회 상세 정보
+    await see('평창알파인클럽');
+    await shot('org-competition-info');
+    await tap('모집공고', 'tab');
     await see('모집 직무').catch(() => {});
     await shot('org-recruitments');
     await tap('지원자', 'tab');

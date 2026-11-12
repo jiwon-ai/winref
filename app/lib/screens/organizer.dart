@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../common.dart';
 import '../theme.dart';
+import '../venue_map.dart';
 import 'profile.dart';
 
 /// 대회관계자 홈: 내 대회 목록 → 대회별 모집공고·지원자·브리핑 관리
@@ -276,7 +277,7 @@ class _CompetitionManageState extends State<CompetitionManage> {
   @override
   Widget build(BuildContext context) {
     return DefaultTabController(
-      length: 3,
+      length: 4,
       child: Scaffold(
         appBar: AppBar(
           actions: [
@@ -284,15 +285,73 @@ class _CompetitionManageState extends State<CompetitionManage> {
             IconButton(tooltip: '대회 삭제', onPressed: _delete, icon: const Icon(Icons.delete_outline)),
           ],
           title: Text(competition['name']),
-          bottom: const TabBar(tabs: [Tab(text: '모집공고'), Tab(text: '지원자'), Tab(text: '브리핑')]),
+          bottom: const TabBar(tabs: [Tab(text: '대회 정보'), Tab(text: '모집공고'), Tab(text: '지원자'), Tab(text: '브리핑')]),
         ),
         body: TabBarView(children: [
+          _CompetitionInfo(competition: competition, onEdit: _edit),
           _RecruitmentsManage(cid: competition['id']),
           _ApplicantsManage(cid: competition['id']),
           _BriefingsManage(cid: competition['id']),
         ]),
       ),
     );
+  }
+}
+
+// ---------- 대회 정보 ----------
+
+class _CompetitionInfo extends StatelessWidget {
+  final Map<String, dynamic> competition;
+  final VoidCallback onEdit;
+  const _CompetitionInfo({required this.competition, required this.onEdit});
+
+  @override
+  Widget build(BuildContext context) {
+    final c = competition;
+    String? v(String k) => (c[k] ?? '').toString().trim().isEmpty ? null : c[k].toString();
+    Widget row(String k, String? val) => Padding(
+          padding: const EdgeInsets.symmetric(vertical: 7),
+          child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            SizedBox(width: 84, child: Text(k, style: const TextStyle(color: Brand.muted))),
+            Expanded(
+              child: Text(val ?? '미입력',
+                  style: TextStyle(fontWeight: FontWeight.w600, color: val == null ? Brand.muted : Brand.ink)),
+            ),
+          ]),
+        );
+    final organizer = c['profiles'] is Map ? (c['profiles']['organization'] ?? c['profiles']['name']) : null;
+    return ListView(padding: const EdgeInsets.fromLTRB(16, 16, 16, 48), children: [
+      if (v('discipline') != null) Align(alignment: Alignment.centerLeft, child: DisciplineTag(c['discipline'])),
+      const SizedBox(height: 8),
+      Text(c['name'] ?? '', style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w700)),
+      const SizedBox(height: 12),
+      Container(
+        padding: const EdgeInsets.fromLTRB(18, 12, 18, 12),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: Brand.line),
+        ),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          row('일정', '${fmtDate(c['starts_on'])}${c['ends_on'] != null ? ' ~ ${fmtDate(c['ends_on'])}' : ''}'),
+          row('경기 종목', v('discipline')),
+          row('장소', v('venue')),
+          row('주소', v('address')),
+          row('주최·주관', v('host_org')),
+          if (organizer != null) row('등록', organizer.toString()),
+          if (v('address') != null || v('venue') != null) ...[
+            const SizedBox(height: 8),
+            VenueMap(venue: c['venue'], address: c['address']),
+          ],
+          if (c['poster_path'] != null) ...[
+            const SizedBox(height: 8),
+            fileButton(context, c['poster_path'], label: '대회 포스터 보기'),
+          ],
+        ]),
+      ),
+      const SizedBox(height: 16),
+      OutlinedButton.icon(onPressed: onEdit, icon: const Icon(Icons.edit_outlined), label: const Text('대회 정보 수정')),
+    ]);
   }
 }
 
