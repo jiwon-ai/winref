@@ -334,7 +334,7 @@ class _SignupScreenState extends State<SignupScreen> {
                 child: Text('대회관계자는 관리자 승인 후 대회 등록이 가능합니다.', style: TextStyle(color: Brand.muted, fontSize: 13)),
               ),
             const SizedBox(height: 20),
-            _f(_name, '이름', required: true, formatters: koreanNameInput, validator: koreanNameError),
+            _f(_name, '이름 (실명, 한글)', required: true, formatters: koreanNameInput, validator: koreanNameError),
             _f(_email, '이메일', required: true, type: TextInputType.emailAddress, validator: (v) {
               return v != null && v.contains('@') ? null : '이메일 형식이 아닙니다';
             }),
