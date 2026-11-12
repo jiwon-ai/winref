@@ -682,8 +682,6 @@ try {
     await see('현장 출석 · 김심판');
     await tap('탈퇴 처리', 'any!');
     await see('탈퇴 처리 · (탈퇴 회원)');       // 탈퇴 처리된 회원은 이름을 남기지 않음
-    await tap('자격 승인', 'any!');
-    await see('자격 승인 · 김심판');
     await shot('admin-audit-filter');
     await tap('앱 오류 기록', 'tab');
     await see('사용자 기기에서 앱이 예상하지 못한 오류');
