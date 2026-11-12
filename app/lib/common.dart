@@ -27,11 +27,13 @@ Future<void> openPrivacy() =>
 const mobileAuthCallback = 'kr.co.winref.app://login-callback';
 
 /// Supabase 인증 오류를 사용자용 한국어로
+const alreadyRegistered = '이미 가입된 이메일입니다. 그 이메일로 로그인하거나, 카카오·구글로 가입하셨다면 해당 버튼으로 로그인해 주세요.';
+
 String authMessage(AuthException e) {
   final m = e.message.toLowerCase();
   if (m.contains('invalid login credentials')) return '이메일 또는 비밀번호가 올바르지 않습니다.';
   if (m.contains('email not confirmed')) return '이메일 인증이 필요합니다. 받은 메일의 링크를 눌러주세요.';
-  if (m.contains('already registered') || m.contains('already been registered')) return '이미 가입된 이메일입니다. 로그인해 주세요.';
+  if (m.contains('already registered') || m.contains('already been registered')) return alreadyRegistered;
   // 이전과 같은 비밀번호 (서버 문구에 'password should be different' 가 들어 있어 '짧다'보다 먼저 확인)
   if (e.code == 'same_password' || (m.contains('different') && m.contains('password')) || (m.contains('same') && m.contains('password'))) {
     return '이전과 같은 비밀번호입니다. 다른 비밀번호를 입력해 주세요.';

@@ -295,6 +295,9 @@ class _SignupScreenState extends State<SignupScreen> {
         'phone': _phone.text.trim(),
         if (_role == 'organizer') 'organization': _org.text.trim(),
       });
+      // 이미 가입된 이메일(카카오·구글로 가입한 경우 포함): 이메일 인증을 켠 서버는 오류 대신
+      // 빈 identities 를 돌려주므로 직접 확인해 중복 계정이 생기지 않게 안내한다.
+      if (res.user != null && (res.user!.identities?.isEmpty ?? false)) throw alreadyRegistered;
       // 이메일 인증을 켠 프로젝트는 세션이 없으므로 안내만 한다.
       needsConfirm = res.session == null;
     });

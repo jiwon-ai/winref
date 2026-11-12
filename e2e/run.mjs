@@ -434,6 +434,19 @@ try {
     if (sql(`select count(*) from auth.users where email='ref2@test.kr'`) !== '0') throw new Error('계정이 삭제되지 않음');
   });
 
+  await check('이미 가입된 이메일로 재가입 → 안내 (중복 계정 방지)', async () => {
+    await tap('회원가입', 'button');
+    await type('이름', '중복');
+    await type('이메일', 'ref@test.kr');
+    await type('비밀번호', 'Test1234!');
+    await type('휴대폰', '01099998888');
+    await tap('개인정보 수집', 'checkbox');
+    await tap('가입하기', 'button');
+    await see('이미 가입된 이메일입니다');
+    if (sql(`select count(*) from auth.users where email='ref@test.kr'`) !== '1') throw new Error('같은 이메일 계정이 2개 생김');
+    await tap('뒤로', 'button').catch(() => tap('Back', 'button'));
+  });
+
   await check('소셜 로그인 버튼 표시', async () => {
     await see('Google로 계속하기'); // 카카오는 키 설정 후 KAKAO=true 빌드에서만 표시
   });
