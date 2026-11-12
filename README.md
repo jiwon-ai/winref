@@ -12,9 +12,13 @@ Flutter 안드로이드 앱 + 관리자 웹(같은 코드, Flutter Web) + Supaba
 
 ## 1. Supabase (서버)
 
-1. supabase.com 에서 프로젝트 생성 (WINREF 가 관리하는 계정, 리전 Seoul).
-2. SQL Editor 에서 `supabase/migrations/` 의 파일을 번호 순서대로(0001 → 0004) 모두 실행.
+1. supabase.com 에서 프로젝트 생성 (현재 운영: 리전 eu-west-1 아일랜드 — 개인정보처리방침 국외이전 항목과 일치해야 함).
+2. SQL Editor 에서 `supabase/migrations/` 의 파일을 번호 순서대로(0001 → 마지막 번호) 모두 실행. 모든 파일은 여러 번 실행해도 안전(idempotent).
 3. Authentication > Providers > Email 사용. (가입 확인 메일을 끄면 바로 로그인)
+   - Email OTP Length = 6 (임시 비밀번호 6자리), 메일 템플릿 'Reset password' 는 `{{ .Token }}` 사용
+   - SMTP Settings: smtp.gmail.com:465, 회사 Gmail + 앱 비밀번호 (발신 주소가 회사 메일이 되도록)
+   - URL Configuration: Site URL = 관리자 웹 주소, Redirect URLs = 관리자 웹 주소, `주소/**`, `kr.co.winref.app://login-callback`
+   - 소셜 로그인: Google, Kakao(REST API 키 + 카카오 로그인 Client Secret, 동의항목 닉네임·이메일 필수). 카카오 버튼은 빌드 옵션 `--dart-define=KAKAO=true` 일 때만 표시
 4. Database > Extensions 에서 `pg_cron`, `pg_net` 활성화 후 `supabase/setup/cron.sql` 실행.
 5. 관리자 계정: 앱에서 가입 → SQL Editor 에서 `cron.sql` 맨 아래 주석의 update 문 실행.
 

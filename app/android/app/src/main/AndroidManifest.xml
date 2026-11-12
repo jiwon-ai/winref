@@ -49,6 +49,11 @@
             <action android:name="android.intent.action.VIEW" />
             <data android:scheme="https" />
         </intent>
+        <!-- 앱 정보 > 문의 메일 -->
+        <intent>
+            <action android:name="android.intent.action.SENDTO" />
+            <data android:scheme="mailto" />
+        </intent>
         <!-- 네이버 지도 앱 열기 (lib/venue_map.dart) -->
         <intent>
             <action android:name="android.intent.action.VIEW" />

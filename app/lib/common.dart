@@ -791,11 +791,18 @@ List<Widget> commonActions(BuildContext context, Map<String, dynamic> profile) =
             case 'about':
               showAboutDialog(
                 context: context,
-                applicationName: 'WINREF 인재은행',
+                applicationName: 'WINREF 알파인 스키 심판 인재은행',
                 applicationVersion: const String.fromEnvironment('BUILD').isEmpty ? '1.0.0' : '1.0.0 (빌드 ${const String.fromEnvironment('BUILD')})',
                 applicationIcon: Image.asset('assets/brand/snowflake_blue.png', width: 48, height: 48),
-                applicationLegalese: '운영 윈렙아카데미 · 개발 빠드빠닉',
+                applicationLegalese: '운영 주식회사 윈렙아카데미 · 개발 빠드빠닉',
                 children: [
+                  const SizedBox(height: 8),
+                  const Text('문의', style: TextStyle(fontWeight: FontWeight.w700)),
+                  TextButton.icon(
+                    onPressed: () => launchUrl(Uri.parse('mailto:winrefacademy@gmail.com?subject=WINREF 앱 문의')),
+                    icon: const Icon(Icons.mail_outline, size: 18),
+                    label: const Text('winrefacademy@gmail.com'),
+                  ),
                   TextButton(onPressed: openPrivacy, child: const Text('개인정보처리방침')),
                   const SizedBox(height: 8),
                   const SupportProgramMark(),
