@@ -51,7 +51,7 @@ class _CareerViewState extends State<CareerView> {
           ]),
           if (showContact) ...[
             const SizedBox(height: 16),
-            _Info(Icons.phone_outlined, profile['phone'] ?? '-'),
+            _Info(Icons.phone_outlined, profile['phone'] == null ? '-' : fmtPhone(profile['phone'])),
             if (profile['email'] != null) _Info(Icons.alternate_email, profile['email']),
           ],
           if ((profile['region'] ?? '').toString().isNotEmpty || (profile['sport'] ?? '').toString().isNotEmpty) ...[

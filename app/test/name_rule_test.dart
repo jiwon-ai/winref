@@ -28,4 +28,20 @@ void main() {
       expect(koreanNameError(bad), isNotNull, reason: bad);
     }
   });
+
+  test('휴대폰 번호 규칙', () {
+    expect(phoneError('01012345678'), isNull);
+    expect(phoneError('0111234567'), isNull);
+    expect(phoneError(''), '필수 입력');
+    for (final bad in ['23252', '0101234567', '02123456789', '01212345678']) {
+      expect(phoneError(bad), isNotNull, reason: bad);
+    }
+    var v = const TextEditingValue(text: '010-1234-5678ab9');
+    for (final f in phoneInput) {
+      v = f.formatEditUpdate(TextEditingValue.empty, v);
+    }
+    expect(v.text, '01012345678'); // 숫자만, 11자리 제한
+    expect(fmtPhone('01012345678'), '010-1234-5678');
+    expect(fmtPhone('0111234567'), '011-123-4567');
+  });
 }

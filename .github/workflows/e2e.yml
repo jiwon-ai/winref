@@ -68,12 +68,12 @@ jobs:
               -H "apikey: $SERVICE_ROLE_KEY" -H "Authorization: Bearer $SERVICE_ROLE_KEY" -H "Content-Type: application/json" \
               -d "{\"email\":\"$1\",\"password\":\"Test1234!\",\"email_confirm\":true,\"user_metadata\":$2}" > /dev/null
           }
-          mk admin@test.kr '{"name":"관리자"}'
-          mk org@test.kr '{"name":"박관계","role":"organizer","organization":"평창알파인클럽"}'
-          mk ref2@test.kr '{"name":"이심판"}'
-          mk ref3@test.kr '{"name":"박심판"}'
+          mk admin@test.kr '{"name":"관리자","phone":"01000000001"}'
+          mk org@test.kr '{"name":"박관계","role":"organizer","organization":"평창알파인클럽","phone":"01000000002"}'
+          mk ref2@test.kr '{"name":"이심판","phone":"01000000003"}'
+          mk ref3@test.kr '{"name":"박심판","phone":"01000000004"}'
           mk social@test.kr '{"full_name":"최소셜"}'
-          mk reset@test.kr '{"name":"정재설"}'
+          mk reset@test.kr '{"name":"정재설","phone":"01000000005"}'
           psql "$DB_URL" -v ON_ERROR_STOP=1 -q -f e2e/seed.sql
           psql "$DB_URL" -c "select role, name, org_status from profiles"
 

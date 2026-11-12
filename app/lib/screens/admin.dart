@@ -310,7 +310,7 @@ class _DashboardState extends State<_Dashboard> {
         for (final q in rows)
           (
             '${q['profiles']?['name'] ?? ''} · ${q['name']} ${q['grade'] ?? ''}',
-            '${q['cert_no'] != null ? 'No.${q['cert_no']} · ' : ''}${q['profiles']?['phone'] ?? ''}',
+            '${q['cert_no'] != null ? 'No.${q['cert_no']} · ' : ''}${fmtPhone(q['profiles']?['phone'])}',
             '만료 ${fmtDate(q['expires_on'])}',
           )
       ]
@@ -649,7 +649,7 @@ class _MembersState extends State<_Members> {
                       ]),
                     ),
                     Expanded(child: Text(p['email'] ?? '-', overflow: TextOverflow.ellipsis)),
-                    SizedBox(width: 140, child: Text(p['phone'] ?? '-')),
+                    SizedBox(width: 140, child: Text(p['phone'] == null ? '-' : fmtPhone(p['phone']))),
                     SizedBox(width: 110, child: Text(roleName[p['role']] ?? '', style: const TextStyle(fontSize: 13))),
                     SizedBox(width: 100, child: Text(fmtDate(p['created_at']), style: const TextStyle(color: Brand.muted, fontSize: 13))),
                     SizedBox(width: 150, child: Align(alignment: Alignment.centerRight, child: status)),
@@ -659,7 +659,7 @@ class _MembersState extends State<_Members> {
             }
             return ListTile(
               title: Text('${p['name']}  ${org ? '· ${p['organization'] ?? ''}' : ''}'),
-              subtitle: Text('${p['email'] ?? '-'}\n${p['phone'] ?? '-'} · 가입 ${fmtDate(p['created_at'])}'),
+              subtitle: Text('${p['email'] ?? '-'}\n${p['phone'] == null ? '-' : fmtPhone(p['phone'])} · 가입 ${fmtDate(p['created_at'])}'),
               isThreeLine: true,
               trailing: status,
               leading: Avatar(path: p['avatar_path'], name: p['name'] ?? '', size: 40),
@@ -761,7 +761,7 @@ class _MemberSheet extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
             child: Column(children: [
               _info(Icons.alternate_email, '이메일(아이디)', p['email']),
-              _info(Icons.phone_outlined, '연락처', p['phone']),
+              _info(Icons.phone_outlined, '연락처', p['phone'] == null ? null : fmtPhone(p['phone'])),
               _info(Icons.cake_outlined, '생년월일', p['birth_date'] == null ? null : fmtDate(p['birth_date'])),
               _info(Icons.place_outlined, '활동 지역', p['region']),
               _info(Icons.flag_outlined, '전문 종목', p['sport']),
@@ -997,7 +997,7 @@ class _CourseApplicants extends StatelessWidget {
         empty: '신청자가 없습니다.',
         item: (c, a, reload) => ListTile(
           title: Text(a['profiles']['name']),
-          subtitle: Text('${a['profiles']['phone'] ?? '-'} · 신청 ${fmtDateTime(a['created_at'])}'),
+          subtitle: Text('${a['profiles']['phone'] == null ? '-' : fmtPhone(a['profiles']['phone'])} · 신청 ${fmtDateTime(a['created_at'])}'),
           trailing: a['status'] == 'applied'
               ? FilledButton(
                   style: FilledButton.styleFrom(minimumSize: const Size(64, 40)),

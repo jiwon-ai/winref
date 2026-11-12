@@ -225,6 +225,27 @@ String? koreanNameError(String? v) {
 
 bool isKoreanName(String? v) => koreanNameError(v) == null;
 
+/// 휴대폰 번호: 숫자만, 010 은 11자리 (011·016~019 는 10~11자리). 하이픈 없이 저장.
+final phoneInput = <TextInputFormatter>[
+  FilteringTextInputFormatter.digitsOnly,
+  LengthLimitingTextInputFormatter(11),
+];
+final _phoneRe = RegExp(r'^(010\d{8}|01[16789]\d{7,8})$');
+
+String? phoneError(String? v) {
+  final s = v ?? '';
+  if (s.isEmpty) return '필수 입력';
+  if (!_phoneRe.hasMatch(s)) return '휴대폰 번호를 정확히 입력해 주세요. (예: 01012345678)';
+  return null;
+}
+
+/// 화면 표시용: 01012345678 → 010-1234-5678
+String fmtPhone(Object? v) {
+  final s = (v ?? '').toString();
+  if (!_phoneRe.hasMatch(s)) return s;
+  return s.length == 11 ? '${s.substring(0, 3)}-${s.substring(3, 7)}-${s.substring(7)}' : '${s.substring(0, 3)}-${s.substring(3, 6)}-${s.substring(6)}';
+}
+
 // ---------- 입력 폼 다이얼로그 ----------
 
 enum FieldType { text, multiline, number, date, datetime, file }
@@ -242,9 +263,11 @@ class Field {
   final String? autoFrom;
   final int autoYears;
   final bool koreanName; // 이름 규칙(한글만·띄어쓰기 없음) 적용
+  final bool phone; // 휴대폰 번호 규칙(숫자만·자리수) 적용
   const Field(this.key, this.label,
       {this.type = FieldType.text,
       this.koreanName = false,
+      this.phone = false,
       this.required = false,
       this.initial,
       this.helper,
@@ -397,8 +420,8 @@ class _FormScreenState extends State<_FormScreen> {
                       : f.type == FieldType.date || f.type == FieldType.datetime || f.type == FieldType.file
                           ? () => _pick(f)
                           : null,
-                  keyboardType: f.type == FieldType.number ? TextInputType.number : null,
-                  inputFormatters: f.koreanName ? koreanNameInput : null,
+                  keyboardType: f.type == FieldType.number || f.phone ? TextInputType.number : null,
+                  inputFormatters: f.koreanName ? koreanNameInput : f.phone ? phoneInput : null,
                   maxLines: f.type == FieldType.multiline ? 5 : 1,
                   decoration: InputDecoration(
                     labelText: f.required ? '${f.label} *' : f.label,
@@ -418,6 +441,7 @@ class _FormScreenState extends State<_FormScreen> {
                   ),
                   validator: (v) {
                     if (f.koreanName) return koreanNameError(v);
+                    if (f.phone) return phoneError(v);
                     if (f.required && (v == null || v.trim().isEmpty)) return '필수 입력';
                     if (f.type == FieldType.number && v != null && v.trim().isNotEmpty && int.tryParse(v.trim()) == null) {
                       return '숫자만 입력';
@@ -629,7 +653,7 @@ Future<bool> editProfile(BuildContext context, Map<String, dynamic> p) async {
   final referee = p['role'] == 'referee';
   final v = await showForm(context, '내 정보 수정', [
     Field('name', '이름', required: true, koreanName: true, helper: '한글만, 띄어쓰기 없이', initial: p['name']),
-    Field('phone', '휴대폰', initial: p['phone']),
+    Field('phone', '휴대폰', required: true, phone: true, helper: '숫자만 (예: 01012345678)', initial: p['phone']),
     Field('birth_date', '생년월일', type: FieldType.date, initial: p['birth_date']),
     if (p['role'] == 'organizer') Field('organization', '소속 기관', initial: p['organization']),
     if (referee) ...[

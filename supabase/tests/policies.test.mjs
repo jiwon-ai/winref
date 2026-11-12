@@ -34,10 +34,10 @@ async function as(uid, sql, params = []) {
 
 // 가입
 await db.exec(`insert into auth.users values
- ('${ADMIN}', '{"name":"관리자","role":"admin"}'),
- ('${REF}', '{"name":"심판일"}'),
- ('${REF2}', '{"name":"심판이"}'),
- ('${ORG}', '{"name":"관계자","role":"organizer","organization":"OO협회"}');`);
+ ('${ADMIN}', '{"name":"관리자","role":"admin","phone":"01011110004"}'),
+ ('${REF}', '{"name":"심판일","phone":"01011110001"}'),
+ ('${REF2}', '{"name":"심판이","phone":"01011110002"}'),
+ ('${ORG}', '{"name":"관계자","role":"organizer","organization":"OO협회","phone":"01011110003"}');`);
 let r = (await db.query(`select id, role, org_status from profiles order by id`)).rows;
 ok(r.find(x => x.id === ADMIN).role === 'referee', '가입으로 admin 권한 획득 불가');
 ok(r.find(x => x.id === ORG).org_status === 'pending', '대회관계자 가입 시 승인 대기');
@@ -129,13 +129,21 @@ await db.exec(`insert into auth.users values ('${EN}', '{"name":"Jiwon"}', '{"pr
 ok((await db.query(`select onboarded from profiles where id='${EN}'`)).rows[0].onboarded === false, '이메일 가입 이름이 영문이면 가입 정보 입력 화면으로');
 const KK = '00000000-0000-0000-0000-0000000000e3';
 await db.exec(`insert into auth.users values ('${KK}', '{"nickname":"지원😊"}', '{"provider":"kakao"}', 'kk@test.kr')`);
-ok((await as(KK, `update profiles set name='지원😊', onboarded=true, agreed_at=now() where id=$1`, [KK])).err, '이모지 이름으로 가입 확정 차단');
-ok(!(await as(KK, `update profiles set name='김지원', onboarded=true, agreed_at=now() where id=$1`, [KK])).err, '한글 이름으로 가입 확정');
+ok((await as(KK, `update profiles set name='지원😊', phone='01012345678', onboarded=true, agreed_at=now() where id=$1`, [KK])).err, '이모지 이름으로 가입 확정 차단');
+ok((await as(KK, `update profiles set name='김지원', phone='23252', onboarded=true, agreed_at=now() where id=$1`, [KK])).err, '잘못된 번호로 가입 확정 차단');
+ok(!(await as(KK, `update profiles set name='김지원', phone='01012345678', onboarded=true, agreed_at=now() where id=$1`, [KK])).err, '한글 이름·올바른 번호로 가입 확정');
 for (const bad of ['Jiwon', '김 지원', '김', '김지원1', '김-지원']) {
   ok((await as(KK, `update profiles set name=$2 where id=$1`, [KK, bad])).err, `이름 수정 차단: ${bad}`);
 }
 ok(!(await as(KK, `update profiles set region='강원' where id=$1`, [KK])).err, '이름 외 항목 수정은 영향 없음');
 ok(!(await as(ADMIN, `update profiles set name='박지원' where id=$1`, [KK])).err, '관리자 이름 수정(규칙 준수)');
+for (const bad of ['23252', '010-1234-5678', '0101234567', '010123456789', '02123456789', '01212345678']) {
+  ok((await as(KK, `update profiles set phone=$2 where id=$1`, [KK, bad])).err, `번호 수정 차단: ${bad}`);
+}
+ok(!(await as(KK, `update profiles set phone='0111234567' where id=$1`, [KK])).err, '011 10자리 허용');
+const BADPH = '00000000-0000-0000-0000-0000000000e4';
+await db.exec(`insert into auth.users values ('${BADPH}', '{"name":"홍길동","phone":"23252"}', '{"provider":"email"}', 'ph@test.kr')`);
+ok((await db.query(`select onboarded from profiles where id='${BADPH}'`)).rows[0].onboarded === false, '이메일 가입 번호가 잘못되면 가입 정보 입력 화면으로');
 
 // --- 0006: 정원·대회 삭제 보호·처리자 알림·자격증 사본 ---
 const nc = async (u, kind) => (await db.query(`select count(*)::int n from notifications where user_id='${u}' and kind='${kind}'`)).rows[0].n;

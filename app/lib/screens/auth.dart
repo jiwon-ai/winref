@@ -341,7 +341,7 @@ class _SignupScreenState extends State<SignupScreen> {
             _f(_pw, '비밀번호 (8자 이상)', required: true, obscure: true, validator: (v) {
               return (v ?? '').length >= 8 ? null : '8자 이상 입력';
             }),
-            _f(_phone, '휴대폰 번호', required: true, type: TextInputType.phone),
+            _f(_phone, '휴대폰 번호 (숫자만)', required: true, type: TextInputType.number, formatters: phoneInput, validator: phoneError),
             if (_role == 'organizer') _f(_org, '소속 기관', required: true),
             CheckboxListTile(
               value: _agree,
@@ -659,9 +659,10 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           const SizedBox(height: 12),
           TextFormField(
             controller: _phone,
-            keyboardType: TextInputType.phone,
-            decoration: const InputDecoration(labelText: '휴대폰 번호'),
-            validator: (v) => (v ?? '').trim().isEmpty ? '필수 입력' : null,
+            keyboardType: TextInputType.number,
+            decoration: const InputDecoration(labelText: '휴대폰 번호', helperText: '숫자만 (예: 01012345678)'),
+            inputFormatters: phoneInput,
+            validator: phoneError,
           ),
           if (_role == 'organizer') ...[
             const SizedBox(height: 12),
