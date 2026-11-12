@@ -39,6 +39,15 @@ class _RefereeCardScreenState extends State<RefereeCardScreen> {
           if (snap.hasError) return ErrorView(error: snap.error, onRetry: () => setState(() {}));
           if (!snap.hasData) return const Center(child: CircularProgressIndicator(color: Colors.white));
           final (quals, done) = snap.data!;
+          if (quals.isEmpty) {
+            return const Center(
+              child: Padding(
+                padding: EdgeInsets.all(32),
+                child: Text('관리자가 승인한 자격이 있어야 디지털 심판증이 발급됩니다.',
+                    textAlign: TextAlign.center, style: TextStyle(color: Colors.white, fontSize: 15)),
+              ),
+            );
+          }
           final today = DateTime.now();
           return Center(
             child: SingleChildScrollView(
@@ -51,7 +60,7 @@ class _RefereeCardScreenState extends State<RefereeCardScreen> {
                   Text('확인 시각 ${DateFormat('yyyy.MM.dd HH:mm').format(today)}',
                       style: const TextStyle(color: Color(0xFF9DB4D6), fontSize: 12)),
                   const SizedBox(height: 4),
-                  const Text('WINREF 인재은행에 등록된 정보이며, 자격은 관리자 확인을 거친 항목만 표시됩니다.',
+                  const Text('WINREF 알파인 스키 심판 인재은행에 등록된 정보이며, 자격은 관리자 확인을 거친 항목만 표시됩니다.',
                       textAlign: TextAlign.center, style: TextStyle(color: Color(0xFF9DB4D6), fontSize: 12)),
                 ]),
               ),
@@ -98,16 +107,24 @@ class _Card extends StatelessWidget {
             Row(children: [
               Image.asset('assets/brand/snowflake_white.png', width: 26, height: 26),
               const SizedBox(width: 8),
-              const Text('WINREF ACADEMY',
-                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800, letterSpacing: 1.5)),
-              const Spacer(),
+              // 좁은 화면·큰 글씨에서도 오른쪽 배지가 잘리지 않게 줄여서 표시
+              const Expanded(
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerLeft,
+                  child: Text('WINREF ACADEMY',
+                      style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800, letterSpacing: 1.5)),
+                ),
+              ),
+              const SizedBox(width: 8),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
                   color: Colors.white.withValues(alpha: 0.16),
                   borderRadius: BorderRadius.circular(20),
                 ),
-                child: const Text('ALPINE OFFICIAL', style: TextStyle(color: Colors.white, fontSize: 11, letterSpacing: 1.5)),
+                child: const Text('ALPINE OFFICIAL',
+                    maxLines: 1, style: TextStyle(color: Colors.white, fontSize: 11, letterSpacing: 1.2)),
               ),
             ]),
             const SizedBox(height: 22),

@@ -200,7 +200,12 @@ class ProfileScreen extends StatefulWidget {
 
 class _ProfileScreenState extends State<ProfileScreen> {
   late Future<Map<String, dynamic>> _f = _load();
-  Future<Map<String, dynamic>> _load() => db.from('profiles').select().eq('id', uid).single();
+  Future<Map<String, dynamic>> _load() async {
+    final p = await db.from('profiles').select().eq('id', uid).single();
+    // 디지털 심판증은 관리자가 승인한 자격이 있는 회원에게만 발급
+    final approved = await db.from('qualifications').select('id').eq('user_id', uid).eq('status', 'approved').limit(1);
+    return {...p, '_hasApprovedQual': (approved as List).isNotEmpty};
+  }
   void _reload() => setState(() => _f = _load());
 
   /// 활동완료 내역과 승인된 자격으로 PDF 를 만들어 저장·인쇄 화면을 연다
@@ -280,16 +285,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
               Padding(
                 padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
                 child: Row(children: [
-                  Expanded(
-                    child: FilledButton.icon(
-                      style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(46)),
-                      onPressed: () => Navigator.push(
-                          context, MaterialPageRoute(builder: (_) => RefereeCardScreen(profile: p))),
-                      icon: const Icon(Icons.badge_outlined),
-                      label: const Text('디지털 심판증'),
+                  if (p['_hasApprovedQual'] == true) ...[
+                    Expanded(
+                      child: FilledButton.icon(
+                        style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(46)),
+                        onPressed: () => Navigator.push(
+                            context, MaterialPageRoute(builder: (_) => RefereeCardScreen(profile: p))),
+                        icon: const Icon(Icons.badge_outlined),
+                        label: const Text('디지털 심판증'),
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 10),
+                    const SizedBox(width: 10),
+                  ],
                   Expanded(
                     child: OutlinedButton.icon(
                       style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(46)),
@@ -300,6 +307,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ),
                 ]),
               ),
+              if (p['_hasApprovedQual'] != true)
+                const Padding(
+                  padding: EdgeInsets.fromLTRB(20, 10, 20, 0),
+                  child: Row(children: [
+                    Icon(Icons.info_outline, size: 16, color: Brand.muted),
+                    SizedBox(width: 6),
+                    Expanded(
+                      child: Text('디지털 심판증은 자격을 등록하고 관리자 승인을 받으면 발급됩니다.',
+                          style: TextStyle(color: Brand.muted, fontSize: 13)),
+                    ),
+                  ]),
+                ),
               Padding(
                 padding: const EdgeInsets.all(20),
                 child: CareerView(key: ValueKey(p.toString()), profile: p),
