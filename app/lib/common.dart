@@ -10,7 +10,6 @@ import 'package:url_launcher/url_launcher.dart';
 
 import 'download_stub.dart' if (dart.library.js_interop) 'download_web.dart';
 import 'screens/app_info.dart';
-import 'screens/auth.dart';
 import 'screens/profile.dart';
 import 'theme.dart';
 

@@ -50,7 +50,7 @@ class AppInfoScreen extends StatelessWidget {
           ]),
           const SizedBox(height: 16),
           _Group(children: [
-            _Row(icon: Icons.privacy_tip_outlined, title: '개인정보처리방침', onTap: openPrivacy),
+            const _Row(icon: Icons.privacy_tip_outlined, title: '개인정보처리방침', onTap: openPrivacy),
             _Row(
               icon: Icons.person_remove_outlined,
               title: '계정 삭제 안내',
