@@ -35,8 +35,8 @@ async function as(uid, sql, params = []) {
 // 가입
 await db.exec(`insert into auth.users values
  ('${ADMIN}', '{"name":"관리자","role":"admin"}'),
- ('${REF}', '{"name":"심판1"}'),
- ('${REF2}', '{"name":"심판2"}'),
+ ('${REF}', '{"name":"심판일"}'),
+ ('${REF2}', '{"name":"심판이"}'),
  ('${ORG}', '{"name":"관계자","role":"organizer","organization":"OO협회"}');`);
 let r = (await db.query(`select id, role, org_status from profiles order by id`)).rows;
 ok(r.find(x => x.id === ADMIN).role === 'referee', '가입으로 admin 권한 획득 불가');
@@ -117,10 +117,25 @@ ok(sp.onboarded === false && sp.role === 'referee' && sp.org_status === null, '�
 ok(sp.name === '구글 사용자', '소셜 가입: 제공자 이름 사용');
 ok((await as(SOC, `update profiles set role='admin', onboarded=true where id=$1`, [SOC])).err, '소셜 가입자 관리자 자가지정 차단');
 ok((await as(SOC, `update profiles set role='organizer', org_status='approved', onboarded=true where id=$1`, [SOC])).err, '소셜 가입자 기관 자가승인 차단');
-ok(!(await as(SOC, `update profiles set role='organizer', org_status='pending', onboarded=true, phone='01011112222', agreed_at=now() where id=$1`, [SOC])).err, '소셜 가입 정보 확정(대회관계자·승인대기)');
+ok((await as(SOC, `update profiles set role='organizer', org_status='pending', onboarded=true, phone='01011112222', agreed_at=now() where id=$1`, [SOC])).err, '이름 규칙 위반(공백 포함) 상태로 가입 확정 차단');
+ok(!(await as(SOC, `update profiles set name='구글사용자', role='organizer', org_status='pending', onboarded=true, phone='01011112222', agreed_at=now() where id=$1`, [SOC])).err, '소셜 가입 정보 확정(대회관계자·승인대기)');
 ok((await as(SOC, `update profiles set role='referee', org_status=null where id=$1`, [SOC])).err, '확정 후 유형 재변경 차단');
 ok((await as(REF2, `update profiles set onboarded=false where id=$1`, [REF2])).err, '이메일 가입자 onboarded 조작 차단');
 ok((await db.query(`select onboarded from profiles where id='${REF2}'`)).rows[0].onboarded === true, '이메일 가입은 가입정보 완료 상태');
+
+// --- 0015: 이름 규칙 (한글만, 띄어쓰기 없이 2~10자) ---
+const EN = '00000000-0000-0000-0000-0000000000e2';
+await db.exec(`insert into auth.users values ('${EN}', '{"name":"Jiwon"}', '{"provider":"email"}', 'en@test.kr')`);
+ok((await db.query(`select onboarded from profiles where id='${EN}'`)).rows[0].onboarded === false, '이메일 가입 이름이 영문이면 가입 정보 입력 화면으로');
+const KK = '00000000-0000-0000-0000-0000000000e3';
+await db.exec(`insert into auth.users values ('${KK}', '{"nickname":"지원😊"}', '{"provider":"kakao"}', 'kk@test.kr')`);
+ok((await as(KK, `update profiles set name='지원😊', onboarded=true, agreed_at=now() where id=$1`, [KK])).err, '이모지 이름으로 가입 확정 차단');
+ok(!(await as(KK, `update profiles set name='김지원', onboarded=true, agreed_at=now() where id=$1`, [KK])).err, '한글 이름으로 가입 확정');
+for (const bad of ['Jiwon', '김 지원', '김', '김지원1', '김-지원']) {
+  ok((await as(KK, `update profiles set name=$2 where id=$1`, [KK, bad])).err, `이름 수정 차단: ${bad}`);
+}
+ok(!(await as(KK, `update profiles set region='강원' where id=$1`, [KK])).err, '이름 외 항목 수정은 영향 없음');
+ok(!(await as(ADMIN, `update profiles set name='박지원' where id=$1`, [KK])).err, '관리자 이름 수정(규칙 준수)');
 
 // --- 0006: 정원·대회 삭제 보호·처리자 알림·자격증 사본 ---
 const nc = async (u, kind) => (await db.query(`select count(*)::int n from notifications where user_id='${u}' and kind='${kind}'`)).rows[0].n;
