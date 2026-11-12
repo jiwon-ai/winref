@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../common.dart';
@@ -333,7 +334,7 @@ class _SignupScreenState extends State<SignupScreen> {
                 child: Text('대회관계자는 관리자 승인 후 대회 등록이 가능합니다.', style: TextStyle(color: Brand.muted, fontSize: 13)),
               ),
             const SizedBox(height: 20),
-            _f(_name, '이름', required: true),
+            _f(_name, '이름', required: true, formatters: koreanNameInput, validator: koreanNameError),
             _f(_email, '이메일', required: true, type: TextInputType.emailAddress, validator: (v) {
               return v != null && v.contains('@') ? null : '이메일 형식이 아닙니다';
             }),
@@ -360,13 +361,18 @@ class _SignupScreenState extends State<SignupScreen> {
   }
 
   Widget _f(TextEditingController c, String label,
-      {bool required = false, bool obscure = false, TextInputType? type, String? Function(String?)? validator}) {
+      {bool required = false,
+      bool obscure = false,
+      TextInputType? type,
+      List<TextInputFormatter>? formatters,
+      String? Function(String?)? validator}) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: TextFormField(
         controller: c,
         obscureText: obscure,
         keyboardType: type,
+        inputFormatters: formatters,
         decoration: InputDecoration(labelText: label),
         validator: (v) {
           if (required && (v == null || v.trim().isEmpty)) return '필수 입력';
@@ -575,7 +581,8 @@ class OnboardingScreen extends StatefulWidget {
 
 class _OnboardingScreenState extends State<OnboardingScreen> {
   final _form = GlobalKey<FormState>();
-  late final _name = TextEditingController(text: widget.profile['name'] ?? '');
+  // 카카오 닉네임 등이 이름 규칙(한글만)에 맞지 않으면 비워 두고 실명을 직접 입력받는다
+  late final _name = TextEditingController(text: isKoreanName(widget.profile['name']) ? widget.profile['name'] : '');
   final _phone = TextEditingController();
   final _org = TextEditingController();
   String _role = 'referee';
@@ -645,8 +652,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           const SizedBox(height: 20),
           TextFormField(
             controller: _name,
-            decoration: const InputDecoration(labelText: '이름'),
-            validator: (v) => (v ?? '').trim().isEmpty ? '필수 입력' : null,
+            decoration: const InputDecoration(labelText: '이름 (실명)', helperText: '한글만, 띄어쓰기 없이'),
+            inputFormatters: koreanNameInput,
+            validator: koreanNameError,
           ),
           const SizedBox(height: 12),
           TextFormField(

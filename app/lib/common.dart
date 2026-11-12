@@ -207,6 +207,24 @@ Widget fileButton(BuildContext context, String? path, {String label = '첨부자
   );
 }
 
+// ---------- 이름 입력 규칙 ----------
+
+/// 이름: 한글만, 띄어쓰기 없이 2~10자 (영문·숫자·특수문자·이모지·공백 입력 자체를 막음).
+/// 입력 중인 자음·모음(천지인 자판의 ㆍ·ᆢ 포함)은 허용해야 한글 조합이 끊기지 않는다.
+final koreanNameInput = <TextInputFormatter>[
+  FilteringTextInputFormatter.allow(RegExp(r'[ㄱ-ㆎ가-힣ᄀ-ᇿ]')),
+  LengthLimitingTextInputFormatter(10),
+];
+
+String? koreanNameError(String? v) {
+  final s = v ?? '';
+  if (s.isEmpty) return '필수 입력';
+  if (!RegExp(r'^[가-힣]{2,10}$').hasMatch(s)) return '한글로만, 띄어쓰기 없이 2~10자로 입력해 주세요.';
+  return null;
+}
+
+bool isKoreanName(String? v) => koreanNameError(v) == null;
+
 // ---------- 입력 폼 다이얼로그 ----------
 
 enum FieldType { text, multiline, number, date, datetime, file }
@@ -223,8 +241,10 @@ class Field {
   /// 날짜 자동 채움: [autoFrom] 날짜를 고르면 그 날짜 + [autoYears]년으로 채운다(직접 고치면 그 값 유지)
   final String? autoFrom;
   final int autoYears;
+  final bool koreanName; // 이름 규칙(한글만·띄어쓰기 없음) 적용
   const Field(this.key, this.label,
       {this.type = FieldType.text,
+      this.koreanName = false,
       this.required = false,
       this.initial,
       this.helper,
@@ -378,6 +398,7 @@ class _FormScreenState extends State<_FormScreen> {
                           ? () => _pick(f)
                           : null,
                   keyboardType: f.type == FieldType.number ? TextInputType.number : null,
+                  inputFormatters: f.koreanName ? koreanNameInput : null,
                   maxLines: f.type == FieldType.multiline ? 5 : 1,
                   decoration: InputDecoration(
                     labelText: f.required ? '${f.label} *' : f.label,
@@ -396,6 +417,7 @@ class _FormScreenState extends State<_FormScreen> {
                     },
                   ),
                   validator: (v) {
+                    if (f.koreanName) return koreanNameError(v);
                     if (f.required && (v == null || v.trim().isEmpty)) return '필수 입력';
                     if (f.type == FieldType.number && v != null && v.trim().isNotEmpty && int.tryParse(v.trim()) == null) {
                       return '숫자만 입력';
@@ -606,7 +628,7 @@ class _NotificationBellState extends State<NotificationBell> {
 Future<bool> editProfile(BuildContext context, Map<String, dynamic> p) async {
   final referee = p['role'] == 'referee';
   final v = await showForm(context, '내 정보 수정', [
-    Field('name', '이름', required: true, initial: p['name']),
+    Field('name', '이름', required: true, koreanName: true, helper: '한글만, 띄어쓰기 없이', initial: p['name']),
     Field('phone', '휴대폰', initial: p['phone']),
     Field('birth_date', '생년월일', type: FieldType.date, initial: p['birth_date']),
     if (p['role'] == 'organizer') Field('organization', '소속 기관', initial: p['organization']),
