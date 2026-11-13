@@ -539,7 +539,7 @@ try {
     // 승인된 자격이 없으면 디지털 심판증 버튼을 숨기고 안내만 표시
     await see('관리자 승인을 받으면 발급됩니다');
     if (await page.getByRole('button', { name: '디지털 심판증' }).count()) throw new Error('승인 자격 없이 심판증 버튼 노출');
-    sql(`insert into qualifications (user_id, name, grade, status) select id, '알파인스키 국내심판', '2급 신규', 'approved' from auth.users where email='ref@test.kr'`);
+    sql(`insert into qualifications (user_id, name, grade, status) select id, '클린심판아카데미', '2급 신규', 'approved' from auth.users where email='ref@test.kr'`);
     await back();
     await tap('내 프로필·경력 보기');
     await see('활동 이력 PDF');
