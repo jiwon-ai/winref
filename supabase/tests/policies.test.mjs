@@ -270,6 +270,28 @@ await as(O2, `select check_in($1)`, [code3]);
 
 // 활동확인서
 await as(O2, `update applications set completed_at=now() where user_id=$1 and recruitment_id=${r20}`, [R3]);
+// --- 0021: 평가 · 선발 도우미 · 심판증 QR ---
+const app3 = (await db.query(`select id from applications where user_id='${R3}' and recruitment_id=${r20}`)).rows[0].id;
+const app4 = (await db.query(`select id from applications where user_id='${R4}' and recruitment_id=${r20}`)).rows[0].id;
+ok(!(await as(O2, `insert into evaluations (application_id, rating, comment, evaluator_id) values (${app3}, 5, '정확하고 성실함', $1)`, [O2])).err, '대회관계자: 활동완료 건 평가');
+ok((await as(O2, `insert into evaluations (application_id, rating) values (${app4}, 3)`)).err, '활동완료 전에는 평가 불가');
+ok((await as(O2, `insert into evaluations (application_id, rating) values (${app3}, 6)`)).err, '평가는 1~5점');
+ok((await as(O3, `select * from evaluations`)).rows.length === 0, '다른 대회관계자는 평가 열람 불가');
+ok((await as(R3, `select * from evaluations`)).rows.length === 0, '심판 본인은 자기 평가 열람 불가');
+ok((await as(R3, `update evaluations set rating=1 where application_id=${app3}`)).rows?.length === 0 && (await db.query(`select rating from evaluations where application_id=${app3}`)).rows[0].rating === 5, '심판 본인은 평가 수정 불가');
+ok(!(await as(O2, `update evaluations set rating=4 where application_id=${app3}`)).err, '평가 수정');
+const rr = (await as(O2, `select referee_rating($1) j`, [R3])).rows[0].j;
+ok(rr.count === 1 && Number(rr.avg) === 4, '평균 평가 조회 (지원받은 대회관계자)');
+ok((await as(O3, `select referee_rating($1) j`, [R3])).rows[0].j.count === 0, '관계없는 대회관계자에게는 평가 비공개');
+ok((await as(R3, `select referee_rating($1) j`, [R3])).rows[0].j.count === 0, '심판 본인에게도 평균 평가 비공개');
+const st = (await as(O2, `select * from applicant_stats(${c20})`)).rows;
+const s3 = st.find((x) => x.user_id === R3), s4 = st.find((x) => x.user_id === R4);
+ok(st.length === 2 && s3.done === 1 && s3.by_position['기문심판'] === 1 && Number(s3.rating) === 4 && s3.absent === 0 && s4.done === 0 && s4.rating === null, '선발 도우미: 지원자별 경험·평가·불참');
+ok((await as(O3, `select * from applicant_stats(${c20})`)).err?.includes('forbidden'), '선발 도우미는 내 대회만');
+const cc1 = (await as(R3, `select card_certificate() j`)).rows[0].j, cc2 = (await as(R3, `select card_certificate() j`)).rows[0].j;
+ok(cc1.code === cc2.code && (await db.query(`select count(*)::int n from certificates where user_id='${R3}'`)).rows[0].n === 1, '심판증 QR: 하루 안에는 같은 발급번호 재사용');
+await db.exec(`delete from certificates`);
+
 ok(await auditN('activity_completed') >= 1, '처리 기록: 활동완료');
 const cert = (await as(R3, `select issue_certificate() j`)).rows?.[0]?.j;
 ok(/^WR\d{4}-[0-9A-F]{8}$/.test(cert?.code ?? ''), '활동확인서 발급번호 형식');

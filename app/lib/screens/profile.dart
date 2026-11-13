@@ -19,12 +19,20 @@ class CareerView extends StatefulWidget {
 
 class _CareerViewState extends State<CareerView> {
   late final Future<(Map<String, dynamic>, List<Map<String, dynamic>>)> _f = _load();
+  Map<String, dynamic>? _rating; // 대회관계자·관리자에게만 보이는 평균 평가 (심판 본인에게는 비공개)
   Map<String, dynamic> get profile => widget.profile;
   bool get showContact => widget.showContact;
 
   Future<(Map<String, dynamic>, List<Map<String, dynamic>>)> _load() async {
     final s = await db.rpc('referee_summary', params: {'p_user': profile['id']});
     final q = await db.from('qualifications').select().eq('user_id', profile['id']).order('expires_on');
+    if (showContact) {
+      try {
+        _rating = (await db.rpc('referee_rating', params: {'p_user': profile['id']}) as Map).cast<String, dynamic>();
+      } catch (_) {
+        // 평가는 부가 정보라 실패해도 경력은 보여준다
+      }
+    }
     return ((s as Map).cast<String, dynamic>(), q);
   }
 
@@ -53,6 +61,8 @@ class _CareerViewState extends State<CareerView> {
             const SizedBox(height: 16),
             _Info(Icons.phone_outlined, profile['phone'] == null ? '-' : fmtPhone(profile['phone'])),
             if (profile['email'] != null) _Info(Icons.alternate_email, profile['email']),
+            if (((_rating?['count'] ?? 0) as num) > 0)
+              _Info(Icons.star_rounded, '활동 평가 평균 ${_rating!['avg']}점 · ${_rating!['count']}회 (심판에게는 비공개)'),
           ],
           if ((profile['region'] ?? '').toString().isNotEmpty || (profile['sport'] ?? '').toString().isNotEmpty) ...[
             const SizedBox(height: 8),
@@ -242,7 +252,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         future: _f,
         builder: (context, snap) {
           if (snap.hasError) return ErrorView(error: snap.error, onRetry: _reload);
-          if (!snap.hasData) return const Center(child: CircularProgressIndicator());
+          if (!snap.hasData) return const SkeletonList();
           final p = snap.data!;
           return RefreshIndicator(
             onRefresh: () async => _reload(),

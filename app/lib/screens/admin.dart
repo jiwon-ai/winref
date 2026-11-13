@@ -154,7 +154,7 @@ class _DashboardState extends State<_Dashboard> {
       future: _f,
       builder: (context, snap) {
         if (snap.hasError) return ErrorView(error: snap.error, onRetry: _reload);
-        if (!snap.hasData) return const Center(child: CircularProgressIndicator());
+        if (!snap.hasData) return const SkeletonList();
         final s = snap.data as Map<String, dynamic>;
         final roles = (s['members_by_role'] as Map).cast<String, dynamic>();
         final total = roles.values.fold<int>(0, (a, b) => a + (b as num).toInt());

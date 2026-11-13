@@ -14,6 +14,8 @@ class Brand {
   static const ink = Color(0xFF191F28);       // 본문
   static const muted = Color(0xFF6B7684);     // 보조 글자
   static const line = Color(0xFFE5E8EB);      // 구분선·테두리
+  static const card = Colors.white;           // 카드·시트 바탕
+  static const header = navy;                 // 눈 내리는 머리 영역 바탕
 }
 
 ThemeData buildTheme() {

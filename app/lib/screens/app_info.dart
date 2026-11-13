@@ -5,6 +5,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../common.dart';
 import '../theme.dart';
 import 'auth.dart' show SupportProgramMark;
+import 'intro.dart';
 
 const appName = 'WINREF 알파인 스키 심판 인재은행';
 const _build = String.fromEnvironment('BUILD');
@@ -13,7 +14,8 @@ const supportEmail = 'winrefacademy@gmail.com';
 
 /// 앱 정보: 버전·운영사·문의·약관·오픈소스 라이선스
 class AppInfoScreen extends StatelessWidget {
-  const AppInfoScreen({super.key});
+  final String? role;
+  const AppInfoScreen({super.key, this.role});
 
   @override
   Widget build(BuildContext context) {
@@ -49,6 +51,19 @@ class AppInfoScreen extends StatelessWidget {
               onTap: () => launchUrl(Uri.parse('mailto:$supportEmail?subject=${Uri.encodeComponent('WINREF 앱 문의')}')),
             ),
           ]),
+          if (introSlides[role] != null) ...[
+            const SizedBox(height: 16),
+            _Group(children: [
+              _Row(
+                icon: Icons.slideshow_outlined,
+                title: '앱 사용 안내 다시 보기',
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (r) => IntroScreen(role: role!, onDone: () => Navigator.pop(r))),
+                ),
+              ),
+            ]),
+          ],
           const SizedBox(height: 16),
           _Group(children: [
             const _Row(icon: Icons.privacy_tip_outlined, title: '개인정보처리방침', onTap: openPrivacy),

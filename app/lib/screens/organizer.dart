@@ -105,7 +105,7 @@ class _OrganizerBoardState extends State<_OrganizerBoard> {
       future: _f,
       builder: (context, snap) {
         if (snap.hasError) return ErrorView(error: snap.error, onRetry: reload);
-        if (!snap.hasData) return const Center(child: CircularProgressIndicator());
+        if (!snap.hasData) return const SkeletonList();
         final today = DateTime.now().toIso8601String().substring(0, 10);
         final upcoming = snap.data!.where((c) => (c['ends_on'] ?? c['starts_on']).toString().compareTo(today) >= 0).toList();
         final past = snap.data!.where((c) => !upcoming.contains(c)).toList().reversed.toList();
@@ -521,6 +521,35 @@ class _ApplicantsManageState extends State<_ApplicantsManage> {
   final _picked = <int>{};
   String _filter = 'all';
   Map<String, List<String>> _clash = {}; // 지원자 id → 같은 기간 이미 선발된 다른 대회
+  // 선발 도우미: 지원자별 활동 경험·불참·평가·자격 등급, 정렬 기준, 승인 자격 보유자만 보기
+  Map<String, Map<String, dynamic>> _stats = {};
+  String _sort = 'applied';
+  bool _qualOnly = false;
+  static const _sorts = {
+    'applied': '지원순',
+    'position': '이 직무 경험순',
+    'done': '활동 많은 순',
+    'rating': '평가 높은 순',
+    'absent': '불참 적은 순',
+    'grade': '자격 등급순',
+  };
+
+  int _posDone(Map<String, dynamic> a) =>
+      ((_stats[a['user_id']]?['by_position'] as Map?)?[a['recruitments']['position']] as num?)?.toInt() ?? 0;
+
+  /// 정렬 기준에 따라 비교 (같으면 먼저 지원한 순서 유지)
+  int _compare(Map<String, dynamic> a, Map<String, dynamic> b) {
+    final x = _stats[a['user_id']] ?? const {}, y = _stats[b['user_id']] ?? const {};
+    num n(Map m, String k, num d) => (m[k] as num?) ?? d;
+    return switch (_sort) {
+      'position' => _posDone(b).compareTo(_posDone(a)),
+      'done' => n(y, 'done', 0).compareTo(n(x, 'done', 0)),
+      'rating' => n(y, 'rating', -1).compareTo(n(x, 'rating', -1)),
+      'absent' => n(x, 'absent', 0).compareTo(n(y, 'absent', 0)),
+      'grade' => (x['top_grade'] ?? '9급').toString().compareTo((y['top_grade'] ?? '9급').toString()),
+      _ => 0,
+    };
+  }
 
   Future<List<Map<String, dynamic>>> _load() async {
     final rows = await db
@@ -538,6 +567,15 @@ class _ApplicantsManageState extends State<_ApplicantsManage> {
       // 겹침 정보는 부가 정보라 실패해도 목록은 보여준다
     }
     _clash = clash;
+    final stats = <String, Map<String, dynamic>>{};
+    try {
+      for (final r in await db.rpc('applicant_stats', params: {'p_competition': widget.cid}) as List) {
+        stats[r['user_id']] = Map<String, dynamic>.from(r as Map);
+      }
+    } catch (_) {
+      // 도우미 정보도 부가 정보
+    }
+    _stats = stats;
     return rows;
   }
 
@@ -580,7 +618,7 @@ class _ApplicantsManageState extends State<_ApplicantsManage> {
       future: _f,
       builder: (context, snap) {
         if (snap.hasError) return ErrorView(error: snap.error, onRetry: _reload);
-        if (!snap.hasData) return const Center(child: CircularProgressIndicator());
+        if (!snap.hasData) return const SkeletonList();
         final all = snap.data!;
         // 직무별 선발 현황 (선발 n / 모집 m)
         final quota = <String, (int, int)>{};
@@ -589,7 +627,17 @@ class _ApplicantsManageState extends State<_ApplicantsManage> {
           final cur = quota[r['position']] ?? (0, (r['headcount'] as num).toInt());
           quota[r['position']] = (cur.$1 + (a['status'] == 'selected' ? 1 : 0), cur.$2);
         }
-        final rows = all.where((a) => _filter == 'all' || a['status'] == _filter).toList();
+        final rows = all
+            .where((a) => _filter == 'all' || a['status'] == _filter)
+            .where((a) => !_qualOnly || ((_stats[a['user_id']]?['approved_quals'] as num?) ?? 0) > 0)
+            .toList();
+        if (_sort != 'applied') {
+          final order = {for (var i = 0; i < rows.length; i++) rows[i]['id']: i};
+          rows.sort((a, b) {
+            final c = _compare(a, b);
+            return c != 0 ? c : (order[a['id']] as int).compareTo(order[b['id']] as int);
+          });
+        }
         return Scaffold(
           body: Column(children: [
             Container(
@@ -626,6 +674,32 @@ class _ApplicantsManageState extends State<_ApplicantsManage> {
                 SingleChildScrollView(
                   scrollDirection: Axis.horizontal,
                   child: Row(children: [
+                    // 선발 도우미: 정렬 기준
+                    Padding(
+                      padding: const EdgeInsets.only(right: 6, top: 6),
+                      child: PopupMenuButton<String>(
+                        tooltip: '정렬 기준',
+                        onSelected: (v) => setState(() => _sort = v),
+                        itemBuilder: (_) => [
+                          for (final e in _sorts.entries)
+                            CheckedPopupMenuItem(value: e.key, checked: _sort == e.key, child: Text(e.value)),
+                        ],
+                        child: Chip(
+                          avatar: const Icon(Icons.sort, size: 16),
+                          label: Text('정렬: ${_sorts[_sort]}'),
+                          visualDensity: VisualDensity.compact,
+                        ),
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.only(right: 6, top: 6),
+                      child: FilterChip(
+                        label: const Text('승인 자격 보유'),
+                        selected: _qualOnly,
+                        visualDensity: VisualDensity.compact,
+                        onSelected: (v) => setState(() => _qualOnly = v),
+                      ),
+                    ),
                     for (final f in const [('all', '전체'), ('applied', '지원완료'), ('selected', '선발'), ('reserve', '예비'), ('rejected', '미선발')])
                       Padding(
                         padding: const EdgeInsets.only(right: 6, top: 6),
@@ -687,6 +761,17 @@ class _ApplicantsManageState extends State<_ApplicantsManage> {
     );
   }
 
+  /// 선발 참고 한 줄: 활동 3회(이 직무 2) · 불참 0 · 평가 4.5 · 1급
+  String _helperLine(Map<String, dynamic> a) {
+    final s = _stats[a['user_id']];
+    if (s == null) return '';
+    final pos = _posDone(a);
+    return '\n활동 ${s['done']}회${pos > 0 ? '(이 직무 $pos)' : ''}'
+        '${((s['absent'] as num?) ?? 0) > 0 ? ' · 불참 ${s['absent']}' : ''}'
+        '${s['rating'] != null ? ' · 평가 ${s['rating']}' : ''}'
+        ' · ${s['top_grade'] ?? ((s['approved_quals'] as num?) == 0 ? '승인 자격 없음' : '자격 승인')}';
+  }
+
   Widget _tile(BuildContext c, Map<String, dynamic> a) {
     final p = a['profiles'] as Map<String, dynamic>;
     final done = a['completed_at'] != null;
@@ -695,6 +780,7 @@ class _ApplicantsManageState extends State<_ApplicantsManage> {
     final sub = (a['status'] == 'selected'
             ? '${a['checked_in_at'] != null ? '출석 ${fmtDateTime(a['checked_in_at'])}' : attendanceText(a['attendance'])}${done ? ' · 활동완료' : ''}'
             : '지원 ${fmtDate(a['created_at'])}${p['region'] != null ? ' · ${p['region']}' : ''}') +
+        _helperLine(a) +
         (clash == null ? '' : '\n일정 겹침: ${clash.join(', ')}');
     if (_picking) {
       final id = a['id'] as int;
@@ -711,7 +797,7 @@ class _ApplicantsManageState extends State<_ApplicantsManage> {
       title: Text(title),
       subtitle: Text(sub),
       trailing: StatusChip(done ? '활동완료' : label(a['status']), done ? 'approved' : a['status']),
-      isThreeLine: clash != null,
+      isThreeLine: true,
       onTap: () async {
         await showDetail(c, builder: (_, sc) => _ApplicantSheet(app: a, controller: sc));
         _reload();
@@ -793,10 +879,120 @@ class _ApplicantSheet extends StatelessWidget {
             ]),
           ],
           if (done) Text('활동완료: ${fmtDateTime(app['completed_at'])}'),
+          if (done) _EvaluationBox(applicationId: app['id'] as int),
           const Divider(height: 36),
           CareerView(profile: p, showContact: true),
         ]),
       ),
+    );
+  }
+}
+
+/// 활동 평가 (활동완료된 건만): 별점 1~5 와 한 줄 메모. 심판에게는 보이지 않는다.
+class _EvaluationBox extends StatefulWidget {
+  final int applicationId;
+  const _EvaluationBox({required this.applicationId});
+  @override
+  State<_EvaluationBox> createState() => _EvaluationBoxState();
+}
+
+class _EvaluationBoxState extends State<_EvaluationBox> {
+  final _comment = TextEditingController();
+  int _rating = 0;
+  bool _loaded = false;
+  bool _saved = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  @override
+  void dispose() {
+    _comment.dispose();
+    super.dispose();
+  }
+
+  Future<void> _load() async {
+    try {
+      final e = await db.from('evaluations').select().eq('application_id', widget.applicationId).maybeSingle();
+      if (!mounted) return;
+      setState(() {
+        _rating = (e?['rating'] as num?)?.toInt() ?? 0;
+        _comment.text = e?['comment'] ?? '';
+        _saved = e != null;
+        _loaded = true;
+      });
+    } catch (_) {
+      if (mounted) setState(() => _loaded = true);
+    }
+  }
+
+  Future<void> _save() async {
+    if (_rating == 0) {
+      toast(context, '별점을 선택해 주세요.');
+      return;
+    }
+    final ok = await run(
+      context,
+      () => db.from('evaluations').upsert({
+        'application_id': widget.applicationId,
+        'rating': _rating,
+        'comment': _comment.text.trim().isEmpty ? null : _comment.text.trim(),
+        'evaluator_id': uid,
+        'updated_at': DateTime.now().toUtc().toIso8601String(),
+      }),
+      done: '평가를 저장했습니다.',
+    );
+    if (ok && mounted) setState(() => _saved = true);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!_loaded) return const SizedBox(height: 8);
+    return Container(
+      margin: const EdgeInsets.only(top: 14),
+      padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF7F9FC),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Brand.line),
+      ),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        const Text('활동 평가', style: TextStyle(fontWeight: FontWeight.w700)),
+        const Text('다음 선발 때 참고하는 내부 기록입니다. 심판에게는 보이지 않습니다.',
+            style: TextStyle(color: Brand.muted, fontSize: 12)),
+        const SizedBox(height: 6),
+        Row(children: [
+          for (var i = 1; i <= 5; i++)
+            IconButton(
+              tooltip: '별점 $i점',
+              visualDensity: VisualDensity.compact,
+              onPressed: () => setState(() => _rating = i),
+              icon: Icon(i <= _rating ? Icons.star_rounded : Icons.star_outline_rounded,
+                  color: i <= _rating ? const Color(0xFFF5A623) : Brand.muted, size: 30),
+            ),
+          const SizedBox(width: 6),
+          if (_rating > 0) Text('$_rating점', style: const TextStyle(fontWeight: FontWeight.w700)),
+        ]),
+        const SizedBox(height: 6),
+        TextField(
+          controller: _comment,
+          maxLength: 200,
+          maxLines: 2,
+          decoration: const InputDecoration(labelText: '평가 메모 (선택)', hintText: '예: 판정이 정확하고 집결 시간 준수', counterText: ''),
+        ),
+        const SizedBox(height: 8),
+        Align(
+          alignment: Alignment.centerRight,
+          child: FilledButton.tonal(
+            style: FilledButton.styleFrom(minimumSize: const Size(0, 42)),
+            onPressed: _save,
+            child: Text(_saved ? '평가 수정' : '평가 저장'),
+          ),
+        ),
+      ]),
     );
   }
 }

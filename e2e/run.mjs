@@ -198,6 +198,16 @@ try {
     await see('WINREF 알파인 스키 심판 인재은행');
     await see('winrefacademy@gmail.com');
     await shot('app-info');
+    await tap('앱 사용 안내 다시 보기');
+    await see('대회 심판 모집을 한눈에');
+    await shot('intro-1');
+    await tap('다음', 'button');
+    await see('자격과 교육을 한 곳에서');
+    await tap('다음', 'button');
+    await see('선발부터 출석, 이력까지');
+    await shot('intro-3');
+    await tap('시작하기', 'button');
+    await see('앱 사용 안내 다시 보기');
     await tap('오픈소스 라이선스');
     await see('이 앱은 아래 오픈소스 소프트웨어를 사용합니다');
     await shot('oss-licenses');
@@ -369,6 +379,21 @@ try {
     const r = sql(`select status||','||attendance||','||(completed_at is not null) from applications a join profiles p on p.id=a.user_id where p.name='김심판'`);
     if (r !== 'selected,attending,true') throw new Error('DB 상태: ' + r);
     await shot('completed');
+    // 활동 평가 (비공개) + 선발 도우미
+    await see('정렬: 지원순');
+    await tap('김심판');
+    await see('심판에게는 보이지 않습니다');
+    await tap('별점 5점', 'button');
+    await type('평가 메모', '판정이 정확함');
+    await tap('평가 저장', 'button');
+    await see('평가를 저장했습니다');
+    await shot('evaluation');
+    if (sql(`select rating||','||comment from evaluations e join applications a on a.id=e.application_id join profiles p on p.id=a.user_id where p.name='김심판'`) !== '5,판정이 정확함')
+      throw new Error('평가 저장 안 됨');
+    await page.keyboard.press('Escape');
+    await see('평가 5');                      // 목록의 선발 참고 줄: 활동 1회(이 직무 1) · 평가 5
+    await see('활동 1회(이 직무 1)');
+    await shot('selection-helper');
   });
 
   await check('대회관계자 화면에서 뒤로가기', async () => {
@@ -478,7 +503,7 @@ try {
     // 승인된 자격이 없으면 디지털 심판증 버튼을 숨기고 안내만 표시
     await see('관리자 승인을 받으면 발급됩니다');
     if (await page.getByRole('button', { name: '디지털 심판증' }).count()) throw new Error('승인 자격 없이 심판증 버튼 노출');
-    sql(`insert into qualifications (user_id, name, grade, status) select id, '클린심판아카데미', '양성과정', 'approved' from auth.users where email='ref@test.kr'`);
+    sql(`insert into qualifications (user_id, name, grade, status) select id, '알파인스키 국내심판', '2급 신규', 'approved' from auth.users where email='ref@test.kr'`);
     await back();
     await tap('내 프로필·경력 보기');
     await see('활동 이력 PDF');
@@ -486,7 +511,19 @@ try {
     await tap('디지털 심판증', 'button');
     await see('ALPINE OFFICIAL');
     await see('활동 완료 1회');
+    await see('2급 심판');                    // 자격 등급 띠
+    await see('진위 확인 QR');                // 스캔하면 진위 확인 페이지
+    if (sql(`select count(*) from certificates c join profiles p on p.id=c.user_id where p.name='김심판'`) !== '1') throw new Error('심판증 QR 발급 기록 없음');
     await shot('id-card'); await store('id-card');
+    await back();
+    await back();
+    // 자격 만료 알림 → 보수교육 신청 화면으로 바로 이동
+    sql(`insert into notifications (user_id, kind, title, body) select id, 'refresher', '자격 만료 예정 · 보수교육 안내', '유효기간이 30일 남았습니다.' from profiles where name='김심판'`);
+    await tap('알림', 'button');
+    await see('눌러서 보수교육 신청하기');
+    await tap('자격 만료 예정 · 보수교육 안내');
+    await see('보수교육 신청');
+    await shot('refresher-courses');
     await back();
     await back();
     await logout();

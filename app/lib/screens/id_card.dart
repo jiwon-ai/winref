@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:qr_flutter/qr_flutter.dart';
 
 import '../common.dart';
 import '../theme.dart';
@@ -13,11 +14,21 @@ class RefereeCardScreen extends StatefulWidget {
 }
 
 class _RefereeCardScreenState extends State<RefereeCardScreen> {
+  String? _verifyUrl; // 스캔하면 진위 확인 페이지가 열리는 QR 주소
+
   late final Future<(List, int)> _f = () async {
     final id = widget.profile['id'];
     final quals = await db.from('qualifications').select().eq('user_id', id).eq('status', 'approved').order('acquired_on');
     final done = await db.from('activity_history').select('competition_id').eq('user_id', id);
-    return (quals as List, (done as List).length);
+    if ((quals as List).isNotEmpty) {
+      try {
+        final c = Map<String, dynamic>.from(await db.rpc('card_certificate') as Map);
+        _verifyUrl = '${appUrl}verify.html?code=${c['code']}';
+      } catch (_) {
+        // QR 은 부가 기능: 발급에 실패해도 심판증은 보여준다
+      }
+    }
+    return (quals, (done as List).length);
   }();
 
   @override
@@ -55,12 +66,12 @@ class _RefereeCardScreenState extends State<RefereeCardScreen> {
               child: ConstrainedBox(
                 constraints: const BoxConstraints(maxWidth: 380),
                 child: Column(children: [
-                  _Card(profile: p, quals: quals, done: done),
+                  _Card(profile: p, quals: quals, done: done, verifyUrl: _verifyUrl),
                   const SizedBox(height: 16),
                   Text('확인 시각 ${DateFormat('yyyy.MM.dd HH:mm').format(today)}',
                       style: const TextStyle(color: Color(0xFF9DB4D6), fontSize: 12)),
                   const SizedBox(height: 4),
-                  const Text('WINREF 알파인 스키 심판 인재은행에 등록된 정보이며, 자격은 관리자 확인을 거친 항목만 표시됩니다.',
+                  const Text('WINREF 알파인 스키 심판 인재은행에 등록된 정보이며, 자격은 관리자 확인을 거친 항목만 표시됩니다.\nQR 을 스캔하면 진위 확인 페이지에서 같은 내용을 확인할 수 있습니다.',
                       textAlign: TextAlign.center, style: TextStyle(color: Color(0xFF9DB4D6), fontSize: 12)),
                 ]),
               ),
@@ -76,7 +87,23 @@ class _Card extends StatelessWidget {
   final Map<String, dynamic> profile;
   final List quals;
   final int done;
-  const _Card({required this.profile, required this.quals, required this.done});
+  final String? verifyUrl;
+  const _Card({required this.profile, required this.quals, required this.done, this.verifyUrl});
+
+  /// 가장 높은 승인 자격 등급 → 띠 색 (1급 금색, 2급 은색, 3급 동색, 그 외 흰색)
+  (String, Color) get _grade {
+    var best = 9;
+    for (final q in quals) {
+      final m = RegExp(r'^([1-3])급').firstMatch((q['grade'] ?? '').toString());
+      if (m != null && int.parse(m.group(1)!) < best) best = int.parse(m.group(1)!);
+    }
+    return switch (best) {
+      1 => ('1급 심판', const Color(0xFFE8B93B)),
+      2 => ('2급 심판', const Color(0xFFC5CED8)),
+      3 => ('3급 심판', const Color(0xFFCB8E5E)),
+      _ => ('등록 심판', Colors.white),
+    };
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -101,8 +128,10 @@ class _Card extends StatelessWidget {
           bottom: -40,
           child: Opacity(opacity: 0.10, child: Image.asset('assets/brand/snowflake_white.png', width: 240)),
         ),
+        // 자격 등급 띠 (실물 신분증의 색 띠처럼 카드 왼쪽 가장자리)
+        Positioned(left: 0, top: 0, bottom: 0, child: Container(width: 8, color: _grade.$2)),
         Padding(
-          padding: const EdgeInsets.fromLTRB(22, 20, 22, 22),
+          padding: const EdgeInsets.fromLTRB(26, 20, 22, 22),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Row(children: [
               Image.asset('assets/brand/snowflake_white.png', width: 26, height: 26),
@@ -143,7 +172,19 @@ class _Card extends StatelessWidget {
                   Text([p['region'], p['sport']].where((e) => (e ?? '').toString().isNotEmpty).join(' · '),
                       style: sub),
                   const SizedBox(height: 6),
-                  Text('활동 완료 $done회', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
+                  Row(children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(color: _grade.$2, borderRadius: BorderRadius.circular(6)),
+                      child: Text(_grade.$1,
+                          style: const TextStyle(color: Color(0xFF14233D), fontSize: 12, fontWeight: FontWeight.w800)),
+                    ),
+                    const SizedBox(width: 8),
+                    Flexible(
+                      child: Text('활동 완료 $done회',
+                          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
+                    ),
+                  ]),
                 ]),
               ),
             ]),
@@ -177,10 +218,22 @@ class _Card extends StatelessWidget {
                   ]),
                 ),
             const SizedBox(height: 12),
-            Row(children: [
-              Text(memberNo, style: const TextStyle(color: Colors.white, fontFeatures: [FontFeature.tabularFigures()], letterSpacing: 1)),
-              const Spacer(),
-              Text('스포츠 인재은행', style: sub),
+            Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
+              Expanded(
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text('회원번호', style: sub.copyWith(fontSize: 11)),
+                  Text(memberNo,
+                      style: const TextStyle(color: Colors.white, fontFeatures: [FontFeature.tabularFigures()], letterSpacing: 1)),
+                ]),
+              ),
+              if (verifyUrl != null)
+                Container(
+                  padding: const EdgeInsets.all(5),
+                  decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(8)),
+                  child: QrImageView(data: verifyUrl!, size: 76, padding: EdgeInsets.zero, semanticsLabel: '진위 확인 QR'),
+                )
+              else
+                Text('알파인 스키 심판 인재은행', style: sub),
             ]),
           ]),
         ),

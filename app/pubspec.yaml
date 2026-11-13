@@ -21,6 +21,7 @@ dependencies:
   printing: ^5.13.0
   firebase_core: ^3.0.0
   firebase_messaging: ^15.0.0
+  shared_preferences: ^2.3.0  # 기기 설정 저장 (첫 실행 안내 표시 여부, 화면 모드)
   qr_flutter: ^4.1.0        # 출석 QR 표시
   mobile_scanner: ^7.0.0    # 출석 QR 스캔 (카메라)
 

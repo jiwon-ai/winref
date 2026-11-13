@@ -135,6 +135,17 @@ class _CheckinScanScreenState extends State<CheckinScanScreen> {
                   final v = capture.barcodes.isEmpty ? null : capture.barcodes.first.rawValue;
                   if (v != null) _submit(v);
                 },
+                // 카메라 권한이 없거나 카메라가 없는 기기: 영어 오류 대신 안내
+                errorBuilder: (context, error) => const ColoredBox(
+                  color: Color(0xFF0F2547),
+                  child: Center(
+                    child: Padding(
+                      padding: EdgeInsets.all(24),
+                      child: Text('카메라를 사용할 수 없습니다.\n카메라 권한을 허용하거나, 아래에 출석 코드를 입력해 주세요.',
+                          textAlign: TextAlign.center, style: TextStyle(color: Colors.white, height: 1.5)),
+                    ),
+                  ),
+                ),
               ),
               // 조준 사각형
               Center(
@@ -184,9 +195,10 @@ class _CheckinScanScreenState extends State<CheckinScanScreen> {
             ),
           ),
           const SizedBox(width: 8),
-          SizedBox(
-            width: 96,
-            child: FilledButton(onPressed: _busy ? null : () => _submit(_manual.text), child: const Text('출석 처리')),
+          FilledButton(
+            style: FilledButton.styleFrom(minimumSize: const Size(0, 52), padding: const EdgeInsets.symmetric(horizontal: 18)),
+            onPressed: _busy ? null : () => _submit(_manual.text),
+            child: const Text('출석 처리', maxLines: 1, softWrap: false),
           ),
         ]),
         if (_done.isNotEmpty) ...[

@@ -13,7 +13,7 @@ Flutter 안드로이드 앱 + 관리자 웹(같은 코드, Flutter Web) + Supaba
 ## 1. Supabase (서버)
 
 1. supabase.com 에서 프로젝트 생성 (현재 운영: 리전 eu-west-1 아일랜드 — 개인정보처리방침 국외이전 항목과 일치해야 함).
-2. SQL Editor 에서 `supabase/migrations/` 의 파일을 번호 순서대로(0001 → 마지막 번호) 모두 실행. 모든 파일은 여러 번 실행해도 안전(idempotent).
+2. SQL Editor 에서 `supabase/migrations/` 의 파일을 번호 순서대로(0001 → 마지막 번호(현재 0021)) 모두 실행. 모든 파일은 여러 번 실행해도 안전(idempotent).
 3. Authentication > Providers > Email 사용. (가입 확인 메일을 끄면 바로 로그인)
    - Email OTP Length = 6 (임시 비밀번호 6자리), 메일 템플릿 'Reset password' 는 `{{ .Token }}` 사용
    - SMTP Settings: smtp.gmail.com:465, 회사 Gmail + 앱 비밀번호 (발신 주소가 회사 메일이 되도록)
@@ -28,6 +28,14 @@ Flutter 안드로이드 앱 + 관리자 웹(같은 코드, Flutter Web) + Supaba
 2. 프로젝트 설정 > 일반 에서 API 키, 앱 ID, 발신자 ID(Sender ID), 프로젝트 ID 를 GitHub Secrets 에 등록 (아래 표).
 3. 프로젝트 설정 > 서비스 계정 > 새 비공개 키 생성 → JSON 전체를 Supabase Edge Function Secret `FCM_SERVICE_ACCOUNT` 로 등록.
 4. Supabase 에 `send-push` 함수 배포, Secret `CRON_SECRET`(임의 문자열, cron.sql 과 동일) 등록.
+
+### 카카오 알림톡 (선택, 2차)
+코드는 준비돼 있고(`send-push` 함수), 아래 준비가 끝난 뒤 Secrets 만 넣으면 켜진다. 실제 발송 테스트는 템플릿 승인 후 필요.
+1. 카카오 비즈니스 채널 개설 (회사 명의) → 솔라피(solapi.com) 가입·채널 연동(pfId 발급), 발신번호 등록.
+2. 알림톡 템플릿 등록·카카오 심사: 본문에 변수 `#{제목}`, `#{내용}` 두 개를 쓰는 정보성 템플릿.
+3. Supabase Edge Function Secrets 에 `SOLAPI_API_KEY`, `SOLAPI_API_SECRET`, `SOLAPI_PFID`, `SOLAPI_TEMPLATE_ID`, `SOLAPI_SENDER` 등록 후 `send-push` 재배포.
+4. 대상 알림(기본): 선발 결과, 대회 D-1, 자격 만료(보수교육), 교육 마감. `ALIMTALK_KINDS` 로 변경. 건당 요금 발생.
+5. 켜기 전에 개인정보처리방침의 처리 위탁에 발송 업체(솔라피)와 카카오를 추가할 것.
 
 ## 3. GitHub Secrets (Settings > Secrets and variables > Actions)
 

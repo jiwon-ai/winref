@@ -7,12 +7,14 @@ import 'package:flutter/foundation.dart' show kIsWeb, defaultTargetPlatform, Flu
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import 'download_stub.dart' if (dart.library.js_interop) 'download_web.dart';
 import 'screens/app_info.dart';
 import 'screens/profile.dart';
+import 'screens/referee.dart' show RefresherCoursesScreen;
 import 'theme.dart';
 
 final db = Supabase.instance.client;
@@ -33,6 +35,9 @@ const duplicatePhone = '이미 가입된 휴대폰 번호입니다. 처음 가�
 
 /// 다른 계정이 이미 쓰는 휴대폰 번호인가 (중복 가입 방지)
 Future<bool> phoneInUse(String phone) async => (await db.rpc('phone_in_use', params: {'p_phone': phone})) == true;
+
+/// 이 기기에만 저장하는 간단한 설정 (첫 실행 안내를 봤는지, 화면 모드). 준비에 실패하면 null → 기본값으로 동작.
+SharedPreferences? prefs;
 
 const alreadyRegistered = '이미 가입된 이메일입니다. 그 이메일로 로그인하거나, 카카오·구글로 가입하셨다면 해당 버튼으로 로그인해 주세요.';
 
@@ -570,7 +575,7 @@ class AsyncListState extends State<AsyncList> {
         if (snap.hasError) {
           return ErrorView(error: snap.error, onRetry: reload);
         }
-        if (!snap.hasData) return const Center(child: CircularProgressIndicator());
+        if (!snap.hasData) return const SkeletonList();
         final rows = snap.data!;
         return RefreshIndicator(
           onRefresh: () async => reload(),
@@ -678,18 +683,115 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
             tileColor: unread ? const Color(0xFFF1F7FF) : Colors.white,
             leading: Icon(_icons[n['kind']] ?? Icons.campaign_outlined, color: unread ? Brand.gold : Brand.muted),
             title: Text(n['title'], style: TextStyle(fontWeight: unread ? FontWeight.w700 : FontWeight.w500)),
-            subtitle: Text('${n['body'] ?? ''}\n${fmtDateTime(n['created_at'])}'),
+            subtitle: Text('${n['body'] ?? ''}\n${fmtDateTime(n['created_at'])}'
+                '${n['kind'] == 'refresher' ? '\n눌러서 보수교육 신청하기 ›' : ''}'),
             isThreeLine: true,
-            onTap: !unread
+            onTap: !unread && n['kind'] != 'refresher'
                 ? null
                 : () async {
-                    await db.from('notifications').update({'read_at': DateTime.now().toUtc().toIso8601String()}).eq('id', n['id']);
+                    if (unread) {
+                      await db.from('notifications').update({'read_at': DateTime.now().toUtc().toIso8601String()}).eq('id', n['id']);
+                    }
+                    // 자격 만료 예정 알림 → 보수교육 목록으로 바로 이동
+                    if (n['kind'] == 'refresher' && c.mounted) {
+                      await Navigator.push(c, MaterialPageRoute(builder: (_) => const RefresherCoursesScreen()));
+                    }
                     reload();
                   },
           );
         },
       ),
     );
+  }
+}
+
+/// 비공개 저장소의 이미지 표시 (대회 포스터 썸네일 등). 이미지가 아니거나 불러오지 못하면 [fallback].
+class StorageImage extends StatelessWidget {
+  final String? path;
+  final double width;
+  final double height;
+  final Widget fallback;
+  final double radius;
+  const StorageImage({super.key, required this.path, required this.width, required this.height, required this.fallback, this.radius = 10});
+
+  static bool isImage(String? p) => p != null && RegExp(r'\.(jpe?g|png)$', caseSensitive: false).hasMatch(p);
+
+  @override
+  Widget build(BuildContext context) {
+    if (!isImage(path)) return fallback;
+    return FutureBuilder<String>(
+      future: _signedUrls.putIfAbsent(path!, () => db.storage.from('files').createSignedUrl(path!, 60 * 60 * 24)),
+      builder: (_, s) => !s.hasData
+          ? fallback
+          : ClipRRect(
+              borderRadius: BorderRadius.circular(radius),
+              child: Image.network(s.data!, width: width, height: height, fit: BoxFit.cover, errorBuilder: (_, __, ___) => fallback),
+            ),
+    );
+  }
+}
+
+/// 불러오는 동안 보여주는 회색 틀 (내용 모양의 자리 표시). 빙글빙글 도는 표시보다 화면이 덜 깜빡인다.
+class SkeletonList extends StatefulWidget {
+  const SkeletonList({super.key});
+  @override
+  State<SkeletonList> createState() => _SkeletonListState();
+}
+
+class _SkeletonListState extends State<SkeletonList> with SingleTickerProviderStateMixin {
+  late final _c = AnimationController(vsync: this, duration: const Duration(milliseconds: 900))..repeat(reverse: true);
+
+  @override
+  void dispose() {
+    _c.dispose();
+    super.dispose();
+  }
+
+  Widget _bar(double w, double h) => Container(
+        width: w,
+        height: h,
+        decoration: BoxDecoration(color: const Color(0xFFE3E8EF), borderRadius: BorderRadius.circular(6)),
+      );
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(builder: (context, box) {
+      final n = box.hasBoundedHeight ? (box.maxHeight / 92).floor().clamp(2, 8) : 4;
+      final col = Column(mainAxisSize: MainAxisSize.min, children: [
+        for (var i = 0; i < n; i++)
+          Container(
+            margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: Brand.line),
+            ),
+            child: Row(children: [
+              _bar(44, 44),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  FractionallySizedBox(widthFactor: i.isEven ? 0.7 : 0.5, child: _bar(double.infinity, 14)),
+                  const SizedBox(height: 10),
+                  FractionallySizedBox(widthFactor: i.isEven ? 0.45 : 0.6, child: _bar(double.infinity, 11)),
+                ]),
+              ),
+            ]),
+          ),
+      ]);
+      return Semantics(
+        label: '불러오는 중',
+        child: ExcludeSemantics(
+          child: FadeTransition(
+            opacity: Tween(begin: 0.55, end: 1.0).animate(_c),
+            child: box.hasBoundedHeight
+                ? SingleChildScrollView(physics: const NeverScrollableScrollPhysics(), child: col)
+                : col,
+          ),
+        ),
+      );
+    });
   }
 }
 
@@ -932,7 +1034,7 @@ List<Widget> commonActions(BuildContext context, Map<String, dynamic> profile) =
             case 'logout':
               signOut();
             case 'about':
-              Navigator.push(context, MaterialPageRoute(builder: (_) => const AppInfoScreen()));
+              Navigator.push(context, MaterialPageRoute(builder: (_) => AppInfoScreen(role: profile['role'])));
           }
         },
         itemBuilder: (_) => [

@@ -2,12 +2,14 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/semantics.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'common.dart';
 import 'push.dart';
 import 'screens/admin.dart';
 import 'screens/auth.dart';
+import 'screens/intro.dart';
 import 'screens/organizer.dart';
 import 'screens/referee.dart';
 import 'theme.dart';
@@ -26,6 +28,11 @@ Future<void> main() async {
   }
   if (_e2e) SemanticsBinding.instance.ensureSemantics();
   await Supabase.initialize(url: supabaseUrl, publishableKey: supabaseAnonKey);
+  try {
+    prefs = await SharedPreferences.getInstance();
+  } catch (_) {
+    // 기기 설정 저장소를 못 열어도 앱은 기본값으로 동작
+  }
   installErrorReporting(); // 사용자 기기에서 난 예상 밖 오류를 관리자 화면으로 모은다
   if (!kIsWeb) await Push.init();
   runApp(const WinrefApp());
@@ -117,6 +124,16 @@ class _AuthGateState extends State<AuthGate> {
             final profile = snap.data!;
             if (profile['onboarded'] == false) {
               return OnboardingScreen(profile: profile, onDone: () => setState(() => _profileVersion++));
+            }
+            // 첫 실행 안내 3장 (기기마다 한 번). 자동 테스트 빌드에서는 앱 정보 화면에서만 연다.
+            final role = (profile['role'] ?? 'referee') as String;
+            if (!_e2e && !introSeen(role)) {
+              return IntroScreen(
+                  role: role,
+                  onDone: () {
+                    markIntroSeen(role);
+                    setState(() {});
+                  });
             }
             if (!kIsWeb) Push.registerToken();
             switch (profile['role']) {

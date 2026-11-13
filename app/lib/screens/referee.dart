@@ -135,7 +135,7 @@ class _DashboardTabState extends State<_DashboardTab> {
         if (snap.hasError) {
           return ErrorView(error: snap.error, onRetry: () => setState(() => _f = _load()));
         }
-        if (!snap.hasData) return const Center(child: CircularProgressIndicator());
+        if (!snap.hasData) return const SkeletonList();
         final d = snap.data!;
         final upcoming = d['upcoming'] as List;
         final expiring = d['expiring'] as List;
@@ -415,7 +415,7 @@ class _RecruitmentsTabState extends State<_RecruitmentsTab> {
         if (snap.hasError) {
           return ErrorView(error: snap.error, onRetry: _reload);
         }
-        if (!snap.hasData) return const Center(child: CircularProgressIndicator());
+        if (!snap.hasData) return const SkeletonList();
         final all = snap.data!;
         final positions = {for (final r in all) r['position'] as String}.toList()..sort();
         final rows = _apply(all);
@@ -476,6 +476,21 @@ class _RecruitmentsTabState extends State<_RecruitmentsTab> {
     final comp = r['competitions'] as Map<String, dynamic>;
     final badge = deadlineBadge(r['deadline']);
     final urgent = badge != null && (badge == '오늘 마감' || badge == '마감 D-1' || badge == '마감 D-2');
+    // 대회까지 남은 날
+    final start = _start(r);
+    final today = DateTime(DateTime.now().year, DateTime.now().month, DateTime.now().day);
+    final left = start == null ? null : DateTime(start.year, start.month, start.day).difference(today).inDays;
+    final dday = left == null || left < 0 ? null : (left == 0 ? 'D-DAY' : 'D-$left');
+    final dateBox = Container(
+      width: 60,
+      height: 78,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(color: Brand.ivoryDeep, borderRadius: BorderRadius.circular(10)),
+      child: Column(mainAxisSize: MainAxisSize.min, children: [
+        Text('${start?.month ?? '-'}월', style: const TextStyle(color: Brand.muted, fontSize: 12)),
+        Text('${start?.day ?? '-'}', style: const TextStyle(color: Brand.navy, fontSize: 24, fontWeight: FontWeight.w700)),
+      ]),
+    );
     return Card(
       clipBehavior: Clip.antiAlias,
       child: InkWell(
@@ -483,31 +498,44 @@ class _RecruitmentsTabState extends State<_RecruitmentsTab> {
             .then((_) => _reload()),
         child: Padding(
           padding: const EdgeInsets.all(14),
-          child: Row(children: [
-            Container(
-              width: 52,
-              padding: const EdgeInsets.symmetric(vertical: 6),
-              decoration: BoxDecoration(color: Brand.ivory, borderRadius: BorderRadius.circular(4)),
-              child: Column(children: [
-                Text('${_start(r)?.month ?? '-'}월', style: const TextStyle(color: Brand.muted, fontSize: 11)),
-                Text('${_start(r)?.day ?? '-'}',
-                    style: const TextStyle(color: Brand.navy, fontSize: 20, fontWeight: FontWeight.w700)),
-              ]),
-            ),
+          child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            // 포스터가 이미지면 썸네일, 아니면 날짜 상자
+            StorageImage(path: comp['poster_path'], width: 60, height: 78, fallback: dateBox),
             const SizedBox(width: 12),
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(comp['name'], style: const TextStyle(fontWeight: FontWeight.w600)),
-                const SizedBox(height: 3),
-                Text('${comp['venue'] ?? '-'} · ${r['position']} ${r['headcount']}명',
+                Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Expanded(child: Text(comp['name'], style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15))),
+                  if (dday != null) ...[
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(color: Brand.navy, borderRadius: BorderRadius.circular(6)),
+                      child: Text(dday, style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w700)),
+                    ),
+                  ],
+                ]),
+                const SizedBox(height: 4),
+                Text('${fmtDate(comp['starts_on'])} · ${comp['venue'] ?? '-'}',
                     style: const TextStyle(color: Brand.muted, fontSize: 13)),
-                if ((comp['discipline'] ?? '').toString().isNotEmpty) ...[
-                  const SizedBox(height: 5),
-                  DisciplineTag(comp['discipline']),
-                ],
+                const SizedBox(height: 8),
+                Wrap(spacing: 6, runSpacing: 6, crossAxisAlignment: WrapCrossAlignment.center, children: [
+                  // 모집 직무·인원
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(color: Brand.navy.withValues(alpha: 0.45)),
+                    ),
+                    child: Text('${r['position']} ${r['headcount']}명',
+                        style: const TextStyle(color: Brand.navy, fontSize: 12, fontWeight: FontWeight.w700)),
+                  ),
+                  if ((comp['discipline'] ?? '').toString().isNotEmpty) DisciplineTag(comp['discipline']),
+                  if (badge != null) StatusChip(badge, urgent ? 'selected' : 'pending'),
+                ]),
               ]),
             ),
-            if (badge != null) StatusChip(badge, urgent ? 'selected' : 'pending'),
           ]),
         ),
       ),
@@ -714,9 +742,20 @@ class _RecruitmentDetailState extends State<RecruitmentDetail> {
 // ---------- 교육 ----------
 
 class _CoursesTab extends StatefulWidget {
-  const _CoursesTab();
+  final String initialFilter;
+  const _CoursesTab({this.initialFilter = 'all'});
   @override
   State<_CoursesTab> createState() => _CoursesTabState();
+}
+
+/// 보수교육 바로가기: 자격 만료 알림·자격 화면에서 열어 보수교육만 모아 보고 신청
+class RefresherCoursesScreen extends StatelessWidget {
+  const RefresherCoursesScreen({super.key});
+  @override
+  Widget build(BuildContext context) => Scaffold(
+        appBar: AppBar(title: const Text('보수교육 신청')),
+        body: const _CoursesTab(initialFilter: 'refresher'),
+      );
 }
 
 class _CoursesTabState extends State<_CoursesTab> {
@@ -744,7 +783,7 @@ class _CoursesTabState extends State<_CoursesTab> {
   }
 
   String _q = '';
-  String _filter = 'all';
+  late String _filter = widget.initialFilter;
   void _set(void Function() f) {
     setState(f);
     _key.currentState?.reload();
@@ -1111,7 +1150,7 @@ class _QualificationsTabState extends State<_QualificationsTab> {
         item: (c, q, reload) {
           final exp = DateTime.tryParse(q['expires_on'] ?? '');
           final soon = exp != null && exp.difference(DateTime.now()).inDays <= 90;
-          return ListTile(
+          final tile = ListTile(
             title: Text('${q['name']}${q['grade'] != null ? ' · ${q['grade']}' : ''}'),
             subtitle: Text('${q['cert_no'] != null ? '자격번호 ${q['cert_no']}\n' : ''}'
                 '${qualPeriod(q).isEmpty ? '기간 정보 없음' : qualPeriod(q)}'
@@ -1121,6 +1160,23 @@ class _QualificationsTabState extends State<_QualificationsTab> {
             trailing: StatusChip(label(q['status']), q['status']),
             onTap: () => _open(c, q, reload),
           );
+          // 만료가 90일 안으로 다가온 승인 자격: 보수교육 신청 화면으로 바로 연결
+          if (!(soon && q['status'] == 'approved' && q['refresher_done'] != true)) return tile;
+          return Column(mainAxisSize: MainAxisSize.min, children: [
+            tile,
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+              child: SizedBox(
+                width: double.infinity,
+                child: FilledButton.tonalIcon(
+                  style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(44)),
+                  onPressed: () => Navigator.push(c, MaterialPageRoute(builder: (_) => const RefresherCoursesScreen())),
+                  icon: const Icon(Icons.school_outlined, size: 18),
+                  label: const Text('보수교육 신청하기'),
+                ),
+              ),
+            ),
+          ]);
         },
       ),
     );
