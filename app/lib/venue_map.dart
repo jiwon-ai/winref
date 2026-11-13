@@ -35,7 +35,7 @@ class VenueMap extends StatelessWidget {
         borderRadius: BorderRadius.circular(8),
         child: Container(
           height: 190,
-          decoration: BoxDecoration(border: Border.all(color: const Color(0xFFDCE5F0)), color: Brand.ivoryDeep),
+          decoration: BoxDecoration(border: Border.all(color: Brand.line), color: Brand.ivoryDeep),
           child: Semantics(label: '대회 장소 지도', child: mapView(url)),
         ),
       ),

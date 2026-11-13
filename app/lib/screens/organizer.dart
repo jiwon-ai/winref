@@ -43,7 +43,7 @@ class _OrganizerHomeState extends State<OrganizerHome> {
         if (!_approved)
           Container(
             width: double.infinity,
-            color: const Color(0xFFE3EFFC),
+            color: Brand.soft(const Color(0xFFE3EFFC)),
             padding: const EdgeInsets.all(16),
             child: Row(children: [
               Expanded(
@@ -51,7 +51,7 @@ class _OrganizerHomeState extends State<OrganizerHome> {
                   _profile['org_status'] == 'rejected'
                       ? '기관 승인이 거절되었습니다. WINREF 관리자에게 문의하세요.'
                       : '기관 승인 대기 중입니다. 승인 후 대회 등록이 가능합니다.',
-                  style: const TextStyle(color: Brand.navy),
+                  style: TextStyle(color: Brand.navy),
                 ),
               ),
               TextButton(onPressed: _refreshProfile, child: const Text('승인 확인')),
@@ -191,7 +191,7 @@ class _OrganizerBoardState extends State<_OrganizerBoard> {
               ),
             ]),
             const SizedBox(height: 4),
-            Text('${fmtDate(c['starts_on'])} · ${c['venue'] ?? '-'}', style: const TextStyle(color: Brand.muted, fontSize: 13)),
+            Text('${fmtDate(c['starts_on'])} · ${c['venue'] ?? '-'}', style: TextStyle(color: Brand.muted, fontSize: 13)),
             const SizedBox(height: 12),
             Row(children: [
               Expanded(
@@ -313,7 +313,7 @@ class _CompetitionInfo extends StatelessWidget {
     Widget row(String k, String? val) => Padding(
           padding: const EdgeInsets.symmetric(vertical: 7),
           child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            SizedBox(width: 84, child: Text(k, style: const TextStyle(color: Brand.muted))),
+            SizedBox(width: 84, child: Text(k, style: TextStyle(color: Brand.muted))),
             Expanded(
               child: Text(val ?? '미입력',
                   style: TextStyle(fontWeight: FontWeight.w600, color: val == null ? Brand.muted : Brand.ink)),
@@ -329,7 +329,7 @@ class _CompetitionInfo extends StatelessWidget {
       Container(
         padding: const EdgeInsets.fromLTRB(18, 12, 18, 12),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: Brand.card,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(color: Brand.line),
         ),
@@ -641,7 +641,7 @@ class _ApplicantsManageState extends State<_ApplicantsManage> {
         return Scaffold(
           body: Column(children: [
             Container(
-              color: Colors.white,
+              color: Brand.card,
               padding: const EdgeInsets.fromLTRB(16, 12, 8, 8),
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Row(children: [
@@ -733,12 +733,12 @@ class _ApplicantsManageState extends State<_ApplicantsManage> {
               ? null
               : SafeArea(
                   child: Container(
-                    color: Brand.navy,
+                    color: Brand.header,
                     padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
                     child: Row(children: [
                       Expanded(
                         child: Text('${_picked.length}명 선택',
-                            style: const TextStyle(color: Brand.ivory, fontWeight: FontWeight.w600)),
+                            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
                       ),
                       for (final st in const [('selected', '일괄 선발'), ('reserve', '일괄 예비'), ('rejected', '일괄 미선발')])
                         Padding(
@@ -833,7 +833,7 @@ class _ApplicantSheet extends StatelessWidget {
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Text(p['name'], style: Theme.of(context).textTheme.titleLarge),
                 Text('${app['recruitments']['position']} 지원 · ${fmtDate(app['created_at'])}',
-                    style: const TextStyle(color: Brand.muted)),
+                    style: TextStyle(color: Brand.muted)),
               ]),
             ),
             StatusChip(label(app['status']), app['status']),
@@ -901,6 +901,7 @@ class _EvaluationBoxState extends State<_EvaluationBox> {
   int _rating = 0;
   bool _loaded = false;
   bool _saved = false;
+  bool _justSaved = false;
 
   @override
   void initState() {
@@ -943,9 +944,13 @@ class _EvaluationBoxState extends State<_EvaluationBox> {
         'evaluator_id': uid,
         'updated_at': DateTime.now().toUtc().toIso8601String(),
       }),
-      done: '평가를 저장했습니다.',
-    );
-    if (ok && mounted) setState(() => _saved = true);
+    ); // 시트 안에서는 아래쪽 알림이 가려지므로 저장 결과를 이 상자 안에 표시한다
+    if (ok && mounted) {
+      setState(() {
+        _saved = true;
+        _justSaved = true;
+      });
+    }
   }
 
   @override
@@ -955,13 +960,13 @@ class _EvaluationBoxState extends State<_EvaluationBox> {
       margin: const EdgeInsets.only(top: 14),
       padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
       decoration: BoxDecoration(
-        color: const Color(0xFFF7F9FC),
+        color: Brand.soft(const Color(0xFFF7F9FC)),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: Brand.line),
       ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         const Text('활동 평가', style: TextStyle(fontWeight: FontWeight.w700)),
-        const Text('다음 선발 때 참고하는 내부 기록입니다. 심판에게는 보이지 않습니다.',
+        Text('다음 선발 때 참고하는 내부 기록입니다. 심판에게는 보이지 않습니다.',
             style: TextStyle(color: Brand.muted, fontSize: 12)),
         const SizedBox(height: 6),
         Row(children: [
@@ -984,14 +989,19 @@ class _EvaluationBoxState extends State<_EvaluationBox> {
           decoration: const InputDecoration(labelText: '평가 메모 (선택)', hintText: '예: 판정이 정확하고 집결 시간 준수', counterText: ''),
         ),
         const SizedBox(height: 8),
-        Align(
-          alignment: Alignment.centerRight,
-          child: FilledButton.tonal(
+        Row(children: [
+          if (_justSaved) ...[
+            const Icon(Icons.check_circle, size: 18, color: Color(0xFF1E8E4E)),
+            const SizedBox(width: 6),
+            const Expanded(child: Text('평가를 저장했습니다.', style: TextStyle(fontWeight: FontWeight.w600))),
+          ] else
+            const Spacer(),
+          FilledButton.tonal(
             style: FilledButton.styleFrom(minimumSize: const Size(0, 42)),
             onPressed: _save,
             child: Text(_saved ? '평가 수정' : '평가 저장'),
           ),
-        ),
+        ]),
       ]),
     );
   }

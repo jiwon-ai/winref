@@ -34,10 +34,10 @@ class AppInfoScreen extends StatelessWidget {
                 child: Image.asset('assets/brand/snowflake_blue.png'),
               ),
               const SizedBox(height: 16),
-              const Text(appName,
+              Text(appName,
                   textAlign: TextAlign.center, style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: Brand.ink)),
               const SizedBox(height: 6),
-              const Text('버전 $appVersion', style: TextStyle(color: Brand.muted, fontSize: 13)),
+              Text('버전 $appVersion', style: TextStyle(color: Brand.muted, fontSize: 13)),
             ]),
           ),
           const SizedBox(height: 28),
@@ -49,6 +49,33 @@ class AppInfoScreen extends StatelessWidget {
               title: '문의',
               value: supportEmail,
               onTap: () => launchUrl(Uri.parse('mailto:$supportEmail?subject=${Uri.encodeComponent('WINREF 앱 문의')}')),
+            ),
+          ]),
+          const SizedBox(height: 16),
+          _Group(children: [
+            _Row(
+              icon: Icons.dark_mode_outlined,
+              title: '화면 모드',
+              value: themeLabels[themeSetting.value],
+              onTap: () async {
+                final v = await showDialog<String>(
+                  context: context,
+                  builder: (d) => SimpleDialog(
+                    title: const Text('화면 모드'),
+                    children: [
+                      for (final e in themeLabels.entries)
+                        ListTile(
+                          leading: Icon(e.key == themeSetting.value ? Icons.radio_button_checked : Icons.radio_button_unchecked),
+                          title: Text(e.value),
+                          onTap: () => Navigator.pop(d, e.key),
+                        ),
+                    ],
+                  ),
+                );
+                if (v == null || v == themeSetting.value) return;
+                await prefs?.setString('theme', v);
+                themeSetting.value = v; // 화면 전체가 새 모드로 다시 그려지며 첫 화면으로 돌아간다
+              },
             ),
           ]),
           if (introSlides[role] != null) ...[
@@ -93,7 +120,7 @@ class _Group extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Container(
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: Brand.card,
           borderRadius: BorderRadius.circular(14),
           border: Border.all(color: Brand.line),
         ),
@@ -118,8 +145,8 @@ class _Row extends StatelessWidget {
   Widget build(BuildContext context) => ListTile(
         leading: Icon(icon, color: Brand.navy),
         title: Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
-        subtitle: value == null ? null : Text(value!, style: const TextStyle(color: Brand.muted)),
-        trailing: onTap == null ? null : const Icon(Icons.chevron_right, color: Brand.muted),
+        subtitle: value == null ? null : Text(value!, style: TextStyle(color: Brand.muted)),
+        trailing: onTap == null ? null : Icon(Icons.chevron_right, color: Brand.muted),
         onTap: onTap,
       );
 }
@@ -156,7 +183,7 @@ class OssLicensesScreen extends StatelessWidget {
             separatorBuilder: (_, i) => i == 0 ? const SizedBox.shrink() : const Divider(height: 1, indent: 16),
             itemBuilder: (context, i) {
               if (i == 0) {
-                return const Padding(
+                return Padding(
                   padding: EdgeInsets.fromLTRB(16, 16, 16, 8),
                   child: Text('이 앱은 아래 오픈소스 소프트웨어를 사용합니다.', style: TextStyle(color: Brand.muted, fontSize: 13)),
                 );
@@ -164,9 +191,9 @@ class OssLicensesScreen extends StatelessWidget {
               final e = items[i - 1];
               return ListTile(
                 dense: true,
-                tileColor: Colors.white,
+                tileColor: Brand.card,
                 title: Text(e.key, style: const TextStyle(fontSize: 14)),
-                trailing: const Icon(Icons.chevron_right, color: Brand.muted, size: 20),
+                trailing: Icon(Icons.chevron_right, color: Brand.muted, size: 20),
                 onTap: () => Navigator.push(
                   context,
                   MaterialPageRoute(
@@ -176,7 +203,7 @@ class OssLicensesScreen extends StatelessWidget {
                         padding: const EdgeInsets.fromLTRB(16, 16, 16, 48),
                         children: [
                           for (final t in e.value) ...[
-                            Text(t, style: const TextStyle(fontSize: 12, height: 1.5, color: Brand.ink)),
+                            Text(t, style: TextStyle(fontSize: 12, height: 1.5, color: Brand.ink)),
                             const Divider(height: 32),
                           ],
                         ],

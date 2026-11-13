@@ -215,7 +215,7 @@ class _DashboardTabState extends State<_DashboardTab> {
             child: Padding(
               padding: const EdgeInsets.symmetric(vertical: 8),
               child: Column(children: [
-                Text('$n', style: const TextStyle(color: Brand.ivory, fontSize: 24, fontWeight: FontWeight.w700)),
+                Text('$n', style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.w700)),
                 const SizedBox(height: 2),
                 Text(label, style: const TextStyle(color: Color(0xFFC9DCF5), fontSize: 12)),
               ]),
@@ -237,7 +237,7 @@ class _DashboardTabState extends State<_DashboardTab> {
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Text('${d['me']['name']} 님',
-                    style: const TextStyle(color: Brand.ivory, fontSize: 20, fontWeight: FontWeight.w700)),
+                    style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w700)),
                 const SizedBox(height: 2),
                 const Text('내 프로필·경력 보기', style: TextStyle(color: Color(0xFFC9DCF5), fontSize: 12)),
               ]),
@@ -286,9 +286,9 @@ class _CardTile extends StatelessWidget {
   final String? subtitle;
   final String? badge;
   final IconData? icon;
-  final Color accent;
+  final Color? accent; // 기본: 주색
   final VoidCallback? onTap;
-  const _CardTile({required this.title, this.subtitle, this.badge, this.icon, this.accent = Brand.navy, this.onTap});
+  const _CardTile({required this.title, this.subtitle, this.badge, this.icon, this.accent, this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -297,7 +297,7 @@ class _CardTile extends StatelessWidget {
       child: InkWell(
         onTap: onTap,
         child: Container(
-          decoration: BoxDecoration(border: Border(left: BorderSide(color: accent, width: 3))),
+          decoration: BoxDecoration(border: Border(left: BorderSide(color: accent ?? Brand.navy, width: 3))),
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
           child: Row(children: [
             if (badge != null)
@@ -310,17 +310,17 @@ class _CardTile extends StatelessWidget {
                 child: Text(badge!, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
               )
             else if (icon != null)
-              Padding(padding: const EdgeInsets.only(right: 12), child: Icon(icon, color: accent)),
+              Padding(padding: const EdgeInsets.only(right: 12), child: Icon(icon, color: accent ?? Brand.navy)),
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
                 if (subtitle != null) ...[
                   const SizedBox(height: 2),
-                  Text(subtitle!, style: const TextStyle(color: Brand.muted, fontSize: 13)),
+                  Text(subtitle!, style: TextStyle(color: Brand.muted, fontSize: 13)),
                 ],
               ]),
             ),
-            if (onTap != null) const Icon(Icons.chevron_right, color: Brand.muted),
+            if (onTap != null) Icon(Icons.chevron_right, color: Brand.muted),
           ]),
         ),
       ),
@@ -454,11 +454,11 @@ class _RecruitmentsTabState extends State<_RecruitmentsTab> {
                   Padding(
                     padding: const EdgeInsets.fromLTRB(20, 12, 20, 4),
                     child: Text(_day == null ? '날짜를 선택하면 그날 대회만 보입니다' : '${_day!.month}월 ${_day!.day}일 대회 ${rows.length}건',
-                        style: const TextStyle(color: Brand.muted, fontSize: 13)),
+                        style: TextStyle(color: Brand.muted, fontSize: 13)),
                   ),
                 ],
                 if (rows.isEmpty)
-                  const Padding(
+                  Padding(
                     padding: EdgeInsets.all(40),
                     child: Center(child: Text('조건에 맞는 모집 대회가 없습니다.', style: TextStyle(color: Brand.muted))),
                   ),
@@ -487,8 +487,8 @@ class _RecruitmentsTabState extends State<_RecruitmentsTab> {
       alignment: Alignment.center,
       decoration: BoxDecoration(color: Brand.ivoryDeep, borderRadius: BorderRadius.circular(10)),
       child: Column(mainAxisSize: MainAxisSize.min, children: [
-        Text('${start?.month ?? '-'}월', style: const TextStyle(color: Brand.muted, fontSize: 12)),
-        Text('${start?.day ?? '-'}', style: const TextStyle(color: Brand.navy, fontSize: 24, fontWeight: FontWeight.w700)),
+        Text('${start?.month ?? '-'}월', style: TextStyle(color: Brand.muted, fontSize: 12)),
+        Text('${start?.day ?? '-'}', style: TextStyle(color: Brand.navy, fontSize: 24, fontWeight: FontWeight.w700)),
       ]),
     );
     return Card(
@@ -517,19 +517,19 @@ class _RecruitmentsTabState extends State<_RecruitmentsTab> {
                 ]),
                 const SizedBox(height: 4),
                 Text('${fmtDate(comp['starts_on'])} · ${comp['venue'] ?? '-'}',
-                    style: const TextStyle(color: Brand.muted, fontSize: 13)),
+                    style: TextStyle(color: Brand.muted, fontSize: 13)),
                 const SizedBox(height: 8),
                 Wrap(spacing: 6, runSpacing: 6, crossAxisAlignment: WrapCrossAlignment.center, children: [
                   // 모집 직무·인원
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
-                      color: Colors.white,
+                      color: Brand.card,
                       borderRadius: BorderRadius.circular(6),
                       border: Border.all(color: Brand.navy.withValues(alpha: 0.45)),
                     ),
                     child: Text('${r['position']} ${r['headcount']}명',
-                        style: const TextStyle(color: Brand.navy, fontSize: 12, fontWeight: FontWeight.w700)),
+                        style: TextStyle(color: Brand.navy, fontSize: 12, fontWeight: FontWeight.w700)),
                   ),
                   if ((comp['discipline'] ?? '').toString().isNotEmpty) DisciplineTag(comp['discipline']),
                   if (badge != null) StatusChip(badge, urgent ? 'selected' : 'pending'),
@@ -639,7 +639,7 @@ class _RecruitmentDetailState extends State<RecruitmentDetail> {
           margin: const EdgeInsets.only(top: 12),
           padding: const EdgeInsets.fromLTRB(18, 16, 18, 12),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: Brand.card,
             borderRadius: BorderRadius.circular(16),
             border: Border.all(color: Brand.line),
           ),
@@ -658,12 +658,12 @@ class _RecruitmentDetailState extends State<RecruitmentDetail> {
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Row(children: [
               if ((comp['discipline'] ?? '').toString().isNotEmpty) Flexible(child: DisciplineTag(comp['discipline'])),
-              if (badge != null) ...[const SizedBox(width: 6), Text(badge, style: const TextStyle(color: Brand.warn, fontWeight: FontWeight.w700, fontSize: 13))],
+              if (badge != null) ...[const SizedBox(width: 6), Text(badge, style: TextStyle(color: Brand.warn, fontWeight: FontWeight.w700, fontSize: 13))],
             ]),
             const SizedBox(height: 8),
             Text(comp['name'], style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w700, letterSpacing: -0.5)),
             const SizedBox(height: 4),
-            Text('${r['position']} ${r['headcount']}명 모집', style: const TextStyle(color: Brand.muted, fontSize: 15)),
+            Text('${r['position']} ${r['headcount']}명 모집', style: TextStyle(color: Brand.muted, fontSize: 15)),
           ]),
         ),
         if (_clash.isNotEmpty)
@@ -671,12 +671,12 @@ class _RecruitmentDetailState extends State<RecruitmentDetail> {
             margin: const EdgeInsets.only(top: 14),
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
-              color: const Color(0xFFFFF4E8),
+              color: Brand.soft(const Color(0xFFFFF4E8)),
               borderRadius: BorderRadius.circular(12),
               border: Border.all(color: const Color(0xFFF2C08C)),
             ),
             child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              const Icon(Icons.event_busy_outlined, color: Brand.warn, size: 20),
+              Icon(Icons.event_busy_outlined, color: Brand.warn, size: 20),
               const SizedBox(width: 8),
               Expanded(child: Text('같은 날 선발된 대회가 있습니다: ${_clash.join(', ')}', style: const TextStyle(fontSize: 13))),
             ]),
@@ -701,7 +701,7 @@ class _RecruitmentDetailState extends State<RecruitmentDetail> {
       ]),
       // 지원 버튼은 화면 아래에 고정 (스크롤해도 항상 보임)
       bottomNavigationBar: Container(
-        decoration: const BoxDecoration(color: Colors.white, border: Border(top: BorderSide(color: Brand.line))),
+        decoration: BoxDecoration(color: Brand.card, border: Border(top: BorderSide(color: Brand.line))),
         padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
         child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
           if (!_loaded)
@@ -712,7 +712,7 @@ class _RecruitmentDetailState extends State<RecruitmentDetail> {
             FilledButton(onPressed: _apply, child: Text(status == 'cancelled' ? '다시 지원하기' : '심판 지원하기'))
           else
             Row(children: [
-              const Text('지원 상태  ', style: TextStyle(color: Brand.muted)),
+              Text('지원 상태  ', style: TextStyle(color: Brand.muted)),
               StatusChip(label(status), status),
               const Spacer(),
               if (status == 'applied')
@@ -733,7 +733,7 @@ class _RecruitmentDetailState extends State<RecruitmentDetail> {
   Widget _row(String k, String v) => Padding(
         padding: const EdgeInsets.symmetric(vertical: 7),
         child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          SizedBox(width: 84, child: Text(k, style: const TextStyle(color: Brand.muted))),
+          SizedBox(width: 84, child: Text(k, style: TextStyle(color: Brand.muted))),
           Expanded(child: Text(v, style: const TextStyle(fontWeight: FontWeight.w600))),
         ]),
       );
@@ -850,7 +850,7 @@ class _CoursesTabState extends State<_CoursesTab> {
             Text(c['description'] ?? ''),
             const SizedBox(height: 8),
             Text('신청 마감 ${fmtDateTime(c['apply_deadline'])} · 정원 ${cap ?? '-'}명 · 신청 ${c['_taken']}명',
-                style: const TextStyle(color: Brand.muted)),
+                style: TextStyle(color: Brand.muted)),
             const SizedBox(height: 12),
             if (status == 'applied' || status == 'confirmed')
               Row(children: [
@@ -870,7 +870,7 @@ class _CoursesTabState extends State<_CoursesTab> {
                 if (!closed) TextButton(onPressed: () => _cancel(c), child: const Text('신청 취소')),
               ])
             else if (closed)
-              const Text('신청이 마감되었습니다.', style: TextStyle(color: Brand.muted))
+              Text('신청이 마감되었습니다.', style: TextStyle(color: Brand.muted))
             else if (full)
               const FilledButton(onPressed: null, child: Text('정원 마감'))
             else
@@ -892,7 +892,7 @@ class _MyActivityTab extends StatelessWidget {
       length: 2,
       child: Column(children: [
         Container(
-          color: Colors.white,
+          color: Brand.card,
           child: const TabBar(tabs: [Tab(text: '지원 현황'), Tab(text: '활동 이력')]),
         ),
         Expanded(
@@ -923,7 +923,7 @@ class _MyActivityTab extends StatelessWidget {
               load: () => db.from('activity_history').select().eq('user_id', uid).order('starts_on', ascending: false),
               empty: '활동 이력이 없습니다.',
               item: (c, h, _) => ListTile(
-                leading: const Icon(Icons.verified_outlined, color: Brand.gold),
+                leading: Icon(Icons.verified_outlined, color: Brand.gold),
                 title: Text(h['competition_name']),
                 subtitle: Text('${fmtDate(h['starts_on'])} · ${h['venue'] ?? '-'} · ${h['position']}'),
               ),
@@ -1011,7 +1011,7 @@ class _BriefingScreenState extends State<BriefingScreen> {
         for (final a in _mine.where((a) => a['completed_at'] == null))
           Container(
             width: double.infinity,
-            color: Colors.white,
+            color: Brand.card,
             padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text('${c['name']} · ${a['recruitments']['position']}', style: const TextStyle(fontWeight: FontWeight.w700)),

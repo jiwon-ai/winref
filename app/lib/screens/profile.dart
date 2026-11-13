@@ -41,7 +41,7 @@ class _CareerViewState extends State<CareerView> {
     return FutureBuilder<(Map<String, dynamic>, List<Map<String, dynamic>>)>(
       future: _f,
       builder: (context, snap) {
-        if (snap.hasError) return Text('경력을 불러오지 못했습니다. ${friendlyError(snap.error!)}', style: const TextStyle(color: Brand.muted));
+        if (snap.hasError) return Text('경력을 불러오지 못했습니다. ${friendlyError(snap.error!)}', style: TextStyle(color: Brand.muted));
         if (!snap.hasData) return const Padding(padding: EdgeInsets.all(24), child: LinearProgressIndicator());
         final (sum, quals) = snap.data!;
         final byPos = (sum['by_position'] as Map).cast<String, dynamic>();
@@ -74,12 +74,12 @@ class _CareerViewState extends State<CareerView> {
           ],
           const _Head('보유 자격'),
           if (quals.isEmpty)
-            const Text('등록된 자격이 없습니다.', style: TextStyle(color: Brand.muted))
+            Text('등록된 자격이 없습니다.', style: TextStyle(color: Brand.muted))
           else
             Wrap(spacing: 8, runSpacing: 8, children: [for (final q in quals) _QualBadge(q)]),
           const _Head('직무별 활동'),
           if (byPos.isEmpty)
-            const Text('완료된 활동이 없습니다.', style: TextStyle(color: Brand.muted))
+            Text('완료된 활동이 없습니다.', style: TextStyle(color: Brand.muted))
           else
             for (final e in byPos.entries)
               Padding(
@@ -102,16 +102,16 @@ class _CareerViewState extends State<CareerView> {
               ),
           const _Head('최근 활동'),
           if (recent.isEmpty)
-            const Text('활동 이력이 없습니다.', style: TextStyle(color: Brand.muted))
+            Text('활동 이력이 없습니다.', style: TextStyle(color: Brand.muted))
           else
             for (final r in recent)
               Padding(
                 padding: const EdgeInsets.symmetric(vertical: 6),
                 child: Row(children: [
-                  const Icon(Icons.verified_outlined, size: 18, color: Brand.gold),
+                  Icon(Icons.verified_outlined, size: 18, color: Brand.gold),
                   const SizedBox(width: 8),
                   Expanded(child: Text('${r['name']}', overflow: TextOverflow.ellipsis)),
-                  Text('${fmtDate(r['starts_on'])} · ${r['position']}', style: const TextStyle(color: Brand.muted, fontSize: 13)),
+                  Text('${fmtDate(r['starts_on'])} · ${r['position']}', style: TextStyle(color: Brand.muted, fontSize: 13)),
                 ]),
               ),
         ]);
@@ -132,10 +132,10 @@ class _Stat extends StatelessWidget {
           TextSpan(
               text: value,
               style: TextStyle(color: warn ? const Color(0xFF9B2C2C) : Brand.navy, fontSize: 22, fontWeight: FontWeight.w700)),
-          TextSpan(text: unit, style: const TextStyle(color: Brand.muted, fontSize: 12)),
+          TextSpan(text: unit, style: TextStyle(color: Brand.muted, fontSize: 12)),
         ])),
         const SizedBox(height: 2),
-        Text(label, style: const TextStyle(color: Brand.muted, fontSize: 12)),
+        Text(label, style: TextStyle(color: Brand.muted, fontSize: 12)),
       ]),
     );
   }
@@ -150,7 +150,7 @@ class _Head extends StatelessWidget {
         child: Row(children: [
           Container(width: 3, height: 14, color: Brand.gold),
           const SizedBox(width: 8),
-          Text(text, style: const TextStyle(color: Brand.navy, fontWeight: FontWeight.w700)),
+          Text(text, style: TextStyle(color: Brand.navy, fontWeight: FontWeight.w700)),
         ]),
       );
 }
@@ -178,7 +178,7 @@ class _QualBadge extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
       decoration: BoxDecoration(
-        color: approved && !expired ? const Color(0xFFE3EFFC) : Colors.white,
+        color: approved && !expired ? Brand.soft(const Color(0xFFE3EFFC)) : Brand.card,
         borderRadius: BorderRadius.circular(4),
         border: Border.all(color: approved && !expired ? Brand.gold : const Color(0xFFC3D0E0)),
       ),
@@ -191,7 +191,7 @@ class _QualBadge extends StatelessWidget {
               style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
         ]),
         if (q['cert_no'] != null)
-          Text('No. ${q['cert_no']}', style: const TextStyle(fontSize: 11, color: Brand.muted)),
+          Text('No. ${q['cert_no']}', style: TextStyle(fontSize: 11, color: Brand.muted)),
         Text(
           expired ? '만료됨' : (approved ? '~${fmtDate(q['expires_on'])}' : label(q['status'])),
           style: TextStyle(fontSize: 11, color: expired ? const Color(0xFF9B2C2C) : Brand.muted),
@@ -281,7 +281,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   Expanded(
                     child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                       Text(p['name'] ?? '',
-                          style: const TextStyle(color: Brand.ivory, fontSize: 22, fontWeight: FontWeight.w700)),
+                          style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w700)),
                       const SizedBox(height: 4),
                       Text(
                         [p['region'], p['sport']].where((e) => (e ?? '').toString().isNotEmpty).join(' · ').ifEmpty('지역·종목을 등록하세요'),
@@ -294,7 +294,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ),
                   OutlinedButton(
                     style: OutlinedButton.styleFrom(
-                      foregroundColor: Brand.ivory,
+                      foregroundColor: Colors.white,
                       side: const BorderSide(color: Brand.ice),
                       minimumSize: const Size(56, 36),
                     ),
@@ -331,7 +331,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ]),
               ),
               if (p['_hasApprovedQual'] != true)
-                const Padding(
+                Padding(
                   padding: EdgeInsets.fromLTRB(20, 10, 20, 0),
                   child: Row(children: [
                     Icon(Icons.info_outline, size: 16, color: Brand.muted),

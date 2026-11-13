@@ -114,7 +114,7 @@ class _ReportPageState extends State<ReportPage> {
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Text('리포트 기간', style: Theme.of(context).textTheme.titleMedium),
                 const SizedBox(height: 4),
-                const Text('지원사업 결과보고 등에 쓸 수 있도록 기간 안의 실적을 모아 보여줍니다. (한국 시간 기준)',
+                Text('지원사업 결과보고 등에 쓸 수 있도록 기간 안의 실적을 모아 보여줍니다. (한국 시간 기준)',
                     style: TextStyle(color: Brand.muted, fontSize: 13)),
                 const SizedBox(height: 12),
                 OutlinedButton.icon(
@@ -178,8 +178,8 @@ class _ReportPageState extends State<ReportPage> {
                                 style: TextStyle(color: x.$2.startsWith(' ') ? Brand.muted : Brand.ink)),
                           ),
                           Text('${r[x.$3] ?? 0}',
-                              style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16, color: Brand.navy)),
-                          SizedBox(width: 24, child: Text(' ${x.$4}', style: const TextStyle(color: Brand.muted, fontSize: 12))),
+                              style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16, color: Brand.navy)),
+                          SizedBox(width: 24, child: Text(' ${x.$4}', style: TextStyle(color: Brand.muted, fontSize: 12))),
                         ]),
                       ),
                   ]),
@@ -192,7 +192,7 @@ class _ReportPageState extends State<ReportPage> {
                   Text('대회별 실적', style: Theme.of(context).textTheme.titleMedium),
                   const SizedBox(height: 8),
                   if ((r['by_competition'] as List? ?? const []).isEmpty)
-                    const Text('기간 안에 개최된 대회가 없습니다.', style: TextStyle(color: Brand.muted))
+                    Text('기간 안에 개최된 대회가 없습니다.', style: TextStyle(color: Brand.muted))
                   else
                     for (final c in r['by_competition'] as List)
                       Padding(
@@ -201,13 +201,13 @@ class _ReportPageState extends State<ReportPage> {
                           Text('${c['name']}', style: const TextStyle(fontWeight: FontWeight.w600)),
                           Text(
                               '${fmtDate(c['starts_on'])} · 모집 ${c['headcount']}명 · 지원 ${c['applied']} · 선발 ${c['selected']} · 출석 ${c['checked_in']} · 완료 ${c['completed']}',
-                              style: const TextStyle(color: Brand.muted, fontSize: 13)),
+                              style: TextStyle(color: Brand.muted, fontSize: 13)),
                         ]),
                       ),
                 ]),
               ),
             ),
-            const Padding(
+            Padding(
               padding: EdgeInsets.fromLTRB(4, 12, 4, 0),
               child: Text('탈퇴한 회원의 기록은 집계에서 빠집니다. 자격 승인·반려 건수는 처리 기록이 쌓이기 시작한 날부터 집계됩니다.',
                   style: TextStyle(color: Brand.muted, fontSize: 12)),
@@ -361,8 +361,8 @@ class _AuditPageState extends State<AuditPage> {
     return DefaultTabController(
       length: 2,
       child: Column(children: [
-        const ColoredBox(
-          color: Colors.white,
+        ColoredBox(
+          color: Brand.card,
           child: TabBar(tabs: [Tab(text: '처리 기록'), Tab(text: '앱 오류 기록')]),
         ),
         Expanded(
@@ -447,7 +447,7 @@ class _AuditPageState extends State<AuditPage> {
                                   itemCount: rows.length + 1,
                                   itemBuilder: (c, i) {
                                     if (i == rows.length) {
-                                      return const Padding(
+                                      return Padding(
                                         padding: EdgeInsets.all(12),
                                         child: Text('최근 500건까지 표시 · 기록은 1년 보관 후 자동 삭제되며 수정·삭제할 수 없습니다.',
                                             textAlign: TextAlign.center, style: TextStyle(color: Brand.muted, fontSize: 12)),
@@ -486,7 +486,7 @@ class _ErrorLogsState extends State<_ErrorLogs> {
   @override
   Widget build(BuildContext context) {
     return Column(children: [
-      const Padding(
+      Padding(
         padding: EdgeInsets.fromLTRB(16, 12, 16, 0),
         child: Text('사용자 기기에서 앱이 예상하지 못한 오류를 만나면 자동으로 여기에 모입니다. (90일 보관, 이름·연락처는 저장하지 않음)',
             style: TextStyle(color: Brand.muted, fontSize: 13)),

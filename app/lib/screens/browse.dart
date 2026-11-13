@@ -13,7 +13,7 @@ class SearchFilterBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      color: Colors.white,
+      color: Brand.card,
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
       child: Column(children: [
         Row(children: [
@@ -23,7 +23,7 @@ class SearchFilterBar extends StatelessWidget {
               textInputAction: TextInputAction.search,
               decoration: InputDecoration(
                 hintText: hint,
-                prefixIcon: const Icon(Icons.search, color: Brand.muted),
+                prefixIcon: Icon(Icons.search, color: Brand.muted),
                 isDense: true,
                 contentPadding: const EdgeInsets.symmetric(vertical: 10),
                 fillColor: Brand.ivory,
@@ -66,7 +66,7 @@ class FilterPill extends StatelessWidget {
       selectedColor: Brand.navy,
       backgroundColor: Brand.ivory,
       side: BorderSide(color: selected ? Brand.navy : const Color(0xFFC3D0E0)),
-      labelStyle: TextStyle(color: selected ? Brand.ivory : Brand.navy, fontWeight: FontWeight.w600, fontSize: 13),
+      labelStyle: TextStyle(color: selected ? Colors.white : Brand.navy, fontWeight: FontWeight.w600, fontSize: 13),
     );
   }
 }
@@ -95,7 +95,7 @@ class _MonthCalendarState extends State<MonthCalendar> {
     final today = dateOnly(DateTime.now());
     final cells = lead + days;
     return Container(
-      color: Colors.white,
+      color: Brand.card,
       padding: const EdgeInsets.fromLTRB(12, 4, 12, 12),
       child: Column(children: [
         Row(children: [
@@ -107,7 +107,7 @@ class _MonthCalendarState extends State<MonthCalendar> {
           Expanded(
             child: Text('${first.year}년 ${first.month}월',
                 textAlign: TextAlign.center,
-                style: const TextStyle(color: Brand.navy, fontWeight: FontWeight.w700, fontSize: 16)),
+                style: TextStyle(color: Brand.navy, fontWeight: FontWeight.w700, fontSize: 16)),
           ),
           IconButton(
             tooltip: '다음 달',
@@ -156,7 +156,7 @@ class _MonthCalendarState extends State<MonthCalendar> {
                   child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
                     Text('$day',
                         style: TextStyle(
-                          color: sel ? Brand.ivory : Brand.ink,
+                          color: sel ? Colors.white : Brand.ink,
                           fontWeight: n > 0 ? FontWeight.w700 : FontWeight.w400,
                         )),
                     const SizedBox(height: 3),

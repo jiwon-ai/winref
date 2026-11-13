@@ -164,7 +164,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           ),
                         ]),
                         SizedBox(height: gap(4, 16)),
-                        const Row(children: [
+                        Row(children: [
                           Expanded(child: Divider()),
                           Padding(
                             padding: EdgeInsets.symmetric(horizontal: 12),
@@ -247,11 +247,11 @@ class SupportProgramMark extends StatelessWidget {
       margin: const EdgeInsets.symmetric(horizontal: 24),
       padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 9),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Brand.card,
         borderRadius: BorderRadius.circular(24),
         border: Border.all(color: Brand.navy.withValues(alpha: 0.35)),
       ),
-      child: const Text('사회적기업 창업지원사업',
+      child: Text('사회적기업 창업지원사업',
           style: TextStyle(color: Brand.navy, fontSize: 16, fontWeight: FontWeight.w700, letterSpacing: 0.5)),
     );
   }
@@ -331,7 +331,7 @@ class _SignupScreenState extends State<SignupScreen> {
               onSelectionChanged: (s) => setState(() => _role = s.first),
             ),
             if (_role == 'organizer')
-              const Padding(
+              Padding(
                 padding: EdgeInsets.only(top: 8),
                 child: Text('대회관계자는 관리자 승인 후 대회 등록이 가능합니다.', style: TextStyle(color: Brand.muted, fontSize: 13)),
               ),
@@ -433,7 +433,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
           constraints: const BoxConstraints(maxWidth: 420),
           child: ListView(padding: const EdgeInsets.all(24), shrinkWrap: true, children: [
             if (!_sent) ...[
-              const Text('가입한 이메일로 6자리 임시 비밀번호를 보내드립니다.\n임시 비밀번호로 로그인한 뒤 바로 새 비밀번호로 바꾸게 됩니다.',
+              Text('가입한 이메일로 6자리 임시 비밀번호를 보내드립니다.\n임시 비밀번호로 로그인한 뒤 바로 새 비밀번호로 바꾸게 됩니다.',
                   style: TextStyle(color: Brand.muted, height: 1.5)),
               const SizedBox(height: 16),
               TextField(
@@ -445,12 +445,12 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
               const SizedBox(height: 16),
               FilledButton(onPressed: _busy ? null : _send, child: const Text('임시 비밀번호 받기')),
             ] else ...[
-              const Icon(Icons.mark_email_read_outlined, size: 48, color: Brand.navy),
+              Icon(Icons.mark_email_read_outlined, size: 48, color: Brand.navy),
               const SizedBox(height: 12),
               Text('${_email.text.trim()} 으로\n임시 비밀번호를 보냈습니다.',
                   textAlign: TextAlign.center, style: Theme.of(context).textTheme.titleMedium),
               const SizedBox(height: 10),
-              const Text('메일함(스팸함 포함)에서 6자리 숫자를 확인한 뒤, 로그인 화면에서 비밀번호 칸에 입력하세요. '
+              Text('메일함(스팸함 포함)에서 6자리 숫자를 확인한 뒤, 로그인 화면에서 비밀번호 칸에 입력하세요. '
                   '임시 비밀번호는 1시간 동안 한 번만 쓸 수 있습니다.',
                   textAlign: TextAlign.center, style: TextStyle(color: Brand.muted, height: 1.5)),
               const SizedBox(height: 20),
@@ -511,7 +511,7 @@ class _NewPasswordScreenState extends State<NewPasswordScreen> {
           child: Form(
             key: _form,
             child: ListView(padding: const EdgeInsets.all(24), shrinkWrap: true, children: [
-              const Text('임시 비밀번호로 로그인했습니다.\n앞으로 사용할 새 비밀번호를 설정해 주세요.',
+              Text('임시 비밀번호로 로그인했습니다.\n앞으로 사용할 새 비밀번호를 설정해 주세요.',
                   style: TextStyle(color: Brand.muted, height: 1.5)),
               const SizedBox(height: 16),
               TextFormField(
@@ -661,7 +661,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       body: Form(
         key: _form,
         child: ListView(padding: const EdgeInsets.all(20), children: [
-          const Text('처음 오셨네요. 몇 가지만 입력하면 가입이 끝납니다.', style: TextStyle(color: Brand.muted)),
+          Text('처음 오셨네요. 몇 가지만 입력하면 가입이 끝납니다.', style: TextStyle(color: Brand.muted)),
           const SizedBox(height: 20),
           Text('회원 유형', style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: 8),
@@ -674,7 +674,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             onSelectionChanged: (v) => setState(() => _role = v.first),
           ),
           if (_role == 'organizer')
-            const Padding(
+            Padding(
               padding: EdgeInsets.only(top: 8),
               child: Text('대회관계자는 관리자 승인 후 대회 등록이 가능합니다.', style: TextStyle(color: Brand.muted, fontSize: 13)),
             ),

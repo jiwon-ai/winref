@@ -187,10 +187,10 @@ class ErrorView extends StatelessWidget {
         child: Padding(
           padding: const EdgeInsets.all(32),
           child: Column(mainAxisSize: MainAxisSize.min, children: [
-            const Icon(Icons.cloud_off_outlined, size: 40, color: Brand.muted),
+            Icon(Icons.cloud_off_outlined, size: 40, color: Brand.muted),
             const SizedBox(height: 12),
             Text(error == null ? '불러오지 못했습니다.' : friendlyError(error!),
-                textAlign: TextAlign.center, style: const TextStyle(color: Brand.muted)),
+                textAlign: TextAlign.center, style: TextStyle(color: Brand.muted)),
             const SizedBox(height: 12),
             OutlinedButton.icon(onPressed: onRetry, icon: const Icon(Icons.refresh, size: 18), label: const Text('다시 시도')),
           ]),
@@ -210,7 +210,7 @@ class EmptyView extends StatelessWidget {
         child: Column(children: [
           const AlpineEmptyArt(),
           const SizedBox(height: 14),
-          Text(text, textAlign: TextAlign.center, style: const TextStyle(color: Brand.muted, height: 1.5)),
+          Text(text, textAlign: TextAlign.center, style: TextStyle(color: Brand.muted, height: 1.5)),
         ]),
       );
 }
@@ -436,7 +436,7 @@ class _FormScreenState extends State<_FormScreen> {
             for (final o in f.options!)
               ListTile(
                 title: Text(o),
-                trailing: _c[f.key]!.text == o ? const Icon(Icons.check, color: Brand.navy) : null,
+                trailing: _c[f.key]!.text == o ? Icon(Icons.check, color: Brand.navy) : null,
                 onTap: () => Navigator.pop(s, o),
               ),
           ]),
@@ -588,11 +588,11 @@ class AsyncListState extends State<AsyncList> {
                   itemBuilder: (c, i) => Padding(
                     padding: const EdgeInsets.only(bottom: 10),
                     child: Material(
-                      color: Colors.white,
+                      color: Brand.card,
                       clipBehavior: Clip.antiAlias,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(14),
-                        side: const BorderSide(color: Brand.line),
+                        side: BorderSide(color: Brand.line),
                       ),
                       child: Padding(
                         padding: const EdgeInsets.symmetric(vertical: 4),
@@ -680,7 +680,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         item: (c, n, reload) {
           final unread = n['read_at'] == null;
           return ListTile(
-            tileColor: unread ? const Color(0xFFF1F7FF) : Colors.white,
+            tileColor: unread ? Brand.soft(const Color(0xFFF1F7FF)) : Brand.card,
             leading: Icon(_icons[n['kind']] ?? Icons.campaign_outlined, color: unread ? Brand.gold : Brand.muted),
             title: Text(n['title'], style: TextStyle(fontWeight: unread ? FontWeight.w700 : FontWeight.w500)),
             subtitle: Text('${n['body'] ?? ''}\n${fmtDateTime(n['created_at'])}'
@@ -750,7 +750,7 @@ class _SkeletonListState extends State<SkeletonList> with SingleTickerProviderSt
   Widget _bar(double w, double h) => Container(
         width: w,
         height: h,
-        decoration: BoxDecoration(color: const Color(0xFFE3E8EF), borderRadius: BorderRadius.circular(6)),
+        decoration: BoxDecoration(color: Brand.soft(const Color(0xFFE3E8EF)), borderRadius: BorderRadius.circular(6)),
       );
 
   @override
@@ -763,7 +763,7 @@ class _SkeletonListState extends State<SkeletonList> with SingleTickerProviderSt
             margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: Brand.card,
               borderRadius: BorderRadius.circular(14),
               border: Border.all(color: Brand.line),
             ),
@@ -1149,12 +1149,12 @@ class DisciplineTag extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
         decoration: BoxDecoration(color: Brand.ice, borderRadius: BorderRadius.circular(6)),
         child: Row(mainAxisSize: MainAxisSize.min, children: [
-          const Icon(Icons.flag, size: 14, color: Brand.navy),
+          Icon(Icons.flag, size: 14, color: Brand.navy),
           const SizedBox(width: 4),
           Flexible(
             child: Text(text,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(fontSize: 12, color: Brand.navy, fontWeight: FontWeight.w600)),
+                style: TextStyle(fontSize: 12, color: Brand.navy, fontWeight: FontWeight.w600)),
           ),
         ]),
       );
@@ -1163,11 +1163,11 @@ class DisciplineTag extends StatelessWidget {
 /// 설산 능선 실루엣 (알파인 스키 분위기). 아래쪽 배경색으로 채워 위 영역과 자연스럽게 이어진다.
 class MountainRidge extends StatelessWidget {
   final double height;
-  final Color color;
-  const MountainRidge({super.key, this.height = 36, this.color = Brand.ivory});
+  final Color? color; // 기본: 화면 배경색
+  const MountainRidge({super.key, this.height = 36, this.color});
   @override
   Widget build(BuildContext context) =>
-      ExcludeSemantics(child: CustomPaint(size: Size(double.infinity, height), painter: _RidgePainter(color)));
+      ExcludeSemantics(child: CustomPaint(size: Size(double.infinity, height), painter: _RidgePainter(color ?? Brand.ivory)));
 }
 
 class _RidgePainter extends CustomPainter {
@@ -1291,7 +1291,7 @@ class _DetailDialogState extends State<_DetailDialog> {
   Widget build(BuildContext context) {
     final h = MediaQuery.sizeOf(context).height;
     return Dialog(
-      backgroundColor: Colors.white,
+      backgroundColor: Brand.card,
       surfaceTintColor: Colors.transparent,
       insetPadding: const EdgeInsets.all(24),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
@@ -1385,7 +1385,7 @@ class SectionHeader extends StatelessWidget {
         child: Row(children: [
           ExcludeSemantics(child: Image.asset('assets/brand/snowflake_blue.png', width: 14, height: 14)),
           const SizedBox(width: 7),
-          Text(title, style: const TextStyle(color: Brand.navy, fontSize: 15, fontWeight: FontWeight.w700, letterSpacing: 0.3)),
+          Text(title, style: TextStyle(color: Brand.navy, fontSize: 15, fontWeight: FontWeight.w700, letterSpacing: 0.3)),
           const SizedBox(width: 12),
           Expanded(
             child: Container(
@@ -1468,10 +1468,10 @@ class _AlpineArtPainter extends CustomPainter {
 
 /// 헤더 배경: 단색 + 흩날리는 눈송이. Container(decoration: AlpineHeaderDecoration()) 로 사용.
 class AlpineHeaderDecoration extends Decoration {
-  final Color color;
-  const AlpineHeaderDecoration({this.color = Brand.navy});
+  final Color? color; // 기본: 머리 영역 바탕색
+  const AlpineHeaderDecoration({this.color});
   @override
-  BoxPainter createBoxPainter([VoidCallback? onChanged]) => _AlpineHeaderPainter(color);
+  BoxPainter createBoxPainter([VoidCallback? onChanged]) => _AlpineHeaderPainter(color ?? Brand.header);
 }
 
 class _AlpineHeaderPainter extends BoxPainter {

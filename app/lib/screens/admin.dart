@@ -105,11 +105,11 @@ class _AdminHomeState extends State<AdminHome> {
       drawer: Drawer(
         backgroundColor: Brand.ivory,
         child: ListView(children: [
-          const DrawerHeader(
-            decoration: BoxDecoration(color: Brand.navy),
+          DrawerHeader(
+            decoration: BoxDecoration(color: Brand.header),
             child: Align(
               alignment: Alignment.bottomLeft,
-              child: Text('WINREF 관리자', style: TextStyle(color: Brand.ivory, fontSize: 20, letterSpacing: 2)),
+              child: Text('WINREF 관리자', style: TextStyle(color: Colors.white, fontSize: 20, letterSpacing: 2)),
             ),
           ),
           for (var k = 0; k < _menu.length; k++)
@@ -239,7 +239,7 @@ class _DashboardState extends State<_Dashboard> {
               return ListView(controller: sc, shrinkWrap: true, padding: const EdgeInsets.fromLTRB(8, 16, 8, 48), children: [
                 ListTile(
                   title: Text(title, style: Theme.of(c).textTheme.titleLarge),
-                  trailing: Text('${rows.length}건', style: const TextStyle(color: Brand.navy, fontWeight: FontWeight.w700)),
+                  trailing: Text('${rows.length}건', style: TextStyle(color: Brand.navy, fontWeight: FontWeight.w700)),
                 ),
                 const Divider(),
                 if (rows.isEmpty) const EmptyView('해당 내역이 없습니다.'),
@@ -247,7 +247,7 @@ class _DashboardState extends State<_Dashboard> {
                   ListTile(
                     title: Text(r.$1),
                     subtitle: r.$2.isEmpty ? null : Text(r.$2),
-                    trailing: Text(r.$3, style: const TextStyle(color: Brand.muted, fontSize: 13)),
+                    trailing: Text(r.$3, style: TextStyle(color: Brand.muted, fontSize: 13)),
                   ),
               ]);
             },
@@ -329,7 +329,7 @@ class _DashboardState extends State<_Dashboard> {
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Text(title, style: Theme.of(context).textTheme.titleMedium),
             const SizedBox(height: 12),
-            if (rows.isEmpty) const Text('데이터 없음', style: TextStyle(color: Brand.muted)) else ...rows,
+            if (rows.isEmpty) Text('데이터 없음', style: TextStyle(color: Brand.muted)) else ...rows,
           ]),
         ),
       );
@@ -341,7 +341,7 @@ class _DashboardState extends State<_Dashboard> {
           Row(children: [
             Expanded(child: Text(name, overflow: TextOverflow.ellipsis)),
             Text('${extra != null ? '$extra · ' : ''}$value${max != null ? '/$max' : ''}$unit',
-                style: const TextStyle(fontWeight: FontWeight.w600, color: Brand.navy, fontSize: 13)),
+                style: TextStyle(fontWeight: FontWeight.w600, color: Brand.navy, fontSize: 13)),
           ]),
           if (max != null) ...[
             const SizedBox(height: 6),
@@ -374,10 +374,10 @@ class _Todo extends StatelessWidget {
     final hot = urgent && count > 0;
     final color = hot ? Brand.warn : Brand.navy;
     return Material(
-      color: hot ? const Color(0xFFFFF4E8) : Colors.white,
+      color: hot ? Brand.soft(const Color(0xFFFFF4E8)) : Brand.card,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
-        side: BorderSide(color: hot ? const Color(0xFFF2C79B) : const Color(0xFFDCE5F0)),
+        side: BorderSide(color: hot ? const Color(0xFFF2C79B) : Brand.line),
       ),
       child: InkWell(
         borderRadius: BorderRadius.circular(12),
@@ -389,9 +389,9 @@ class _Todo extends StatelessWidget {
             child: Row(children: [
               Icon(icon, color: color),
               const SizedBox(width: 10),
-              Expanded(child: Text(label, style: const TextStyle(fontSize: 13, color: Brand.ink))),
+              Expanded(child: Text(label, style: TextStyle(fontSize: 13, color: Brand.ink))),
               Text('$count', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: color)),
-              const Icon(Icons.chevron_right, size: 18, color: Brand.muted),
+              Icon(Icons.chevron_right, size: 18, color: Brand.muted),
             ]),
           ),
         ),
@@ -417,7 +417,7 @@ class _MonthlyChart extends StatelessWidget {
             for (var i = 0; i < data.length; i++)
               Expanded(
                 child: Column(mainAxisAlignment: MainAxisAlignment.end, children: [
-                  Text('${values[i]}', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Brand.navy)),
+                  Text('${values[i]}', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Brand.navy)),
                   const SizedBox(height: 4),
                   Container(
                     height: 100 * values[i] / top + 2,
@@ -429,7 +429,7 @@ class _MonthlyChart extends StatelessWidget {
                   ),
                   const SizedBox(height: 6),
                   Text('${int.parse('${data[i]['month']}'.substring(5))}월',
-                      style: const TextStyle(fontSize: 12, color: Brand.muted)),
+                      style: TextStyle(fontSize: 12, color: Brand.muted)),
                 ]),
               ),
           ]),
@@ -450,10 +450,10 @@ class _Kpi extends StatelessWidget {
   Widget build(BuildContext context) {
     final color = alert ? Brand.warn : Brand.navy;
     return Material(
-      color: Colors.white,
+      color: Brand.card,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
-        side: const BorderSide(color: Color(0xFFDCE5F0)),
+        side: BorderSide(color: Brand.line),
       ),
       child: InkWell(
         borderRadius: BorderRadius.circular(12),
@@ -471,12 +471,12 @@ class _Kpi extends StatelessWidget {
         const SizedBox(width: 12),
         Expanded(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(label, style: const TextStyle(color: Brand.muted, fontSize: 12.5), overflow: TextOverflow.ellipsis),
+            Text(label, style: TextStyle(color: Brand.muted, fontSize: 12.5), overflow: TextOverflow.ellipsis),
             const SizedBox(height: 2),
             Text(value, style: TextStyle(color: color, fontSize: 24, fontWeight: FontWeight.w800)),
           ]),
         ),
-        if (onTap != null) const Icon(Icons.chevron_right, size: 18, color: Brand.muted),
+        if (onTap != null) Icon(Icons.chevron_right, size: 18, color: Brand.muted),
       ]),
         ),
       ),
@@ -586,7 +586,7 @@ class _MembersState extends State<_Members> {
       ),
       // PC: 표 머리글
       if (MediaQuery.sizeOf(context).width >= 900)
-        const Padding(
+        Padding(
           padding: EdgeInsets.fromLTRB(32, 4, 32, 0),
           child: DefaultTextStyle(
             style: TextStyle(fontFamily: 'Pretendard', color: Brand.muted, fontSize: 12.5, fontWeight: FontWeight.w600),
@@ -617,7 +617,7 @@ class _MembersState extends State<_Members> {
             }
 
             final status = !org
-                ? Text(p['role'] == 'admin' ? '관리자' : '심판·교육', style: const TextStyle(color: Brand.muted, fontSize: 13))
+                ? Text(p['role'] == 'admin' ? '관리자' : '심판·교육', style: TextStyle(color: Brand.muted, fontSize: 13))
                 : p['org_status'] == 'pending'
                     ? Wrap(spacing: 4, children: [
                         OutlinedButton(
@@ -648,7 +648,7 @@ class _MembersState extends State<_Members> {
                           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                             Text(p['name'] ?? '', style: const TextStyle(fontWeight: FontWeight.w700), overflow: TextOverflow.ellipsis),
                             if (org && p['organization'] != null)
-                              Text(p['organization'], style: const TextStyle(color: Brand.muted, fontSize: 12), overflow: TextOverflow.ellipsis),
+                              Text(p['organization'], style: TextStyle(color: Brand.muted, fontSize: 12), overflow: TextOverflow.ellipsis),
                           ]),
                         ),
                       ]),
@@ -656,7 +656,7 @@ class _MembersState extends State<_Members> {
                     Expanded(child: Text(p['email'] ?? '-', overflow: TextOverflow.ellipsis)),
                     SizedBox(width: 140, child: Text(p['phone'] == null ? '-' : fmtPhone(p['phone']))),
                     SizedBox(width: 110, child: Text(roleName[p['role']] ?? '', style: const TextStyle(fontSize: 13))),
-                    SizedBox(width: 100, child: Text(fmtDate(p['created_at']), style: const TextStyle(color: Brand.muted, fontSize: 13))),
+                    SizedBox(width: 100, child: Text(fmtDate(p['created_at']), style: TextStyle(color: Brand.muted, fontSize: 13))),
                     SizedBox(width: 150, child: Align(alignment: Alignment.centerRight, child: status)),
                   ]),
                 ),
@@ -728,7 +728,7 @@ class _MemberSheet extends StatelessWidget {
         child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Icon(icon, size: 18, color: Brand.muted),
           const SizedBox(width: 10),
-          SizedBox(width: 112, child: Text(label, style: const TextStyle(color: Brand.muted))),
+          SizedBox(width: 112, child: Text(label, style: TextStyle(color: Brand.muted))),
           Expanded(child: Text((value ?? '').isEmpty ? '-' : value!)),
         ]),
       );
@@ -747,7 +747,7 @@ class _MemberSheet extends StatelessWidget {
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text(p['name'] ?? '', style: Theme.of(context).textTheme.titleLarge),
-              Text(_roles[p['role']] ?? '', style: const TextStyle(color: Brand.muted)),
+              Text(_roles[p['role']] ?? '', style: TextStyle(color: Brand.muted)),
             ]),
           ),
           if (me)
@@ -789,7 +789,7 @@ class _MemberSheet extends StatelessWidget {
           onSelectionChanged: me ? null : (v) => _setRole(context, v.first),
         ),
         if (me)
-          const Padding(
+          Padding(
             padding: EdgeInsets.only(top: 6),
             child: Text('본인 계정의 유형은 바꿀 수 없습니다.', style: TextStyle(color: Brand.muted, fontSize: 12)),
           ),

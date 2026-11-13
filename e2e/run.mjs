@@ -216,6 +216,41 @@ try {
     await see('다가오는 일정');
   });
 
+  await check('다크 모드 전환 (화면 모드 설정)', async () => {
+    const openInfo = async () => {
+      await tap('메뉴 표시', 'button').catch(() => tap('Show menu', 'button'));
+      await tap('앱 정보', 'menuitem');
+      await see('화면 모드');
+    };
+    await openInfo();
+    await see('밝은 화면');
+    await tap('화면 모드');
+    await tap('어두운 화면 (다크 모드)');
+    await see('다가오는 일정');                // 화면 전체가 새 모드로 다시 그려지고 첫 화면으로
+    await shot('dark-home');
+    await goTab('대회');
+    await shot('dark-competitions');
+    await goTab('교육');
+    await shot('dark-courses');
+    await goTab('자격');
+    await shot('dark-qualifications');
+    await goTab('홈');
+    await tap('내 프로필·경력 보기');
+    await see('보유 자격');
+    await shot('dark-profile');
+    await back();
+    await openInfo();
+    await see('어두운 화면 (다크 모드)');
+    await shot('dark-app-info');
+    await tap('화면 모드');
+    await tap('밝은 화면');
+    await see('다가오는 일정');
+    await openInfo();
+    await see('밝은 화면');                    // 설정이 저장돼 밝은 화면으로 돌아옴
+    await tap('뒤로', 'button').catch(() => tap('Back', 'button'));
+    await see('다가오는 일정');
+  });
+
   await check('프로필 편집·사진 업로드', async () => {
     await tap('내 프로필·경력 보기');
     await see('보유 자격');
@@ -386,7 +421,8 @@ try {
     await tap('별점 5점', 'button');
     await type('평가 메모', '판정이 정확함');
     await tap('평가 저장', 'button');
-    await see('평가를 저장했습니다');
+    await see('평가를 저장했습니다');     // 시트 안 평가 상자에 표시
+    await see('평가 수정');
     await shot('evaluation');
     if (sql(`select rating||','||comment from evaluations e join applications a on a.id=e.application_id join profiles p on p.id=a.user_id where p.name='김심판'`) !== '5,판정이 정확함')
       throw new Error('평가 저장 안 됨');

@@ -30,6 +30,7 @@ Future<void> main() async {
   await Supabase.initialize(url: supabaseUrl, publishableKey: supabaseAnonKey);
   try {
     prefs = await SharedPreferences.getInstance();
+    themeSetting.value = prefs?.getString('theme') ?? 'light';
   } catch (_) {
     // 기기 설정 저장소를 못 열어도 앱은 기본값으로 동작
   }
@@ -38,11 +39,45 @@ Future<void> main() async {
   runApp(const WinrefApp());
 }
 
-class WinrefApp extends StatelessWidget {
+class WinrefApp extends StatefulWidget {
   const WinrefApp({super.key});
+  @override
+  State<WinrefApp> createState() => _WinrefAppState();
+}
+
+class _WinrefAppState extends State<WinrefApp> with WidgetsBindingObserver {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    themeSetting.addListener(_changed);
+  }
+
+  @override
+  void dispose() {
+    themeSetting.removeListener(_changed);
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  void _changed() => setState(() {});
+
+  /// 휴대폰의 다크 모드 설정이 바뀌면 ('시스템 설정' 을 고른 경우) 따라간다
+  @override
+  void didChangePlatformBrightness() => setState(() {});
 
   @override
   Widget build(BuildContext context) {
+    Brand.dark = switch (themeSetting.value) {
+      'dark' => true,
+      'system' => WidgetsBinding.instance.platformDispatcher.platformBrightness == Brightness.dark,
+      _ => false,
+    };
+    // 밝은·어두운 화면이 바뀌면 화면 전체를 새로 그린다 (색을 직접 쓰는 화면까지 모두 바뀌도록)
+    return KeyedSubtree(key: ValueKey(Brand.dark), child: _app());
+  }
+
+  Widget _app() {
     return MaterialApp(
       title: 'WINREF',
       debugShowCheckedModeBanner: false,
@@ -171,7 +206,7 @@ Widget appFrame(BuildContext context, Widget? child) {
       final narrow = !full && mq.size.width > 600;
       const w = 440.0;
       return ColoredBox(
-        color: const Color(0xFFE3EAF3),
+        color: Brand.soft(const Color(0xFFE3EAF3)),
         child: Align(
           alignment: Alignment.topCenter,
           child: SizedBox(
@@ -187,7 +222,7 @@ Widget appFrame(BuildContext context, Widget? child) {
                 child: MediaQuery(
                   data: narrow ? scaled.copyWith(size: Size(w, mq.size.height)) : scaled,
                   child: ColoredBox(
-                    color: Colors.white,
+                    color: Brand.card,
                     child: SafeArea(
                       top: false,
                       left: false,

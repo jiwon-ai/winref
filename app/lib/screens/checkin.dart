@@ -25,7 +25,7 @@ Future<void> showCheckinQr(BuildContext context,
         child: Column(mainAxisSize: MainAxisSize.min, children: [
           Text('출석 QR', style: Theme.of(s).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700)),
           const SizedBox(height: 4),
-          Text('$competition · $position', textAlign: TextAlign.center, style: const TextStyle(color: Brand.muted)),
+          Text('$competition · $position', textAlign: TextAlign.center, style: TextStyle(color: Brand.muted)),
           const SizedBox(height: 20),
           Container(
             padding: const EdgeInsets.all(16),
@@ -43,15 +43,15 @@ Future<void> showCheckinQr(BuildContext context,
             ),
           ),
           const SizedBox(height: 16),
-          const Text('출석 코드', style: TextStyle(color: Brand.muted, fontSize: 12)),
+          Text('출석 코드', style: TextStyle(color: Brand.muted, fontSize: 12)),
           const SizedBox(height: 2),
           SelectableText(prettyCode(code),
-              style: const TextStyle(fontSize: 26, fontWeight: FontWeight.w700, letterSpacing: 3, color: Brand.ink)),
+              style: TextStyle(fontSize: 26, fontWeight: FontWeight.w700, letterSpacing: 3, color: Brand.ink)),
           const SizedBox(height: 14),
           if (checkedInAt != null)
             StatusChip('출석 완료 · ${fmtDateTime(checkedInAt)}', 'approved')
           else
-            const Text('대회 현장에서 대회관계자에게 이 화면을 보여주세요.\nQR 을 읽을 수 없으면 출석 코드를 불러주면 됩니다.',
+            Text('대회 현장에서 대회관계자에게 이 화면을 보여주세요.\nQR 을 읽을 수 없으면 출석 코드를 불러주면 됩니다.',
                 textAlign: TextAlign.center, style: TextStyle(color: Brand.muted, fontSize: 13, height: 1.5)),
         ]),
       ),
@@ -121,7 +121,7 @@ class _CheckinScanScreenState extends State<CheckinScanScreen> {
       body: ListView(padding: const EdgeInsets.fromLTRB(16, 12, 16, 48), children: [
         Text(widget.competition, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
         const SizedBox(height: 2),
-        const Text('선발된 심판의 출석 QR 을 사각형 안에 비춰 주세요.', style: TextStyle(color: Brand.muted, fontSize: 13)),
+        Text('선발된 심판의 출석 QR 을 사각형 안에 비춰 주세요.', style: TextStyle(color: Brand.muted, fontSize: 13)),
         const SizedBox(height: 12),
         ClipRRect(
           borderRadius: BorderRadius.circular(16),
@@ -167,7 +167,7 @@ class _CheckinScanScreenState extends State<CheckinScanScreen> {
           Container(
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
-              color: r.ok ? const Color(0xFFE8F6EE) : const Color(0xFFFDECEC),
+              color: r.ok ? Brand.soft(const Color(0xFFE8F6EE)) : Brand.soft(const Color(0xFFFDECEC)),
               borderRadius: BorderRadius.circular(12),
               border: Border.all(color: r.ok ? const Color(0xFF9AD3B0) : const Color(0xFFF0A8A8)),
             ),
@@ -179,7 +179,7 @@ class _CheckinScanScreenState extends State<CheckinScanScreen> {
             ]),
           ),
         const SizedBox(height: 16),
-        const Text('카메라를 쓸 수 없으면 심판 화면의 출석 코드를 입력하세요.', style: TextStyle(color: Brand.muted, fontSize: 13)),
+        Text('카메라를 쓸 수 없으면 심판 화면의 출석 코드를 입력하세요.', style: TextStyle(color: Brand.muted, fontSize: 13)),
         const SizedBox(height: 8),
         Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Expanded(
