@@ -21,7 +21,7 @@ final db = Supabase.instance.client;
 
 /// 인증 메일(가입 확인·비밀번호 재설정) 링크가 돌아올 앱 주소.
 /// Supabase > Authentication > URL Configuration 의 Redirect URLs 에 등록돼 있어야 한다.
-const appUrl = String.fromEnvironment('APP_URL', defaultValue: 'https://jiwon.fr/winref/');
+const appUrl = String.fromEnvironment('APP_URL', defaultValue: 'https://admin.winref.co.kr/');
 
 /// 개인정보처리방침 전문 (웹에 게시된 privacy.html)
 Future<void> openPrivacy() =>

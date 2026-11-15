@@ -79,6 +79,7 @@ jobs:
       - name: Build
         env:
           DEFINES: >-
+            --dart-define=APP_URL=https://admin.winref.co.kr/
             --dart-define=SUPABASE_URL=${{ secrets.SUPABASE_URL || 'https://oxdavtdvpwhcllnivizb.supabase.co' }}
             --dart-define=SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY || 'sb_publishable_n_LETmj8ZhCjOIZ5NfD5BA_afhksSoS' }}
             --dart-define=FIREBASE_API_KEY=${{ secrets.FIREBASE_API_KEY || 'AIzaSyAHKupL2ylBhfDliQeH9MFsCTelQUznVLE' }}
@@ -91,7 +92,7 @@ jobs:
           # Play 는 업로드마다 버전 코드가 커져야 하므로 실행 번호를 사용
           flutter build apk --release --build-number=${{ github.run_number }} $DEFINES
           flutter build appbundle --release --build-number=${{ github.run_number }} $DEFINES
-          flutter build web --release --base-href /winref/ --pwa-strategy=none $DEFINES  # 옛 화면이 캐시로 남지 않게
+          flutter build web --release --base-href / --pwa-strategy=none $DEFINES  # 옛 화면이 캐시로 남지 않게
 
       # 휴대폰에서 바로 받을 수 있는 고정 링크:
       # https://github.com/jiwon-ai/winref/releases/download/latest/winref.apk
@@ -122,7 +123,8 @@ jobs:
         with:
           path: app/build/web
 
-  # 고객 시연용 웹 주소: https://jiwon.fr/winref/ (계정의 사용자 도메인으로 연결됨)
+  # 관리자 웹 주소: https://admin.winref.co.kr/ (회사 도메인. 가비아 DNS CNAME admin → jiwon-ai.github.io,
+  #   저장소 Settings > Pages > Custom domain 에 admin.winref.co.kr 등록)
   # 저장소 Settings > Pages > Source 를 "GitHub Actions" 로 한 번 설정해야 배포된다.
   pages:
     needs: build

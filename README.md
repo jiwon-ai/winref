@@ -55,7 +55,7 @@ Flutter 안드로이드 앱 + 관리자 웹(같은 코드, Flutter Web) + Supaba
 
 ## 5. 웹 (고객 시연·관리자)
 
-main 에 push 하면 GitHub Pages 로 자동 배포된다: https://jiwon.fr/winref/
+main 에 push 하면 GitHub Pages 로 자동 배포된다: https://admin.winref.co.kr/ (회사 도메인 winref.co.kr, 가비아에서 DNS 관리)
 Supabase > Authentication > URL Configuration > Site URL 을 이 주소로 설정해야 인증 메일 링크가 올바로 열린다.
 
 ## 범위 (과업지시서 기준)
