@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:printing/printing.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../career_pdf.dart';
 import '../common.dart';
@@ -346,6 +347,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 padding: const EdgeInsets.all(20),
                 child: CareerView(key: ValueKey(p.toString()), profile: p),
               ),
+              const Divider(height: 1),
+              const ChangePasswordTile(),
               const DeleteAccountLink(),
             ]),
           );
@@ -357,4 +360,120 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
 extension on String {
   String ifEmpty(String other) => isEmpty ? other : this;
+}
+
+/// 이메일·비밀번호로 가입한 계정인지 (구글·카카오로만 가입한 계정은 비밀번호가 없다)
+bool get hasPasswordLogin {
+  final providers = db.auth.currentUser?.appMetadata['providers'];
+  if (providers is List) return providers.contains('email');
+  return db.auth.currentUser?.appMetadata['provider'] == 'email';
+}
+
+/// 내 정보 > 비밀번호 변경: 현재 비밀번호 확인 후 새 비밀번호로 변경
+class ChangePasswordScreen extends StatefulWidget {
+  const ChangePasswordScreen({super.key});
+  @override
+  State<ChangePasswordScreen> createState() => _ChangePasswordScreenState();
+}
+
+class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
+  final _form = GlobalKey<FormState>();
+  final _cur = TextEditingController();
+  final _pw = TextEditingController();
+  final _pw2 = TextEditingController();
+  bool _busy = false;
+  String? _curError;
+
+  @override
+  void dispose() {
+    _cur.dispose();
+    _pw.dispose();
+    _pw2.dispose();
+    super.dispose();
+  }
+
+  Future<void> _save() async {
+    setState(() => _curError = null);
+    if (!_form.currentState!.validate()) return;
+    setState(() => _busy = true);
+    final email = db.auth.currentUser?.email ?? '';
+    // 현재 비밀번호가 맞는지 먼저 확인 (같은 계정으로 다시 로그인 — 세션은 그대로 유지)
+    try {
+      await db.auth.signInWithPassword(email: email, password: _cur.text);
+    } catch (_) {
+      if (mounted) setState(() {
+        _busy = false;
+        _curError = '현재 비밀번호가 올바르지 않습니다';
+      });
+      return;
+    }
+    if (!mounted) return;
+    final ok = await run(context, () => db.auth.updateUser(UserAttributes(password: _pw.text)),
+        done: '비밀번호를 변경했습니다.');
+    if (!mounted) return;
+    setState(() => _busy = false);
+    if (ok) Navigator.pop(context);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('비밀번호 변경')),
+      body: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 420),
+          child: Form(
+            key: _form,
+            child: ListView(padding: const EdgeInsets.all(24), shrinkWrap: true, children: [
+              TextFormField(
+                controller: _cur,
+                obscureText: true,
+                decoration: InputDecoration(labelText: '현재 비밀번호', errorText: _curError),
+                validator: (v) => (v ?? '').isEmpty ? '현재 비밀번호를 입력' : null,
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _pw,
+                obscureText: true,
+                decoration: const InputDecoration(labelText: '새 비밀번호 (8자 이상)'),
+                validator: (v) {
+                  if ((v ?? '').length < 8) return '8자 이상 입력';
+                  if (v == _cur.text) return '현재 비밀번호와 다른 비밀번호를 입력';
+                  return null;
+                },
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _pw2,
+                obscureText: true,
+                decoration: const InputDecoration(labelText: '새 비밀번호 확인'),
+                validator: (v) => v == _pw.text ? null : '비밀번호가 일치하지 않습니다',
+              ),
+              const SizedBox(height: 24),
+              FilledButton(onPressed: _busy ? null : _save, child: const Text('변경하기')),
+            ]),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// 내 정보 화면에 넣는 '비밀번호 변경' 줄 (비밀번호가 있는 계정에만 보임)
+class ChangePasswordTile extends StatelessWidget {
+  final VoidCallback? beforeOpen; // 바텀시트 안에서는 시트를 먼저 닫음
+  const ChangePasswordTile({super.key, this.beforeOpen});
+  @override
+  Widget build(BuildContext context) {
+    if (!hasPasswordLogin) return const SizedBox.shrink();
+    return ListTile(
+      leading: const Icon(Icons.lock_outline),
+      title: const Text('비밀번호 변경'),
+      trailing: const Icon(Icons.chevron_right),
+      onTap: () {
+        beforeOpen?.call();
+        Navigator.push(context, MaterialPageRoute(builder: (_) => const ChangePasswordScreen()));
+      },
+    );
+  }
 }

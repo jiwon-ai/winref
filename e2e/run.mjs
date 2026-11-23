@@ -176,6 +176,34 @@ try {
     await logout();
   });
 
+  await check('내 정보에서 비밀번호 직접 변경 (현재 비밀번호 확인)', async () => {
+    await type('이메일', 'reset@test.kr');
+    await type('비밀번호', 'NewPass123!');
+    await tap('로그인', 'button');
+    await see('정재설');
+    await tap('메뉴 표시', 'button').catch(() => tap('Show menu', 'button'));
+    await tap('내 정보', 'menuitem');
+    await seeDown('비밀번호 변경');
+    await tap('비밀번호 변경');
+    await type('현재 비밀번호', 'wrong-pass');
+    await type('새 비밀번호 (8자 이상)', 'Changed123!');
+    await type('새 비밀번호 확인', 'Changed123!');
+    await tap('변경하기', 'button');
+    await see('현재 비밀번호가 올바르지 않습니다');
+    await retype('현재 비밀번호', 'NewPass123!');
+    await shot('change-password');
+    await tap('변경하기', 'button');
+    await see('비밀번호를 변경했습니다');
+    await page.goto(APP);          // 화면 상태 초기화 후 로그아웃 → 새 비밀번호로 로그인
+    await see('정재설');
+    await logout();
+    await type('이메일', 'reset@test.kr');
+    await type('비밀번호', 'Changed123!');
+    await tap('로그인', 'button');
+    await see('정재설');
+    await logout();
+  });
+
   await check('회원가입(심판·교육신청자)', async () => {
     await tap('회원가입', 'button');
     await type('이름', '김심판');

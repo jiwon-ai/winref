@@ -1022,6 +1022,7 @@ List<Widget> commonActions(BuildContext context, Map<String, dynamic> profile) =
                           editProfile(context, profile);
                         },
                       ),
+                      ChangePasswordTile(beforeOpen: () => Navigator.pop(s)),
                       if (profile['role'] != 'admin')
                         DeleteAccountLink(onPressed: () {
                           Navigator.pop(s);
